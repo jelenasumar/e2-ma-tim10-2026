@@ -9,4 +9,7 @@
     <string name="region">Region</string>
     <string name="confirm_password">Confirm Password</string>
     <string name="log_out">Log out</string>
+    <string name="moj_broj">Moj broj</string>
+    <string name="korak_po_korak">Korak po korak</string>
+    <string name="slagalica">Slagalica</string>
 </resources>
