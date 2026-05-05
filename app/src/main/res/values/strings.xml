@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">Slagalica</string>
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="action_sign_in">Sign in</string>
+    <string name="register">Register</string>
+    <string name="username">Username</string>
+    <string name="region">Region</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="log_out">Log out</string>
 </resources>
