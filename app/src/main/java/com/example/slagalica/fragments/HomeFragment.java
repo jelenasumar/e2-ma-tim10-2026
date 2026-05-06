@@ -1,6 +1,5 @@
 package com.example.slagalica.fragments;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -12,6 +11,7 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
 import com.example.slagalica.activities.LoginActivity;
+import com.example.slagalica.data.UserProfileRepository;
 
 public class HomeFragment extends Fragment {
 
@@ -24,11 +24,18 @@ public class HomeFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         Button logoutBtn = view.findViewById(R.id.logout);
+        Button profileBtn = view.findViewById(R.id.profile_button);
         Button mojBrojBtn = view.findViewById(R.id.mojBroj);
         Button stepByStepBtn = view.findViewById(R.id.korakPoKorak);
 
+        profileBtn.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_home_to_profile);
+        });
+
         logoutBtn.setOnClickListener(v -> {
-            startActivity(new Intent(requireActivity(), LoginActivity.class));
+            new UserProfileRepository(requireContext()).clearSession();
+            LoginActivity.openFresh(requireActivity());
             requireActivity().finish();
         });
 
