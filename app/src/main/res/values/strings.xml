@@ -11,6 +11,12 @@
     <string name="log_out">Log out</string>
     <string name="moj_broj">Moj broj</string>
     <string name="korak_po_korak">Korak po korak</string>
+    <string name="asocijacije">Asocijacije</string>
+    <string name="skocko">Skočko</string>
+    <string name="notifikacije">Notifikacije</string>
+    <string name="screen_not_implemented">Ekran još nije implementiran</string>
+    <string name="column_solution">Rešenje kolone</string>
+    <string name="final_solution">Konačno rešenje</string>
     <string name="slagalica">Slagalica</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>

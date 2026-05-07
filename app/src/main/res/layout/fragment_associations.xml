@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".fragments.games.AssociationsFragment">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/gameTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/asocijacije"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toStartOf="@id/timer"
+            app:layout_constraintHorizontal_chainStyle="spread_inside"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/timer"
+            style="@style/GameTimer"
+            android:text="02:00"
+            app:layout_constraintBaseline_toBaselineOf="@id/gameTitle"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/gameTitle" />
+
+        <GridLayout
+            android:id="@+id/columnsContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:columnCount="2"
+            android:rowCount="2"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/gameTitle">
+
+            <LinearLayout
+                style="@style/AssociationColumn"
+                android:orientation="vertical">
+
+                <TextView style="@style/AssociationColumnTitle" android:text="A" />
+                <TextView style="@style/AssociationField" android:text="A1" />
+                <TextView style="@style/AssociationField" android:text="A2" />
+                <TextView style="@style/AssociationField" android:text="A3" />
+                <TextView style="@style/AssociationField" android:text="A4" />
+                <EditText
+                    style="@style/AssociationAnswer"
+                    android:hint="@string/column_solution"
+                    android:inputType="text" />
+            </LinearLayout>
+
+            <LinearLayout
+                style="@style/AssociationColumn"
+                android:orientation="vertical">
+
+                <TextView style="@style/AssociationColumnTitle" android:text="B" />
+                <TextView style="@style/AssociationField" android:text="B1" />
+                <TextView style="@style/AssociationField" android:text="B2" />
+                <TextView style="@style/AssociationField" android:text="B3" />
+                <TextView style="@style/AssociationField" android:text="B4" />
+                <EditText
+                    style="@style/AssociationAnswer"
+                    android:hint="@string/column_solution"
+                    android:inputType="text" />
+            </LinearLayout>
+
+            <LinearLayout
+                style="@style/AssociationColumn"
+                android:orientation="vertical">
+
+                <TextView style="@style/AssociationColumnTitle" android:text="C" />
+                <TextView style="@style/AssociationField" android:text="C1" />
+                <TextView style="@style/AssociationField" android:text="C2" />
+                <TextView style="@style/AssociationField" android:text="C3" />
+                <TextView style="@style/AssociationField" android:text="C4" />
+                <EditText
+                    style="@style/AssociationAnswer"
+                    android:hint="@string/column_solution"
+                    android:inputType="text" />
+            </LinearLayout>
+
+            <LinearLayout
+                style="@style/AssociationColumn"
+                android:orientation="vertical">
+
+                <TextView style="@style/AssociationColumnTitle" android:text="D" />
+                <TextView style="@style/AssociationField" android:text="D1" />
+                <TextView style="@style/AssociationField" android:text="D2" />
+                <TextView style="@style/AssociationField" android:text="D3" />
+                <TextView style="@style/AssociationField" android:text="D4" />
+                <EditText
+                    style="@style/AssociationAnswer"
+                    android:hint="@string/column_solution"
+                    android:inputType="text" />
+            </LinearLayout>
+        </GridLayout>
+
+        <EditText
+            android:id="@+id/finalAnswerInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:hint="@string/final_solution"
+            android:inputType="text"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/columnsContainer" />
+
+        <Button
+            android:id="@+id/submitButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/submit"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/finalAnswerInput" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

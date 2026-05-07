@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -26,6 +27,9 @@ public class HomeFragment extends Fragment {
         Button logoutBtn = view.findViewById(R.id.logout);
         Button mojBrojBtn = view.findViewById(R.id.mojBroj);
         Button stepByStepBtn = view.findViewById(R.id.korakPoKorak);
+        Button associationsBtn = view.findViewById(R.id.asocijacije);
+        Button skockoBtn = view.findViewById(R.id.skocko);
+        Button notificationsBtn = view.findViewById(R.id.notifikacije);
 
         logoutBtn.setOnClickListener(v -> {
             startActivity(new Intent(requireActivity(), LoginActivity.class));
@@ -41,5 +45,16 @@ public class HomeFragment extends Fragment {
             NavHostFragment.findNavController(this)
                     .navigate(R.id.action_home_to_stepByStep);
         });
+
+        associationsBtn.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_home_to_associations);
+        });
+        skockoBtn.setOnClickListener(v -> showNotImplementedMessage());
+        notificationsBtn.setOnClickListener(v -> showNotImplementedMessage());
+    }
+
+    private void showNotImplementedMessage() {
+        Toast.makeText(requireContext(), R.string.screen_not_implemented, Toast.LENGTH_SHORT).show();
     }
 }
