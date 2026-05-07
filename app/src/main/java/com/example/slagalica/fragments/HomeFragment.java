@@ -3,6 +3,7 @@ package com.example.slagalica.fragments;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -29,6 +30,9 @@ public class HomeFragment extends Fragment {
         Button mojBrojBtn = view.findViewById(R.id.mojBroj);
         Button spojniceBtn = view.findViewById(R.id.spojnice);
         Button stepByStepBtn = view.findViewById(R.id.korakPoKorak);
+        Button associationsBtn = view.findViewById(R.id.asocijacije);
+        Button skockoBtn = view.findViewById(R.id.skocko);
+        Button notificationsBtn = view.findViewById(R.id.notifikacije);
 
         profileBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
@@ -59,6 +63,19 @@ public class HomeFragment extends Fragment {
         stepByStepBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
                     .navigate(R.id.action_home_to_stepByStep);
+        });
+
+        associationsBtn.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_home_to_associations);
+        });
+        skockoBtn.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_home_to_skocko);
+        });
+        notificationsBtn.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_home_to_notifications);
         });
     }
 }

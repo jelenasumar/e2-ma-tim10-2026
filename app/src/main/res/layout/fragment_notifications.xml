@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".fragments.NotificationsFragment">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/backButton"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="-21dp"
+            android:text="@string/back"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/notificationsTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/notifikacije"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/backButton" />
+
+        <RadioGroup
+            android:id="@+id/filterGroup"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/notificationsTitle">
+
+            <RadioButton
+                android:id="@+id/filterAll"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:checked="true"
+                android:text="@string/filter_all" />
+
+            <RadioButton
+                android:id="@+id/filterUnread"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/filter_unread" />
+
+            <RadioButton
+                android:id="@+id/filterRead"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/filter_read" />
+        </RadioGroup>
+
+        <LinearLayout
+            android:id="@+id/notificationsContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/filterGroup">
+
+            <LinearLayout
+                style="@style/NotificationCardUnread"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    style="@style/NotificationHeader"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/NotificationType"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:text="@string/notification_type_reward" />
+
+                    <Button
+                        android:id="@+id/markRewardReadButton"
+                        style="@style/SmallNotificationButton"
+                        android:text="@string/mark_as_read" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/NotificationTitle"
+                    android:text="@string/notification_reward_title" />
+
+                <TextView
+                    style="@style/NotificationMessage"
+                    android:text="@string/notification_reward_message" />
+
+                <TextView
+                    style="@style/NotificationDate"
+                    android:text="@string/notification_reward_date" />
+            </LinearLayout>
+
+            <LinearLayout
+                style="@style/NotificationCardUnread"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    style="@style/NotificationHeader"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/NotificationType"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:text="@string/notification_type_friend" />
+
+                    <Button
+                        android:id="@+id/markFriendReadButton"
+                        style="@style/SmallNotificationButton"
+                        android:text="@string/mark_as_read" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/NotificationTitle"
+                    android:text="@string/notification_friend_title" />
+
+                <TextView
+                    style="@style/NotificationMessage"
+                    android:text="@string/notification_friend_message" />
+
+                <Button
+                    android:id="@+id/acceptInviteButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/accept_invite" />
+
+                <TextView
+                    style="@style/NotificationDate"
+                    android:text="@string/notification_friend_date" />
+            </LinearLayout>
+
+            <LinearLayout
+                style="@style/NotificationCard"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/NotificationType"
+                    android:text="@string/notification_type_ranking" />
+
+                <TextView
+                    style="@style/NotificationTitle"
+                    android:text="@string/notification_ranking_title" />
+
+                <TextView
+                    style="@style/NotificationMessage"
+                    android:text="@string/notification_ranking_message" />
+
+                <TextView
+                    style="@style/NotificationDate"
+                    android:text="@string/notification_ranking_date" />
+            </LinearLayout>
+
+            <LinearLayout
+                style="@style/NotificationCard"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/NotificationType"
+                    android:text="@string/notification_type_chat" />
+
+                <TextView
+                    style="@style/NotificationTitle"
+                    android:text="@string/notification_chat_title" />
+
+                <TextView
+                    style="@style/NotificationMessage"
+                    android:text="@string/notification_chat_message" />
+
+                <Button
+                    android:id="@+id/openChatButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/open_chat" />
+
+                <TextView
+                    style="@style/NotificationDate"
+                    android:text="@string/notification_chat_date" />
+            </LinearLayout>
+
+            <LinearLayout
+                style="@style/NotificationCardUnread"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    style="@style/NotificationHeader"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/NotificationType"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:text="@string/notification_type_other" />
+
+                    <Button
+                        android:id="@+id/markLeagueReadButton"
+                        style="@style/SmallNotificationButton"
+                        android:text="@string/mark_as_read" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/NotificationTitle"
+                    android:text="@string/notification_league_title" />
+
+                <TextView
+                    style="@style/NotificationMessage"
+                    android:text="@string/notification_league_message" />
+
+                <Button
+                    android:id="@+id/openLeagueButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/open_league" />
+
+                <TextView
+                    style="@style/NotificationDate"
+                    android:text="@string/notification_league_date" />
+            </LinearLayout>
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

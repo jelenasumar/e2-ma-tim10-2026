@@ -19,6 +19,18 @@
             app:destination="@id/stepByStepFragment" />
 
         <action
+            android:id="@+id/action_home_to_associations"
+            app:destination="@id/associationsFragment" />
+
+        <action
+            android:id="@+id/action_home_to_skocko"
+            app:destination="@id/skockoFragment" />
+
+        <action
+            android:id="@+id/action_home_to_notifications"
+            app:destination="@id/notificationsFragment" />
+
+        <action
             android:id="@+id/action_home_to_profile"
             app:destination="@id/profileFragment" />
 
@@ -41,6 +53,21 @@
         android:id="@+id/stepByStepFragment"
         android:name="com.example.slagalica.fragments.games.StepByStepFragment"
         android:label="Korak po korak" />
+
+    <fragment
+        android:id="@+id/associationsFragment"
+        android:name="com.example.slagalica.fragments.games.AssociationsFragment"
+        android:label="Asocijacije" />
+
+    <fragment
+        android:id="@+id/skockoFragment"
+        android:name="com.example.slagalica.fragments.games.SkockoFragment"
+        android:label="Skočko" />
+
+    <fragment
+        android:id="@+id/notificationsFragment"
+        android:name="com.example.slagalica.fragments.NotificationsFragment"
+        android:label="Notifikacije" />
 
     <fragment
         android:id="@+id/profileFragment"
