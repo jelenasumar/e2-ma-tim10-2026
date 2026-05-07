@@ -22,6 +22,14 @@
             android:id="@+id/action_home_to_profile"
             app:destination="@id/profileFragment" />
 
+        <action
+            android:id="@+id/action_home_to_koZnaZna"
+            app:destination="@id/koZnaZnaFragment" />
+
+        <action
+            android:id="@+id/action_home_to_spojnice"
+            app:destination="@id/spojniceFragment" />
+
     </fragment>
 
     <fragment
@@ -38,5 +46,15 @@
         android:id="@+id/profileFragment"
         android:name="com.example.slagalica.fragments.ProfileFragment"
         android:label="@string/profile_title" />
+
+    <fragment
+        android:id="@+id/koZnaZnaFragment"
+        android:name="com.example.slagalica.fragments.games.KoZnaZnaFragment"
+        android:label="@string/game_ko_zna_zna" />
+
+    <fragment
+        android:id="@+id/spojniceFragment"
+        android:name="com.example.slagalica.fragments.games.SpojniceFragment"
+        android:label="@string/game_spojnice" />
 
 </navigation>

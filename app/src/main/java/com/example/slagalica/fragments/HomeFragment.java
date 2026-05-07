@@ -25,7 +25,9 @@ public class HomeFragment extends Fragment {
 
         Button logoutBtn = view.findViewById(R.id.logout);
         Button profileBtn = view.findViewById(R.id.profile_button);
+        Button koZnaZnaBtn = view.findViewById(R.id.koZnaZna);
         Button mojBrojBtn = view.findViewById(R.id.mojBroj);
+        Button spojniceBtn = view.findViewById(R.id.spojnice);
         Button stepByStepBtn = view.findViewById(R.id.korakPoKorak);
 
         profileBtn.setOnClickListener(v -> {
@@ -42,6 +44,16 @@ public class HomeFragment extends Fragment {
         mojBrojBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
                     .navigate(R.id.action_home_to_mojBroj);
+        });
+
+        spojniceBtn.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_home_to_spojnice);
+        });
+
+        koZnaZnaBtn.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_home_to_koZnaZna);
         });
 
         stepByStepBtn.setOnClickListener(v -> {

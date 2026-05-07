@@ -50,4 +50,43 @@
     <string name="error_password_mismatch">Lozinka i potvrda se ne poklapaju.</string>
     <string name="error_register_first">Prvo napravi nalog na ekranu za registraciju.</string>
     <string name="error_login_failed">Pogrešan email ili lozinka.</string>
+    <string name="ko_zna_zna_button">Ko zna zna</string>
+    <string name="kzz_question_counter">Pitanje 1/5</string>
+    <string name="kzz_round_time">Preostalo vreme runde: 25s</string>
+    <string name="kzz_question_time">Vreme za pitanje: 5s</string>
+    <string name="kzz_player_one_score">Igrač 1: 0</string>
+    <string name="kzz_player_two_score">Igrač 2: 0</string>
+    <string name="kzz_points_hint">Tačno +10, netačno -5, brži igrač dobija bodove kada oba pogode.</string>
+    <string name="kzz_question_placeholder">Koji je glavni grad Srbije?</string>
+    <string name="kzz_option_a">Novi Sad</string>
+    <string name="kzz_option_b">Beograd</string>
+    <string name="kzz_option_c">Niš</string>
+    <string name="kzz_option_d">Kragujevac</string>
+    <string name="kzz_confirm_answer">Potvrdi odgovor</string>
+    <string name="kzz_skip_question">Preskoči</string>
+    <string name="spojnice_button">Spojnice</string>
+    <string name="spojnice_title">Spojnice</string>
+    <string name="spojnice_round_label">Runda 1/2</string>
+    <string name="spojnice_time_label">Preostalo vreme: 30s</string>
+    <string name="spojnice_score_p1">Igrač 1: 0</string>
+    <string name="spojnice_score_p2">Igrač 2: 0</string>
+    <string name="spojnice_hint">Poveži 5 pojmova iz leve kolone sa desnom. Svaka tačna spojnica nosi 2 boda.</string>
+    <string name="spojnice_left_header">Leva kolona</string>
+    <string name="spojnice_right_header">Desna kolona</string>
+    <string name="spojnice_submit">Potvrdi spajanje</string>
+    <string name="spojnice_next_round">Sledeća runda</string>
+    <string-array name="spojnice_left_items">
+        <item>Pojam 1</item>
+        <item>Pojam 2</item>
+        <item>Pojam 3</item>
+        <item>Pojam 4</item>
+        <item>Pojam 5</item>
+    </string-array>
+    <string-array name="spojnice_right_items">
+        <item>Odgovor A</item>
+        <item>Odgovor B</item>
+        <item>Odgovor C</item>
+        <item>Odgovor D</item>
+        <item>Odgovor E</item>
+    </string-array>
 </resources>
