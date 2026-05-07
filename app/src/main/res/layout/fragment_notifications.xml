@@ -13,6 +13,16 @@
         android:layout_height="wrap_content"
         android:padding="24dp">
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/backButton"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="-21dp"
+            android:text="@string/back"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <TextView
             android:id="@+id/notificationsTitle"
             android:layout_width="wrap_content"
@@ -21,7 +31,7 @@
             android:textSize="26sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toBottomOf="@id/backButton" />
 
         <RadioGroup
             android:id="@+id/filterGroup"
@@ -228,16 +238,6 @@
                     android:text="@string/notification_league_date" />
             </LinearLayout>
         </LinearLayout>
-
-        <Button
-            android:id="@+id/backButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="@string/back"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/notificationsContainer" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

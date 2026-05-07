@@ -15,23 +15,66 @@
 
         <TextView
             android:id="@+id/gameTitle"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:text="@string/skocko"
             android:textSize="26sp"
             android:textStyle="bold"
-            app:layout_constraintEnd_toStartOf="@id/timer"
-            app:layout_constraintHorizontal_chainStyle="spread_inside"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <TextView
-            android:id="@+id/timer"
-            style="@style/GameTimer"
-            android:text="@string/skocko_timer"
-            app:layout_constraintBaseline_toBaselineOf="@id/gameTitle"
+        <LinearLayout
+            android:id="@+id/skockoInfoRow"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/gameTitle" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/gameTitle">
+
+            <TextView
+                android:id="@+id/skockoRound"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/skocko_round_label" />
+
+            <TextView
+                android:id="@+id/skockoTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/skocko_time_label" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/skockoScoreRow"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/skockoInfoRow">
+
+            <TextView
+                android:id="@+id/skockoPlayerOneScore"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/player_one_score"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/skockoPlayerTwoScore"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:text="@string/player_two_score"
+                android:textStyle="bold" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/symbolsTitle"
@@ -42,7 +85,7 @@
             android:textSize="16sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/gameTitle" />
+            app:layout_constraintTop_toBottomOf="@id/skockoScoreRow" />
 
         <LinearLayout
             android:id="@+id/symbolsContainer"
