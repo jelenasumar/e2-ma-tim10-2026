@@ -26,6 +26,10 @@
             android:id="@+id/action_home_to_skocko"
             app:destination="@id/skockoFragment" />
 
+        <action
+            android:id="@+id/action_home_to_notifications"
+            app:destination="@id/notificationsFragment" />
+
     </fragment>
 
     <fragment
@@ -47,5 +51,10 @@
         android:id="@+id/skockoFragment"
         android:name="com.example.slagalica.fragments.games.SkockoFragment"
         android:label="Skočko" />
+
+    <fragment
+        android:id="@+id/notificationsFragment"
+        android:name="com.example.slagalica.fragments.NotificationsFragment"
+        android:label="Notifikacije" />
 
 </navigation>

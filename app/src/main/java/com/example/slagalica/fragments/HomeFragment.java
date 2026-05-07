@@ -54,7 +54,10 @@ public class HomeFragment extends Fragment {
             NavHostFragment.findNavController(this)
                     .navigate(R.id.action_home_to_skocko);
         });
-        notificationsBtn.setOnClickListener(v -> showNotImplementedMessage());
+        notificationsBtn.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_home_to_notifications);
+        });
     }
 
     private void showNotImplementedMessage() {

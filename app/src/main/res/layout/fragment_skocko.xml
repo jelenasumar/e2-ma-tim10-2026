@@ -82,8 +82,12 @@
             <TextView
                 style="@style/SkockoSymbolBox"
                 android:contentDescription="@string/skocko_symbol_triangle_label"
+                android:paddingEnd="2dp"
+                android:paddingStart="0dp"
+                android:paddingTop="0dp"
+                android:paddingBottom="4dp"
                 android:text="@string/skocko_symbol_triangle"
-                android:textSize="25sp"
+                android:textSize="30sp"
                 tools:ignore="TextContrastCheck" />
 
             <TextView
