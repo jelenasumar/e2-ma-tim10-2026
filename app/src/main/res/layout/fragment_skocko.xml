@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".fragments.games.SkockoFragment">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/gameTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/skocko"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toStartOf="@id/timer"
+            app:layout_constraintHorizontal_chainStyle="spread_inside"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/timer"
+            style="@style/GameTimer"
+            android:text="@string/skocko_timer"
+            app:layout_constraintBaseline_toBaselineOf="@id/gameTitle"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/gameTitle" />
+
+        <TextView
+            android:id="@+id/symbolsTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="@string/available_symbols"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/gameTitle" />
+
+        <LinearLayout
+            android:id="@+id/symbolsContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/symbolsTitle">
+
+            <TextView
+                style="@style/SkockoSymbolBox"
+                android:contentDescription="@string/skocko_symbol_skocko_label"
+                android:text="@string/skocko_symbol_skocko"
+                tools:ignore="TextContrastCheck" />
+
+            <TextView
+                style="@style/SkockoSymbolBox"
+                android:contentDescription="@string/skocko_symbol_square_label"
+                android:text="@string/skocko_symbol_square"
+                tools:ignore="TextContrastCheck" />
+
+            <TextView
+                style="@style/SkockoSymbolBox"
+                android:contentDescription="@string/skocko_symbol_circle_label"
+                android:text="@string/skocko_symbol_circle"
+                tools:ignore="TextContrastCheck" />
+
+            <TextView
+                style="@style/SkockoSymbolBox"
+                android:contentDescription="@string/skocko_symbol_heart_label"
+                android:text="@string/skocko_symbol_heart"
+                tools:ignore="TextContrastCheck" />
+
+            <TextView
+                style="@style/SkockoSymbolBox"
+                android:contentDescription="@string/skocko_symbol_triangle_label"
+                android:text="@string/skocko_symbol_triangle"
+                android:textSize="25sp"
+                tools:ignore="TextContrastCheck" />
+
+            <TextView
+                style="@style/SkockoSymbolBox"
+                android:contentDescription="@string/skocko_symbol_star_label"
+                android:text="@string/skocko_symbol_star"
+                tools:ignore="TextContrastCheck" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/attemptsContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:orientation="vertical"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/symbolsContainer">
+
+            <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoResultCell" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoResultCell" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoResultCell" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoResultCell" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoCell" />
+                <TextView style="@style/SkockoResultCell" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/submitButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/submit_attempt"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/attemptsContainer" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

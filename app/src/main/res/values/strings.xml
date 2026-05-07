@@ -17,6 +17,22 @@
     <string name="screen_not_implemented">Ekran još nije implementiran</string>
     <string name="column_solution">Rešenje kolone</string>
     <string name="final_solution">Konačno rešenje</string>
+    <string name="available_symbols">Dostupni znakovi</string>
+    <string name="submit_attempt">Potvrdi pokušaj</string>
+    <string name="skocko_timer">00:30</string>
+    <string name="skocko_symbol_skocko">😎</string>
+    <string name="skocko_symbol_square">🟩</string>
+    <string name="skocko_symbol_circle">🔵</string>
+    <string name="skocko_symbol_heart">❤️</string>
+    <string name="skocko_symbol_triangle">🔺</string>
+    <string name="skocko_symbol_star">⭐</string>
+    <string name="skocko_symbol_skocko_label">Skočko</string>
+    <string name="skocko_symbol_square_label">Kvadrat</string>
+    <string name="skocko_symbol_circle_label">Krug</string>
+    <string name="skocko_symbol_heart_label">Srce</string>
+    <string name="skocko_symbol_triangle_label">Trougao</string>
+    <string name="skocko_symbol_star_label">Zvezda</string>
+    <string name="skocko_result_placeholder">&#9675; &#9675; &#9675; &#9675;</string>
     <string name="slagalica">Slagalica</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
