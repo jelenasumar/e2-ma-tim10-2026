@@ -38,6 +38,7 @@ dependencies {
     implementation libs.activity
     implementation libs.constraintlayout
     implementation libs.navigation.fragment
+    implementation "com.google.zxing:core:3.5.3"
     implementation libs.navigation.fragment.ktx
     implementation libs.navigation.ui.ktx
     testImplementation libs.junit
