@@ -19,21 +19,51 @@
         android:layout_marginTop="24dp"/>
 
     <Button
+        android:id="@+id/profile_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/profile_button"
+        app:layout_constraintTop_toBottomOf="@id/title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"/>
+
+    <Button
+        android:id="@+id/koZnaZna"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/ko_zna_zna_button"
+        app:layout_constraintTop_toBottomOf="@id/profile_button"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"/>
+
+    <Button
         android:id="@+id/mojBroj"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Moj broj"
-        app:layout_constraintTop_toBottomOf="@id/title"
+        app:layout_constraintTop_toBottomOf="@id/koZnaZna"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp"/>
+        android:layout_marginTop="16dp"/>
+
+    <Button
+        android:id="@+id/spojnice"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/spojnice_button"
+        app:layout_constraintTop_toBottomOf="@id/mojBroj"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"/>
 
     <Button
         android:id="@+id/korakPoKorak"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Korak po korak"
-        app:layout_constraintTop_toBottomOf="@id/mojBroj"
+        app:layout_constraintTop_toBottomOf="@id/spojnice"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="16dp"/>
