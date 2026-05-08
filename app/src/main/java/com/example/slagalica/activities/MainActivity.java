@@ -12,6 +12,8 @@ import com.example.slagalica.R;
 
 public class MainActivity extends AppCompatActivity {
 
+    public static final String EXTRA_GUEST_MODE = "com.example.slagalica.EXTRA_GUEST_MODE";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
