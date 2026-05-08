@@ -24,6 +24,8 @@
     <string name="associations_time_label">Preostalo vreme: 02:00</string>
     <string name="skocko_round_label">Runda: 1/2</string>
     <string name="skocko_time_label">Preostalo vreme: 00:30</string>
+    <string name="skocko_opponent_attempt">Pokušaj protivnika</string>
+    <string name="skocko_final_combination">Finalna kombinacija</string>
     <string name="player_one_score">Igrač 1: 0</string>
     <string name="player_two_score">Igrač 2: 0</string>
     <string name="skocko_symbol_skocko">😎</string>
@@ -150,4 +152,5 @@
         <item>Odgovor D</item>
         <item>Odgovor E</item>
     </string-array>
+    <string name="next">Dalje</string>
 </resources>

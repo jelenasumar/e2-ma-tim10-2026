@@ -28,7 +28,7 @@
             android:id="@+id/skockoInfoRow"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -52,7 +52,7 @@
             android:id="@+id/skockoScoreRow"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -80,7 +80,7 @@
             android:id="@+id/symbolsTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
+            android:layout_marginTop="18dp"
             android:text="@string/available_symbols"
             android:textSize="16sp"
             android:textStyle="bold"
@@ -91,7 +91,7 @@
             android:id="@+id/symbolsContainer"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:gravity="center"
             android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
@@ -144,7 +144,7 @@
             android:id="@+id/attemptsContainer"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="16dp"
             android:orientation="vertical"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -199,15 +199,55 @@
             </LinearLayout>
         </LinearLayout>
 
+        <View
+            android:id="@+id/skockoDivider"
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_marginTop="6dp"
+            android:background="#BDBDBD"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/attemptsContainer" />
+
+        <LinearLayout
+            android:id="@+id/opponentAttemptRow"
+            style="@style/SkockoAttemptRow"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/skockoDivider">
+
+            <TextView style="@style/SkockoCell" />
+            <TextView style="@style/SkockoCell" />
+            <TextView style="@style/SkockoCell" />
+            <TextView style="@style/SkockoCell" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/finalCombinationRow"
+            style="@style/SkockoAttemptRow"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/opponentAttemptRow">
+
+            <TextView style="@style/SkockoCell" />
+            <TextView style="@style/SkockoCell" />
+            <TextView style="@style/SkockoCell" />
+            <TextView style="@style/SkockoCell" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/submitButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="10dp"
             android:text="@string/submit_attempt"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/attemptsContainer" />
+            app:layout_constraintTop_toBottomOf="@id/finalCombinationRow" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>
