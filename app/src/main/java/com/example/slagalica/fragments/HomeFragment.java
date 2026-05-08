@@ -3,7 +3,6 @@ package com.example.slagalica.fragments;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -12,6 +11,7 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
 import com.example.slagalica.activities.LoginActivity;
+import com.example.slagalica.activities.MainActivity;
 import com.example.slagalica.data.UserProfileRepository;
 
 public class HomeFragment extends Fragment {
@@ -33,6 +33,12 @@ public class HomeFragment extends Fragment {
         Button associationsBtn = view.findViewById(R.id.asocijacije);
         Button skockoBtn = view.findViewById(R.id.skocko);
         Button notificationsBtn = view.findViewById(R.id.notifikacije);
+
+        if (isGuestMode()) {
+            view.findViewById(R.id.accountSectionTitle).setVisibility(View.GONE);
+            profileBtn.setVisibility(View.GONE);
+            notificationsBtn.setVisibility(View.GONE);
+        }
 
         profileBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
@@ -77,5 +83,9 @@ public class HomeFragment extends Fragment {
             NavHostFragment.findNavController(this)
                     .navigate(R.id.action_home_to_notifications);
         });
+    }
+
+    private boolean isGuestMode() {
+        return requireActivity().getIntent().getBooleanExtra(MainActivity.EXTRA_GUEST_MODE, false);
     }
 }

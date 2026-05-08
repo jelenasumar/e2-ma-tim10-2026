@@ -91,4 +91,20 @@
         app:layout_constraintTop_toBottomOf="@+id/pleaseRegister"
         app:layout_constraintVertical_bias="0.062" />
 
+    <TextView
+        android:id="@+id/continueAsGuest"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="28dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:minHeight="48dp"
+        android:gravity="center"
+        android:text="@string/continue_as_guest"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
