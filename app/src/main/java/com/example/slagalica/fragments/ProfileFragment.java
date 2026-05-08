@@ -7,6 +7,7 @@ import android.graphics.PorterDuffColorFilter;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -61,7 +62,7 @@ public class ProfileFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         view.findViewById(R.id.profile_back).setOnClickListener(v ->
-                NavHostFragment.findNavController(this).popBackStack()
+                NavHostFragment.findNavController(this).navigate(R.id.homeFragment)
         );
 
         view.findViewById(R.id.profile_change_avatar).setOnClickListener(v ->
@@ -76,6 +77,14 @@ public class ProfileFragment extends Fragment {
         });
 
         bindProfile(view);
+
+        Button changePasswordBtn = view.findViewById(R.id.change_password_btn);
+
+        changePasswordBtn.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.changePassword);
+        });
+
     }
 
     private void bindProfile(@NonNull View root) {

@@ -181,6 +181,14 @@
             android:layout_marginTop="16dp"
             android:text="@string/profile_change_avatar" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/change_password_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/change_password"
+            />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

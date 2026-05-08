@@ -131,6 +131,11 @@
     <string name="spojnice_right_header">Desna kolona</string>
     <string name="spojnice_submit">Potvrdi spajanje</string>
     <string name="spojnice_next_round">Sledeća runda</string>
+    <string name="change_password">Promeni lozinku</string>
+    <string name="change_password_header">Promena lozinke</string>
+    <string name="current_password">Trenutna lozinka</string>
+    <string name="new_password">Nova lozinka</string>
+    <string name="confirm_new_password">Potvrdi novu lozinku</string>
     <string-array name="spojnice_left_items">
         <item>Pojam 1</item>
         <item>Pojam 2</item>
