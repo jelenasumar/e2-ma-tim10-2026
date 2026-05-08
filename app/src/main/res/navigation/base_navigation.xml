@@ -42,6 +42,11 @@
             android:id="@+id/action_home_to_spojnice"
             app:destination="@id/spojniceFragment" />
 
+        <action
+            android:id="@+id/action_profile_to_changePassword"
+            app:destination="@id/changePassword" />
+
+
     </fragment>
 
     <fragment
@@ -83,5 +88,10 @@
         android:id="@+id/spojniceFragment"
         android:name="com.example.slagalica.fragments.games.SpojniceFragment"
         android:label="@string/game_spojnice" />
+
+    <fragment
+        android:id="@+id/changePassword"
+        android:name="com.example.slagalica.fragments.ChangePasswordFragment"
+        android:label="@string/change_password" />
 
 </navigation>
