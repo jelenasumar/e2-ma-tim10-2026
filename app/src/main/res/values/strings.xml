@@ -1,3 +1,153 @@
 <resources>
     <string name="app_name">Slagalica</string>
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Lozinka</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="action_sign_in">Prijavi se</string>
+    <string name="register">Registruj se</string>
+    <string name="username">Korisničko ime</string>
+    <string name="region">Region</string>
+    <string name="confirm_password">Potvdi lozinku</string>
+    <string name="log_out">Odjavi se</string>
+    <string name="moj_broj">Moj broj</string>
+    <string name="korak_po_korak">Korak po korak</string>
+    <string name="asocijacije">Asocijacije</string>
+    <string name="skocko">Skočko</string>
+    <string name="notifikacije">Notifikacije</string>
+    <string name="screen_not_implemented">Ekran još nije implementiran</string>
+    <string name="column_solution">Rešenje kolone</string>
+    <string name="final_solution">Konačno rešenje</string>
+    <string name="available_symbols">Dostupni znakovi</string>
+    <string name="submit_attempt">Potvrdi</string>
+    <string name="skocko_timer">00:30</string>
+    <string name="associations_round_label">Runda: 1/2</string>
+    <string name="associations_time_label">Preostalo vreme: 02:00</string>
+    <string name="skocko_round_label">Runda: 1/2</string>
+    <string name="skocko_time_label">Preostalo vreme: 00:30</string>
+    <string name="player_one_score">Igrač 1: 0</string>
+    <string name="player_two_score">Igrač 2: 0</string>
+    <string name="skocko_symbol_skocko">😎</string>
+    <string name="skocko_symbol_square">🟩</string>
+    <string name="skocko_symbol_circle">🔵</string>
+    <string name="skocko_symbol_heart">❤️</string>
+    <string name="skocko_symbol_triangle">🔺</string>
+    <string name="skocko_symbol_star">⭐</string>
+    <string name="skocko_symbol_skocko_label">Skočko</string>
+    <string name="skocko_symbol_square_label">Kvadrat</string>
+    <string name="skocko_symbol_circle_label">Krug</string>
+    <string name="skocko_symbol_heart_label">Srce</string>
+    <string name="skocko_symbol_triangle_label">Trougao</string>
+    <string name="skocko_symbol_star_label">Zvezda</string>
+    <string name="skocko_result_placeholder">&#9675; &#9675; &#9675; &#9675;</string>
+    <string name="filter_all">Sve</string>
+    <string name="filter_unread">Nepročitane</string>
+    <string name="filter_read">Pročitane</string>
+    <string name="notification_type_reward">Nagrada</string>
+    <string name="notification_reward_title">Osvojena nagrada</string>
+    <string name="notification_reward_message">Dobila si token nakon završene partije.</string>
+    <string name="notification_reward_date">Danas, 14:20 - Nepročitano</string>
+    <string name="notification_type_friend">Poziv za partiju</string>
+    <string name="notification_friend_title">Teodora te je pozvala na partiju</string>
+    <string name="notification_friend_message">Prihvati ili odbij.</string>
+    <string name="notification_friend_date">Danas, 13:58 - Nepročitano</string>
+    <string name="notification_type_ranking">Rang lista</string>
+    <string name="notification_ranking_title">Nedeljna rang lista je ažurirana</string>
+    <string name="notification_ranking_message">Trenutno si na 6. mestu u svojoj ligi.</string>
+    <string name="notification_ranking_date">Juče, 21:10 - Pročitano</string>
+    <string name="notification_type_chat">Čet</string>
+    <string name="notification_chat_title">Nova poruka u četu `Slagalica`</string>
+    <string name="notification_chat_message">Marko: Vidimo se u turniru večeras?</string>
+    <string name="notification_chat_date">Juče, 18:35 - Pročitano</string>
+    <string name="accept_invite">Prihvati poziv</string>
+    <string name="back">Nazad</string>
+    <string name="notification_type_other">Ostalo</string>
+    <string name="notification_league_title">Promena lige</string>
+    <string name="notification_league_message">Prešla si u višu ligu nakon poslednje partije.</string>
+    <string name="notification_league_date">Pre 2 dana, 09:15 - Nepročitano</string>
+    <string name="open_chat">Udji u čet</string>
+    <string name="open_league">Pogledaj ligu</string>
+    <string name="mark_as_read">Označi kao pročitano</string>
+    <string name="slagalica">Slagalica</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="submit">Potvrdi</string>
+
+    <string name="profile_title">Profil</string>
+    <string name="profile_button">Profil</string>
+    <string name="profile_back">Nazad</string>
+    <string name="profile_tokens">Tokeni</string>
+    <string name="profile_stars">Ukupno zvezda</string>
+    <string name="profile_league">Liga</string>
+    <string name="profile_region_label">Region</string>
+    <string name="profile_qr_hint">QR za poziv prijatelja</string>
+    <string name="profile_change_avatar">Promeni avatar</string>
+    <string name="profile_statistics_heading">Statistika igrača</string>
+    <string name="profile_stat_avg_points">Prosek bodova (%1$s): %2$.1f</string>
+    <string name="profile_stat_kzz_ratio">Ko zna zna — tačno / netačno: %1$d / %2$d</string>
+    <string name="profile_stat_moj_broj">Moj broj — procenat tačnog broja: %.1f%%</string>
+    <string name="profile_stat_kpk_header">Korak po korak — procenat tačnog pojma po koraku:</string>
+    <string name="profile_stat_kpk_step">  Korak %1$d: %2$.1f%%</string>
+    <string name="profile_stat_asoc">Asocijacije — rešene / nerešene: %1$d / %2$d</string>
+    <string name="profile_stat_skocko">Skočko — procenat pogođene kombinacije po pokušaju: %.1f%%</string>
+    <string name="profile_stat_spojnice">Spojnice — procenat uspešno povezanih pojmova: %.1f%%</string>
+    <string name="profile_stat_matches_total">Ukupno odigranih partija: %d</string>
+    <string name="profile_stat_win_loss">Partije — pobede: %1$.1f%% / porazi: %2$.1f%%</string>
+    <string name="profile_qr_error">QR nije mogao da se generiše.</string>
+
+    <string name="game_ko_zna_zna">Ko zna zna</string>
+    <string name="game_spojnice">Spojnice</string>
+    <string name="game_moj_broj">Moj broj</string>
+    <string name="game_korak_po_korak">Korak po korak</string>
+    <string name="game_asocijacije">Asocijacije</string>
+    <string name="game_skocko">Skočko</string>
+
+    <string name="error_fill_all_fields">Popuni sva polja.</string>
+    <string name="error_invalid_email">Unesi ispravnu email adresu.</string>
+    <string name="error_password_mismatch">Lozinka i potvrda se ne poklapaju.</string>
+    <string name="error_register_first">Prvo napravi nalog na ekranu za registraciju.</string>
+    <string name="error_login_failed">Pogrešan email ili lozinka.</string>
+    <string name="ko_zna_zna_button">Ko zna zna</string>
+    <string name="kzz_question_counter">Pitanje 1/5</string>
+    <string name="kzz_round_time">Preostalo vreme runde: 25s</string>
+    <string name="kzz_question_time">Vreme za pitanje: 5s</string>
+    <string name="kzz_player_one_score">Igrač 1: 0</string>
+    <string name="kzz_player_two_score">Igrač 2: 0</string>
+    <string name="kzz_points_hint">Tačno +10, netačno -5, brži igrač dobija bodove kada oba pogode.</string>
+    <string name="kzz_question_placeholder">Koji je glavni grad Srbije?</string>
+    <string name="kzz_option_a">Novi Sad</string>
+    <string name="kzz_option_b">Beograd</string>
+    <string name="kzz_option_c">Niš</string>
+    <string name="kzz_option_d">Kragujevac</string>
+    <string name="kzz_confirm_answer">Potvrdi odgovor</string>
+    <string name="kzz_skip_question">Preskoči</string>
+    <string name="spojnice_button">Spojnice</string>
+    <string name="spojnice_title">Spojnice</string>
+    <string name="spojnice_round_label">Runda 1/2</string>
+    <string name="spojnice_time_label">Preostalo vreme: 30s</string>
+    <string name="spojnice_score_p1">Igrač 1: 0</string>
+    <string name="spojnice_score_p2">Igrač 2: 0</string>
+    <string name="spojnice_hint">Poveži 5 pojmova iz leve kolone sa desnom. Svaka tačna spojnica nosi 2 boda.</string>
+    <string name="spojnice_left_header">Leva kolona</string>
+    <string name="spojnice_right_header">Desna kolona</string>
+    <string name="spojnice_submit">Potvrdi spajanje</string>
+    <string name="spojnice_next_round">Sledeća runda</string>
+    <string name="change_password">Promeni lozinku</string>
+    <string name="change_password_header">Promena lozinke</string>
+    <string name="current_password">Trenutna lozinka</string>
+    <string name="new_password">Nova lozinka</string>
+    <string name="confirm_new_password">Potvrdi novu lozinku</string>
+    <string-array name="spojnice_left_items">
+        <item>Pojam 1</item>
+        <item>Pojam 2</item>
+        <item>Pojam 3</item>
+        <item>Pojam 4</item>
+        <item>Pojam 5</item>
+    </string-array>
+    <string-array name="spojnice_right_items">
+        <item>Odgovor A</item>
+        <item>Odgovor B</item>
+        <item>Odgovor C</item>
+        <item>Odgovor D</item>
+        <item>Odgovor E</item>
+    </string-array>
 </resources>

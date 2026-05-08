@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.slagalica.fragments.HomeFragment"
+        android:label="Home">
+
+        <action
+            android:id="@+id/action_home_to_mojBroj"
+            app:destination="@id/mojBrojFragment" />
+
+        <action
+            android:id="@+id/action_home_to_stepByStep"
+            app:destination="@id/stepByStepFragment" />
+
+        <action
+            android:id="@+id/action_home_to_associations"
+            app:destination="@id/associationsFragment" />
+
+        <action
+            android:id="@+id/action_home_to_skocko"
+            app:destination="@id/skockoFragment" />
+
+        <action
+            android:id="@+id/action_home_to_notifications"
+            app:destination="@id/notificationsFragment" />
+
+        <action
+            android:id="@+id/action_home_to_profile"
+            app:destination="@id/profileFragment" />
+
+        <action
+            android:id="@+id/action_home_to_koZnaZna"
+            app:destination="@id/koZnaZnaFragment" />
+
+        <action
+            android:id="@+id/action_home_to_spojnice"
+            app:destination="@id/spojniceFragment" />
+
+        <action
+            android:id="@+id/action_profile_to_changePassword"
+            app:destination="@id/changePassword" />
+
+
+    </fragment>
+
+    <fragment
+        android:id="@+id/mojBrojFragment"
+        android:name="com.example.slagalica.fragments.games.MyNumberFragment"
+        android:label="Moj Broj" />
+
+    <fragment
+        android:id="@+id/stepByStepFragment"
+        android:name="com.example.slagalica.fragments.games.StepByStepFragment"
+        android:label="Korak po korak" />
+
+    <fragment
+        android:id="@+id/associationsFragment"
+        android:name="com.example.slagalica.fragments.games.AssociationsFragment"
+        android:label="Asocijacije" />
+
+    <fragment
+        android:id="@+id/skockoFragment"
+        android:name="com.example.slagalica.fragments.games.SkockoFragment"
+        android:label="Skočko" />
+
+    <fragment
+        android:id="@+id/notificationsFragment"
+        android:name="com.example.slagalica.fragments.NotificationsFragment"
+        android:label="Notifikacije" />
+
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.example.slagalica.fragments.ProfileFragment"
+        android:label="@string/profile_title" />
+
+    <fragment
+        android:id="@+id/koZnaZnaFragment"
+        android:name="com.example.slagalica.fragments.games.KoZnaZnaFragment"
+        android:label="@string/game_ko_zna_zna" />
+
+    <fragment
+        android:id="@+id/spojniceFragment"
+        android:name="com.example.slagalica.fragments.games.SpojniceFragment"
+        android:label="@string/game_spojnice" />
+
+    <fragment
+        android:id="@+id/changePassword"
+        android:name="com.example.slagalica.fragments.ChangePasswordFragment"
+        android:label="@string/change_password" />
+
+</navigation>

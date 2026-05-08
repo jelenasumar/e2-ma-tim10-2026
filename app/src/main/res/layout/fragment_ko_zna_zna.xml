@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp"
+    tools:context=".fragments.games.KoZnaZnaFragment">
+
+    <TextView
+        android:id="@+id/kzzTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/game_ko_zna_zna"
+        android:textAppearance="?attr/textAppearanceHeadlineSmall"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <TextView
+        android:id="@+id/kzzRoundTime"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/kzz_round_time"
+        app:layout_constraintTop_toBottomOf="@id/kzzTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <TextView
+        android:id="@+id/kzzQuestionCounter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/kzz_question_counter"
+        app:layout_constraintTop_toBottomOf="@id/kzzRoundTime"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/kzzQuestionTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/kzz_question_time"
+        app:layout_constraintTop_toTopOf="@id/kzzQuestionCounter"
+        app:layout_constraintBottom_toBottomOf="@id/kzzQuestionCounter"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/kzzScoreRow"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@id/kzzQuestionCounter"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/kzzPlayerOneScore"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/kzz_player_one_score"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/kzzPlayerTwoScore"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end"
+            android:text="@string/kzz_player_two_score"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/kzzHint"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/kzz_points_hint"
+        android:textSize="12sp"
+        app:layout_constraintTop_toBottomOf="@id/kzzScoreRow"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <TextView
+        android:id="@+id/kzzQuestion"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="@string/kzz_question_placeholder"
+        android:textAppearance="?attr/textAppearanceTitleMedium"
+        app:layout_constraintTop_toBottomOf="@id/kzzHint"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <RadioGroup
+        android:id="@+id/kzzAnswersGroup"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/kzzQuestion"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <RadioButton
+            android:id="@+id/kzzAnswerA"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/kzz_option_a" />
+
+        <RadioButton
+            android:id="@+id/kzzAnswerB"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/kzz_option_b" />
+
+        <RadioButton
+            android:id="@+id/kzzAnswerC"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/kzz_option_c" />
+
+        <RadioButton
+            android:id="@+id/kzzAnswerD"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/kzz_option_d" />
+    </RadioGroup>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@id/kzzAnswersGroup"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <Button
+            android:id="@+id/kzzSkipButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/kzz_skip_question" />
+
+        <Space
+            android:layout_width="12dp"
+            android:layout_height="1dp" />
+
+        <Button
+            android:id="@+id/kzzConfirmButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/kzz_confirm_answer" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
