@@ -11,7 +11,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="24dp">
+        android:padding="20dp">
 
         <TextView
             android:id="@+id/gameTitle"
@@ -28,7 +28,7 @@
             android:id="@+id/associationsInfoRow"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -52,7 +52,7 @@
             android:id="@+id/associationsScoreRow"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -80,7 +80,7 @@
             android:id="@+id/columnsContainer"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="14dp"
             android:columnCount="2"
             android:rowCount="2"
             app:layout_constraintEnd_toEndOf="parent"
@@ -91,14 +91,13 @@
                 style="@style/AssociationColumn"
                 android:orientation="vertical">
 
-                <TextView style="@style/AssociationColumnTitle" android:text="A" />
-                <TextView style="@style/AssociationField" android:text="A1" />
-                <TextView style="@style/AssociationField" android:text="A2" />
-                <TextView style="@style/AssociationField" android:text="A3" />
-                <TextView style="@style/AssociationField" android:text="A4" />
+                <TextView android:id="@+id/associationA1" style="@style/AssociationField" android:text="A1" />
+                <TextView android:id="@+id/associationA2" style="@style/AssociationField" android:text="A2" />
+                <TextView android:id="@+id/associationA3" style="@style/AssociationField" android:text="A3" />
+                <TextView android:id="@+id/associationA4" style="@style/AssociationField" android:text="A4" />
                 <EditText
                     style="@style/AssociationAnswer"
-                    android:hint="@string/column_solution"
+                    android:hint="@string/association_column_a"
                     android:inputType="text" />
             </LinearLayout>
 
@@ -106,14 +105,13 @@
                 style="@style/AssociationColumn"
                 android:orientation="vertical">
 
-                <TextView style="@style/AssociationColumnTitle" android:text="B" />
-                <TextView style="@style/AssociationField" android:text="B1" />
-                <TextView style="@style/AssociationField" android:text="B2" />
-                <TextView style="@style/AssociationField" android:text="B3" />
-                <TextView style="@style/AssociationField" android:text="B4" />
+                <TextView android:id="@+id/associationB1" style="@style/AssociationField" android:text="B1" />
+                <TextView android:id="@+id/associationB2" style="@style/AssociationField" android:text="B2" />
+                <TextView android:id="@+id/associationB3" style="@style/AssociationField" android:text="B3" />
+                <TextView android:id="@+id/associationB4" style="@style/AssociationField" android:text="B4" />
                 <EditText
                     style="@style/AssociationAnswer"
-                    android:hint="@string/column_solution"
+                    android:hint="@string/association_column_b"
                     android:inputType="text" />
             </LinearLayout>
 
@@ -121,14 +119,13 @@
                 style="@style/AssociationColumn"
                 android:orientation="vertical">
 
-                <TextView style="@style/AssociationColumnTitle" android:text="C" />
-                <TextView style="@style/AssociationField" android:text="C1" />
-                <TextView style="@style/AssociationField" android:text="C2" />
-                <TextView style="@style/AssociationField" android:text="C3" />
-                <TextView style="@style/AssociationField" android:text="C4" />
+                <TextView android:id="@+id/associationC1" style="@style/AssociationField" android:text="C1" />
+                <TextView android:id="@+id/associationC2" style="@style/AssociationField" android:text="C2" />
+                <TextView android:id="@+id/associationC3" style="@style/AssociationField" android:text="C3" />
+                <TextView android:id="@+id/associationC4" style="@style/AssociationField" android:text="C4" />
                 <EditText
                     style="@style/AssociationAnswer"
-                    android:hint="@string/column_solution"
+                    android:hint="@string/association_column_c"
                     android:inputType="text" />
             </LinearLayout>
 
@@ -136,20 +133,20 @@
                 style="@style/AssociationColumn"
                 android:orientation="vertical">
 
-                <TextView style="@style/AssociationColumnTitle" android:text="D" />
-                <TextView style="@style/AssociationField" android:text="D1" />
-                <TextView style="@style/AssociationField" android:text="D2" />
-                <TextView style="@style/AssociationField" android:text="D3" />
-                <TextView style="@style/AssociationField" android:text="D4" />
+                <TextView android:id="@+id/associationD1" style="@style/AssociationField" android:text="D1" />
+                <TextView android:id="@+id/associationD2" style="@style/AssociationField" android:text="D2" />
+                <TextView android:id="@+id/associationD3" style="@style/AssociationField" android:text="D3" />
+                <TextView android:id="@+id/associationD4" style="@style/AssociationField" android:text="D4" />
                 <EditText
                     style="@style/AssociationAnswer"
-                    android:hint="@string/column_solution"
+                    android:hint="@string/association_column_d"
                     android:inputType="text" />
             </LinearLayout>
         </GridLayout>
 
         <EditText
             android:id="@+id/finalAnswerInput"
+            style="@style/AssociationAnswer"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
@@ -167,6 +164,15 @@
             android:text="@string/submit"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/finalAnswerInput" />
+
+        <Button
+            android:id="@+id/nextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/next"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/finalAnswerInput" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

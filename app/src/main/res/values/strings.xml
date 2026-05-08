@@ -11,14 +11,20 @@
     <string name="log_out">Odjavi se</string>
     <string name="moj_broj">Moj broj</string>
     <string name="korak_po_korak">Korak po korak</string>
+    <string name="account_section_title">Nalog i obaveštenja:</string>
+    <string name="games_section_title">Igre:</string>
+    <string name="continue_as_guest">Nastavi kao gost</string>
     <string name="asocijacije">Asocijacije</string>
     <string name="skocko">Skočko</string>
     <string name="notifikacije">Notifikacije</string>
     <string name="screen_not_implemented">Ekran još nije implementiran</string>
     <string name="column_solution">Rešenje kolone</string>
+    <string name="association_column_a">A</string>
+    <string name="association_column_b">B</string>
+    <string name="association_column_c">C</string>
+    <string name="association_column_d">D</string>
     <string name="final_solution">Konačno rešenje</string>
     <string name="available_symbols">Dostupni znakovi</string>
-    <string name="submit_attempt">Potvrdi</string>
     <string name="skocko_timer">00:30</string>
     <string name="associations_round_label">Runda: 1/2</string>
     <string name="associations_time_label">Preostalo vreme: 02:00</string>
@@ -150,4 +156,5 @@
         <item>Odgovor D</item>
         <item>Odgovor E</item>
     </string-array>
+    <string name="next">Dalje</string>
 </resources>
