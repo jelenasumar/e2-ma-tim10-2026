@@ -73,6 +73,24 @@
     <string name="open_chat">Udji u čet</string>
     <string name="open_league">Pogledaj ligu</string>
     <string name="mark_as_read">Označi kao pročitano</string>
+    <string name="filter_category">Kategorija</string>
+    <string name="filter_status">Status</string>
+    <string name="filter_chat">Čet</string>
+    <string name="filter_ranking">Rang lista</string>
+    <string name="filter_rewards">Nagrade</string>
+    <string name="filter_other">Ostalo</string>
+    <string-array name="notification_category_filters">
+        <item>Sve</item>
+        <item>Čet</item>
+        <item>Rang lista</item>
+        <item>Nagrade</item>
+        <item>Ostalo</item>
+    </string-array>
+    <string-array name="notification_status_filters">
+        <item>Sve</item>
+        <item>Nepročitane</item>
+        <item>Pročitane</item>
+    </string-array>
     <string name="slagalica">Slagalica</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
