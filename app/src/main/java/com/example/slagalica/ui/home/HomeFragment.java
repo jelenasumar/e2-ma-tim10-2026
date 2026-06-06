@@ -61,10 +61,10 @@ public class HomeFragment extends Fragment {
                     .navigate(R.id.action_home_to_spojnice);
         });
 
-        koZnaZnaBtn.setOnClickListener(v -> {
-            NavHostFragment.findNavController(this)
-                    .navigate(R.id.action_home_to_koZnaZna);
-        });
+        koZnaZnaBtn.setOnClickListener(v ->
+                NavHostFragment.findNavController(this)
+                        .navigate(R.id.action_home_to_koZnaZna)
+        );
 
         stepByStepBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
