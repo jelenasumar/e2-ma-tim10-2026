@@ -52,6 +52,9 @@
     <string name="skocko_symbol_triangle_label">Trougao</string>
     <string name="skocko_symbol_star_label">Zvezda</string>
     <string name="skocko_result_placeholder">&#9675; &#9675; &#9675; &#9675;</string>
+    <string name="skocko_player_attempts_label">Igrač:</string>
+    <string name="skocko_opponent_attempt_label">Protivnik:</string>
+    <string name="skocko_solution_label">Rešenje:</string>
     <string name="filter_all">Sve</string>
     <string name="filter_unread">Nepročitane</string>
     <string name="filter_read">Pročitane</string>

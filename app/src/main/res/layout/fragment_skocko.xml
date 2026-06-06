@@ -11,14 +11,14 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="24dp">
+        android:padding="18dp">
 
         <TextView
             android:id="@+id/gameTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:text="@string/skocko"
-            android:textSize="26sp"
+            android:textSize="25sp"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -38,9 +38,9 @@
             android:id="@+id/symbolsTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="10dp"
             android:text="@string/available_symbols"
-            android:textSize="16sp"
+            android:textSize="14sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/skockoGameHeader" />
@@ -49,7 +49,7 @@
             android:id="@+id/symbolsContainer"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="4dp"
             android:gravity="center"
             android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
@@ -108,11 +108,18 @@
             android:id="@+id/attemptsContainer"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="8dp"
             android:orientation="vertical"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/symbolsContainer">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/skocko_player_attempts_label"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
                 <TextView android:id="@+id/skockoAttempt1Cell1" style="@style/SkockoCell" />
@@ -167,20 +174,32 @@
             android:id="@+id/skockoDivider"
             android:layout_width="0dp"
             android:layout_height="1dp"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="2dp"
             android:background="#BDBDBD"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/attemptsContainer" />
 
+        <TextView
+            android:id="@+id/opponentAttemptLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/skocko_opponent_attempt_label"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/skockoDivider" />
+
         <LinearLayout
             android:id="@+id/opponentAttemptRow"
             style="@style/SkockoAttemptRow"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="2dp"
             android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/skockoDivider">
+            app:layout_constraintTop_toBottomOf="@id/opponentAttemptLabel">
 
             <TextView android:id="@+id/skockoOpponentCell1" style="@style/SkockoCell" />
             <TextView android:id="@+id/skockoOpponentCell2" style="@style/SkockoCell" />
@@ -188,14 +207,26 @@
             <TextView android:id="@+id/skockoOpponentCell4" style="@style/SkockoCell" />
         </LinearLayout>
 
+        <TextView
+            android:id="@+id/finalCombinationLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="@string/skocko_solution_label"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/opponentAttemptRow" />
+
         <LinearLayout
             android:id="@+id/finalCombinationRow"
             style="@style/SkockoAttemptRow"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="2dp"
             android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/opponentAttemptRow">
+            app:layout_constraintTop_toBottomOf="@id/finalCombinationLabel">
 
             <TextView android:id="@+id/skockoFinalCell1" style="@style/SkockoCell" />
             <TextView android:id="@+id/skockoFinalCell2" style="@style/SkockoCell" />
@@ -207,7 +238,7 @@
             android:id="@+id/submitButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="4dp"
             android:text="@string/submit"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
