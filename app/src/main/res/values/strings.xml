@@ -73,6 +73,10 @@
     <string name="open_chat">Udji u čet</string>
     <string name="open_league">Pogledaj ligu</string>
     <string name="mark_as_read">Označi kao pročitano</string>
+    <string name="no_notifications">Nema notifikacija za izabrane filtere.</string>
+    <string name="notification_action_invite">Poziv je prihvacen.</string>
+    <string name="notification_action_chat">Otvaranje ceta ce biti povezano sa cet ekranom.</string>
+    <string name="notification_action_league">Otvaranje lige ce biti povezano sa ligama.</string>
     <string name="filter_category">Kategorija</string>
     <string name="filter_status">Status</string>
     <string name="filter_chat">Čet</string>

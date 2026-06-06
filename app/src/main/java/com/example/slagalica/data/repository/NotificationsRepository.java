@@ -1,0 +1,141 @@
+package com.example.slagalica.data.repository;
+
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import androidx.annotation.NonNull;
+
+import com.example.slagalica.R;
+import com.example.slagalica.model.NotificationAction;
+import com.example.slagalica.model.NotificationCategory;
+import com.example.slagalica.model.SystemNotification;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public final class NotificationsRepository {
+
+    private static final String PREFS = "slagalica_notifications";
+    private static final String READ_PREFIX = "notification_read_";
+
+    private final Context appContext;
+    private final SharedPreferences prefs;
+
+    public NotificationsRepository(@NonNull Context context) {
+        appContext = context.getApplicationContext();
+        prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        createNotificationChannels();
+    }
+
+    @NonNull
+    public List<SystemNotification> loadNotifications() {
+        List<SystemNotification> notifications = new ArrayList<>();
+
+        notifications.add(createNotification(
+                "reward-token",
+                NotificationCategory.REWARD,
+                appContext.getString(R.string.notification_type_reward),
+                appContext.getString(R.string.notification_reward_title),
+                appContext.getString(R.string.notification_reward_message),
+                "Danas, 14:20",
+                false,
+                NotificationAction.NONE,
+                null
+        ));
+        notifications.add(createNotification(
+                "friend-invite",
+                NotificationCategory.OTHER,
+                appContext.getString(R.string.notification_type_friend),
+                appContext.getString(R.string.notification_friend_title),
+                appContext.getString(R.string.notification_friend_message),
+                "Danas, 13:58",
+                false,
+                NotificationAction.ACCEPT_INVITE,
+                appContext.getString(R.string.accept_invite)
+        ));
+        notifications.add(createNotification(
+                "weekly-ranking",
+                NotificationCategory.RANKING,
+                appContext.getString(R.string.notification_type_ranking),
+                appContext.getString(R.string.notification_ranking_title),
+                appContext.getString(R.string.notification_ranking_message),
+                "Juce, 21:10",
+                true,
+                NotificationAction.NONE,
+                null
+        ));
+        notifications.add(createNotification(
+                "chat-message",
+                NotificationCategory.CHAT,
+                appContext.getString(R.string.notification_type_chat),
+                appContext.getString(R.string.notification_chat_title),
+                appContext.getString(R.string.notification_chat_message),
+                "Juce, 18:35",
+                true,
+                NotificationAction.OPEN_CHAT,
+                appContext.getString(R.string.open_chat)
+        ));
+        notifications.add(createNotification(
+                "league-change",
+                NotificationCategory.OTHER,
+                appContext.getString(R.string.notification_type_other),
+                appContext.getString(R.string.notification_league_title),
+                appContext.getString(R.string.notification_league_message),
+                "Pre 2 dana, 09:15",
+                false,
+                NotificationAction.OPEN_LEAGUE,
+                appContext.getString(R.string.open_league)
+        ));
+
+        return notifications;
+    }
+
+    public void markAsRead(@NonNull String notificationId) {
+        prefs.edit().putBoolean(READ_PREFIX + notificationId, true).apply();
+    }
+
+    private SystemNotification createNotification(
+            @NonNull String id,
+            @NonNull NotificationCategory category,
+            @NonNull String categoryLabel,
+            @NonNull String title,
+            @NonNull String message,
+            @NonNull String dateLabel,
+            boolean readByDefault,
+            @NonNull NotificationAction action,
+            String actionLabel
+    ) {
+        boolean read = prefs.getBoolean(READ_PREFIX + id, readByDefault);
+        return new SystemNotification(id, category, categoryLabel, title, message, dateLabel, read, action, actionLabel);
+    }
+
+    private void createNotificationChannels() {
+        NotificationManager manager = appContext.getSystemService(NotificationManager.class);
+        if (manager == null) {
+            return;
+        }
+
+        manager.createNotificationChannel(new NotificationChannel(
+                NotificationCategory.CHAT.getChannelId(),
+                appContext.getString(R.string.notification_type_chat),
+                NotificationManager.IMPORTANCE_DEFAULT
+        ));
+        manager.createNotificationChannel(new NotificationChannel(
+                NotificationCategory.RANKING.getChannelId(),
+                appContext.getString(R.string.notification_type_ranking),
+                NotificationManager.IMPORTANCE_DEFAULT
+        ));
+        manager.createNotificationChannel(new NotificationChannel(
+                NotificationCategory.REWARD.getChannelId(),
+                appContext.getString(R.string.notification_type_reward),
+                NotificationManager.IMPORTANCE_DEFAULT
+        ));
+        manager.createNotificationChannel(new NotificationChannel(
+                NotificationCategory.OTHER.getChannelId(),
+                appContext.getString(R.string.notification_type_other),
+                NotificationManager.IMPORTANCE_DEFAULT
+        ));
+    }
+}
