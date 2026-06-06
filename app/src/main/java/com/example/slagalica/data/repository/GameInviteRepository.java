@@ -182,12 +182,36 @@ public final class GameInviteRepository {
             room.put("guestTotalScore", 0);
             room.put("currentGame", "KO_ZNA_ZNA");
             room.put("currentGameIndex", 0);
-            room.put("gameOrder", java.util.Arrays.asList("KO_ZNA_ZNA", "SKOCKO", "ASOCIJACIJE"));
+            room.put("gameOrder", java.util.Arrays.asList(
+                    "KO_ZNA_ZNA",
+                    "SPOJNICE",
+                    "ASOCIJACIJE",
+                    "SKOCKO",
+                    "KORAK_PO_KORAK",
+                    "MOJ_BROJ"
+            ));
             room.put("status", "READY");
+            room.put("matchType", "FRIENDLY");
             room.put("createdAt", FieldValue.serverTimestamp());
             room.put("updatedAt", FieldValue.serverTimestamp());
 
+            DocumentReference senderNotificationRef = db.collection(USERS)
+                    .document(fromUid)
+                    .collection(NOTIFICATIONS)
+                    .document();
+            Map<String, Object> senderNotification = new HashMap<>();
+            senderNotification.put("type", "INVITE_ACCEPTED");
+            senderNotification.put("category", "OTHER");
+            senderNotification.put("title", "Poziv je prihvacen");
+            senderNotification.put("message", toUsername + " je prihvatio/la poziv za partiju.");
+            senderNotification.put("read", false);
+            senderNotification.put("action", "OPEN_ROOM");
+            senderNotification.put("actionLabel", "Otvori sobu");
+            senderNotification.put("roomId", roomRef.getId());
+            senderNotification.put("createdAt", FieldValue.serverTimestamp());
+
             transaction.set(roomRef, room);
+            transaction.set(senderNotificationRef, senderNotification);
             transaction.update(inviteRef, "status", "ACCEPTED", "roomId", roomRef.getId(), "acceptedAt", FieldValue.serverTimestamp());
             transaction.update(notificationRef, "read", true, "roomId", roomRef.getId());
             return roomRef.getId();

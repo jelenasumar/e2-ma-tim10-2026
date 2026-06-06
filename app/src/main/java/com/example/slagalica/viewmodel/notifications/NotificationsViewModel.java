@@ -25,6 +25,7 @@ public class NotificationsViewModel extends AndroidViewModel {
     private final MutableLiveData<List<SystemNotification>> visibleNotifications = new MutableLiveData<>();
     private final MutableLiveData<NotificationAction> selectedAction = new MutableLiveData<>();
     private final MutableLiveData<String> message = new MutableLiveData<>();
+    private final MutableLiveData<String> roomNavigation = new MutableLiveData<>();
 
     private List<SystemNotification> allNotifications = new ArrayList<>();
     private NotificationCategory selectedCategory = NotificationCategory.ALL;
@@ -53,6 +54,11 @@ public class NotificationsViewModel extends AndroidViewModel {
         return message;
     }
 
+    @NonNull
+    public LiveData<String> getRoomNavigation() {
+        return roomNavigation;
+    }
+
     public void setCategoryFilter(@NonNull NotificationCategory category) {
         selectedCategory = category;
         applyFilters();
@@ -78,9 +84,16 @@ public class NotificationsViewModel extends AndroidViewModel {
         if (notification.getAction() == NotificationAction.ACCEPT_INVITE) {
             inviteRepository.acceptInvite(
                     notification,
-                    roomId -> message.setValue("Poziv je prihvacen. Soba: " + roomId),
+                    roomId -> {
+                        message.setValue("Poziv je prihvacen.");
+                        roomNavigation.setValue(roomId);
+                    },
                     error -> message.setValue(error)
             );
+        } else if (notification.getAction() == NotificationAction.OPEN_ROOM
+                && notification.getRoomId() != null
+                && !notification.getRoomId().isEmpty()) {
+            roomNavigation.setValue(notification.getRoomId());
         } else if (!notification.isRead()) {
             markAsRead(notification.getId());
         }

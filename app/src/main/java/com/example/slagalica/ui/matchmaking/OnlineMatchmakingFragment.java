@@ -18,6 +18,7 @@ import com.example.slagalica.viewmodel.matchmaking.OnlineMatchmakingViewModel;
 public class OnlineMatchmakingFragment extends Fragment {
 
     private OnlineMatchmakingViewModel viewModel;
+    private boolean navigatedToRoom = false;
 
     public OnlineMatchmakingFragment() {
         super(R.layout.fragment_online_matchmaking);
@@ -48,9 +49,20 @@ public class OnlineMatchmakingFragment extends Fragment {
                 room.setText(getString(R.string.online_matchmaking_room, roomId));
                 room.setVisibility(View.VISIBLE);
                 cancel.setEnabled(false);
+                navigateToRoom(roomId);
             }
         });
 
         viewModel.startLooking();
+    }
+
+    private void navigateToRoom(@NonNull String roomId) {
+        if (navigatedToRoom) {
+            return;
+        }
+        navigatedToRoom = true;
+        Bundle args = new Bundle();
+        args.putString("roomId", roomId);
+        NavHostFragment.findNavController(this).navigate(R.id.roomSessionFragment, args);
     }
 }

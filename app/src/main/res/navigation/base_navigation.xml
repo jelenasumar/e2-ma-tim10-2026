@@ -43,6 +43,10 @@
             app:destination="@id/onlineMatchmakingFragment" />
 
         <action
+            android:id="@+id/action_home_to_roomSession"
+            app:destination="@id/roomSessionFragment" />
+
+        <action
             android:id="@+id/action_home_to_koZnaZna"
             app:destination="@id/koZnaZnaMatchmakingFragment" />
 
@@ -96,6 +100,11 @@
         android:id="@+id/onlineMatchmakingFragment"
         android:name="com.example.slagalica.ui.matchmaking.OnlineMatchmakingFragment"
         android:label="@string/online_matchmaking_title" />
+
+    <fragment
+        android:id="@+id/roomSessionFragment"
+        android:name="com.example.slagalica.ui.room.RoomSessionFragment"
+        android:label="@string/room_session_title" />
 
     <fragment
         android:id="@+id/koZnaZnaMatchmakingFragment"

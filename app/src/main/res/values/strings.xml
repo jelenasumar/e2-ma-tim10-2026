@@ -123,6 +123,15 @@
     <string name="online_matchmaking_searching">Traži se protivnik...</string>
     <string name="online_matchmaking_cancel">Prekini traženje</string>
     <string name="online_matchmaking_room">Soba: %1$s</string>
+    <string name="room_session_title">Soba partije</string>
+    <string name="room_session_id">ID sobe: %1$s</string>
+    <string name="room_session_status">Status: %1$s (%2$s)</string>
+    <string name="room_session_players">%1$s protiv %2$s</string>
+    <string name="room_session_score">Rezultat: %1$d : %2$d</string>
+    <string name="room_session_current_game">Trenutna igra %1$d/%2$d: %3$s</string>
+    <string name="room_session_game_order">Redosled: %1$s</string>
+    <string name="room_session_games_title">Igre u partiji:</string>
+    <string name="room_session_kzz_pending">Ko zna zna će biti povezan sa sobom u sledećem koraku.</string>
     <string name="profile_back">Nazad</string>
     <string name="profile_tokens">Tokeni</string>
     <string name="profile_stars">Ukupno zvezda</string>
