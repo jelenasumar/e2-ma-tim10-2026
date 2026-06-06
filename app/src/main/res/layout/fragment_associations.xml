@@ -24,57 +24,15 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <LinearLayout
-            android:id="@+id/associationsInfoRow"
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/associationsGameHeader"
+            android:name="com.example.slagalica.ui.games.GameHeaderFragment"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/gameTitle">
-
-            <TextView
-                android:id="@+id/associationsRound"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/associations_round_label" />
-
-            <TextView
-                android:id="@+id/associationsTime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/associations_time_label" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/associationsScoreRow"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/associationsInfoRow">
-
-            <TextView
-                android:id="@+id/associationsPlayerOneScore"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/player_one_score"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/associationsPlayerTwoScore"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:text="@string/player_two_score"
-                android:textStyle="bold" />
-        </LinearLayout>
+            app:layout_constraintTop_toBottomOf="@id/gameTitle" />
 
         <GridLayout
             android:id="@+id/columnsContainer"
@@ -85,7 +43,7 @@
             android:rowCount="2"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/associationsScoreRow">
+            app:layout_constraintTop_toBottomOf="@id/associationsGameHeader">
 
             <LinearLayout
                 style="@style/AssociationColumn"

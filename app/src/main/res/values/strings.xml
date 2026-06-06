@@ -32,6 +32,13 @@
     <string name="skocko_time_label">Preostalo vreme: 00:30</string>
     <string name="player_one_score">Igrač 1: 0</string>
     <string name="player_two_score">Igrač 2: 0</string>
+    <string name="game_header_round_default">Runda: 1/2</string>
+    <string name="game_header_time_default">Preostalo vreme: 00:00</string>
+    <string name="game_header_player_score_default">Gost: 0</string>
+    <string name="game_header_opponent_score_default">Protivnik: 0</string>
+    <string name="guest_player">Gost</string>
+    <string name="opponent_player">Protivnik</string>
+    <string name="player_avatar">Profilna slika igrača</string>
     <string name="skocko_symbol_skocko">😎</string>
     <string name="skocko_symbol_square">🟩</string>
     <string name="skocko_symbol_circle">🔵</string>

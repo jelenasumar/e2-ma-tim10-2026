@@ -28,12 +28,25 @@ public class SkockoFragment extends Fragment {
 
         Button submitBtn = view.findViewById(R.id.submitButton);
 
+        setupGameHeader();
         setupCombinationInput(view);
 
         submitBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
                     .navigateUp();
         });
+    }
+
+    private void setupGameHeader() {
+        Fragment fragment = getChildFragmentManager().findFragmentById(R.id.skockoGameHeader);
+        if (fragment instanceof GameHeaderFragment) {
+            ((GameHeaderFragment) fragment).setGameState(
+                    getString(R.string.skocko_round_label),
+                    getString(R.string.skocko_time_label),
+                    0,
+                    0
+            );
+        }
     }
 
     private void setupCombinationInput(@NonNull View view) {
