@@ -1,6 +1,7 @@
 package com.example.slagalica.model;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Aggregated player statistics persisted locally until backend/game modules write real values.
@@ -16,7 +17,7 @@ public final class PlayerStatistics {
     private final int koZnaZnaHits;
     private final int koZnaZnaMisses;
     private final float mojBrojCorrectPercent;
-    private final float[] korakPoKorakStepPercents;
+    private final List<Float> korakPoKorakStepPercents;
     private final int asocijacijeSolved;
     private final int asocijacijeUnsolved;
     private final float skockoComboPercent;
@@ -35,7 +36,7 @@ public final class PlayerStatistics {
             int koZnaZnaHits,
             int koZnaZnaMisses,
             float mojBrojCorrectPercent,
-            float[] korakPoKorakStepPercents,
+            List<Float> korakPoKorakStepPercents,
             int asocijacijeSolved,
             int asocijacijeUnsolved,
             float skockoComboPercent,
@@ -53,10 +54,7 @@ public final class PlayerStatistics {
         this.koZnaZnaHits = koZnaZnaHits;
         this.koZnaZnaMisses = koZnaZnaMisses;
         this.mojBrojCorrectPercent = mojBrojCorrectPercent;
-        this.korakPoKorakStepPercents = Arrays.copyOf(
-                korakPoKorakStepPercents,
-                korakPoKorakStepPercents.length
-        );
+        this.korakPoKorakStepPercents = korakPoKorakStepPercents;
         this.asocijacijeSolved = asocijacijeSolved;
         this.asocijacijeUnsolved = asocijacijeUnsolved;
         this.skockoComboPercent = skockoComboPercent;
@@ -102,8 +100,8 @@ public final class PlayerStatistics {
         return mojBrojCorrectPercent;
     }
 
-    public float[] getKorakPoKorakStepPercents() {
-        return Arrays.copyOf(korakPoKorakStepPercents, korakPoKorakStepPercents.length);
+    public List<Float> getKorakPoKorakStepPercents() {
+        return korakPoKorakStepPercents;
     }
 
     public int getAsocijacijeSolved() {

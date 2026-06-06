@@ -10,6 +10,9 @@ constraintlayout = "2.1.4"
 navigationFragmentKtx = "2.9.8"
 navigationUiKtx = "2.9.8"
 navigationFragment = "2.9.8"
+googleGmsGoogleServices = "4.4.4"
+firebaseFirestore = "26.3.0"
+firebaseAuth = "24.1.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -22,7 +25,10 @@ constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayo
 navigation-fragment-ktx = { group = "androidx.navigation", name = "navigation-fragment-ktx", version.ref = "navigationFragmentKtx" }
 navigation-ui-ktx = { group = "androidx.navigation", name = "navigation-ui-ktx", version.ref = "navigationUiKtx" }
 navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigationFragment" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
 
