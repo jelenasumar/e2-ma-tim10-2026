@@ -1,4 +1,4 @@
-package com.example.slagalica.activities;
+package com.example.slagalica.ui.auth;
 
 import android.content.Context;
 import android.content.Intent;
@@ -15,12 +15,14 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.slagalica.R;
-import com.example.slagalica.data.UserProfileRepository;
+import com.example.slagalica.ui.main.MainActivity;
+import com.example.slagalica.data.repository.UserProfileRepository;
+import com.example.slagalica.ui.profile.ProfileFragment;
 
 public class LoginActivity extends AppCompatActivity {
 
     /**
-     * Za logout — briše task i otvara čist login (vidi {@link com.example.slagalica.fragments.ProfileFragment}).
+     * Za logout — briše task i otvara čist login (vidi {@link ProfileFragment}).
      */
     public static void openFresh(@NonNull Context context) {
         Intent intent = new Intent(context, LoginActivity.class);

@@ -1,4 +1,4 @@
-package com.example.slagalica.fragments;
+package com.example.slagalica.ui.home;
 
 import android.os.Bundle;
 import android.view.View;
@@ -10,9 +10,9 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
-import com.example.slagalica.activities.LoginActivity;
-import com.example.slagalica.activities.MainActivity;
-import com.example.slagalica.data.UserProfileRepository;
+import com.example.slagalica.ui.auth.LoginActivity;
+import com.example.slagalica.ui.main.MainActivity;
+import com.example.slagalica.data.repository.UserProfileRepository;
 
 public class HomeFragment extends Fragment {
 

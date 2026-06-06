@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="24dp"
-    tools:context=".fragments.games.KoZnaZnaFragment">
+    tools:context=".ui.games.KoZnaZnaFragment">
 
     <TextView
         android:id="@+id/kzzTitle"

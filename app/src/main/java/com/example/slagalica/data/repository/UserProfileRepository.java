@@ -1,4 +1,4 @@
-package com.example.slagalica.data;
+package com.example.slagalica.data.repository;
 
 import android.content.Context;
 import android.content.SharedPreferences;
