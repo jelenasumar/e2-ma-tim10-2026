@@ -29,6 +29,7 @@ public class NotificationsFragment extends Fragment {
 
     private NotificationsViewModel viewModel;
     private LinearLayout notificationsContainer;
+    private boolean navigatedToRoom = false;
 
     public NotificationsFragment() {
         super(R.layout.fragment_notifications);
@@ -54,6 +55,10 @@ public class NotificationsFragment extends Fragment {
         setupStatusSpinner(statusFilterSpinner);
 
         viewModel.getVisibleNotifications().observe(getViewLifecycleOwner(), this::renderNotifications);
+        viewModel.getMessage().observe(getViewLifecycleOwner(), message ->
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+        );
+        viewModel.getRoomNavigation().observe(getViewLifecycleOwner(), this::navigateToRoom);
     }
 
     private void setupCategorySpinner(@NonNull Spinner spinner) {
@@ -242,6 +247,8 @@ public class NotificationsFragment extends Fragment {
             case ACCEPT_INVITE:
                 Toast.makeText(requireContext(), R.string.notification_action_invite, Toast.LENGTH_SHORT).show();
                 break;
+            case OPEN_ROOM:
+                break;
             case OPEN_CHAT:
                 Toast.makeText(requireContext(), R.string.notification_action_chat, Toast.LENGTH_SHORT).show();
                 break;
@@ -256,5 +263,15 @@ public class NotificationsFragment extends Fragment {
 
     private int dpToPx(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private void navigateToRoom(@NonNull String roomId) {
+        if (roomId.isEmpty() || navigatedToRoom) {
+            return;
+        }
+        navigatedToRoom = true;
+        Bundle args = new Bundle();
+        args.putString("roomId", roomId);
+        NavHostFragment.findNavController(this).navigate(R.id.roomSessionFragment, args);
     }
 }

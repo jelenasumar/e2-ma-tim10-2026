@@ -52,6 +52,9 @@
     <string name="skocko_symbol_triangle_label">Trougao</string>
     <string name="skocko_symbol_star_label">Zvezda</string>
     <string name="skocko_result_placeholder">&#9675; &#9675; &#9675; &#9675;</string>
+    <string name="skocko_player_attempts_label">Igrač:</string>
+    <string name="skocko_opponent_attempt_label">Protivnik:</string>
+    <string name="skocko_solution_label">Rešenje:</string>
     <string name="filter_all">Sve</string>
     <string name="filter_unread">Nepročitane</string>
     <string name="filter_read">Pročitane</string>
@@ -109,6 +112,26 @@
 
     <string name="profile_title">Profil</string>
     <string name="profile_button">Profil</string>
+    <string name="invite_friends_button">Pozovi</string>
+    <string name="play_section_title">Pokreni partiju:</string>
+    <string name="start_online_match">Započni partiju</string>
+    <string name="invite_friends_title">Pozovi prijatelja</string>
+    <string name="invite_send">Pozovi</string>
+    <string name="invite_pending">Čeka se odgovor</string>
+    <string name="invite_no_users">Nema drugih korisnika za pozivanje.</string>
+    <string name="online_matchmaking_title">Online partija</string>
+    <string name="online_matchmaking_searching">Traži se protivnik...</string>
+    <string name="online_matchmaking_cancel">Prekini traženje</string>
+    <string name="online_matchmaking_room">Soba: %1$s</string>
+    <string name="room_session_title">Soba partije</string>
+    <string name="room_session_id">ID sobe: %1$s</string>
+    <string name="room_session_status">Status: %1$s (%2$s)</string>
+    <string name="room_session_players">%1$s protiv %2$s</string>
+    <string name="room_session_score">Rezultat: %1$d : %2$d</string>
+    <string name="room_session_current_game">Trenutna igra %1$d/%2$d: %3$s</string>
+    <string name="room_session_game_order">Redosled: %1$s</string>
+    <string name="room_session_games_title">Igre u partiji:</string>
+    <string name="room_session_kzz_pending">Ko zna zna će biti povezan sa sobom u sledećem koraku.</string>
     <string name="profile_back">Nazad</string>
     <string name="profile_tokens">Tokeni</string>
     <string name="profile_stars">Ukupno zvezda</string>

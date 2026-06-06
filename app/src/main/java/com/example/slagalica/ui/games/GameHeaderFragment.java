@@ -4,6 +4,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -74,6 +75,8 @@ public class GameHeaderFragment extends Fragment {
         TextView playerTwo = view.findViewById(R.id.gameHeaderPlayerTwoScore);
         ImageView playerOneAvatar = view.findViewById(R.id.gameHeaderPlayerOneAvatar);
         ImageView playerTwoAvatar = view.findViewById(R.id.gameHeaderPlayerTwoAvatar);
+        LinearLayout playerOneContainer = view.findViewById(R.id.gameHeaderPlayerOneContainer);
+        LinearLayout playerTwoContainer = view.findViewById(R.id.gameHeaderPlayerTwoContainer);
 
         round.setText(currentState.getRoundText());
         time.setText(currentState.getTimeText());
@@ -82,6 +85,22 @@ public class GameHeaderFragment extends Fragment {
 
         bindAvatar(playerOneAvatar, currentState.getPlayerOne().getAvatarUri());
         bindAvatar(playerTwoAvatar, currentState.getPlayerTwo().getAvatarUri());
+        bindActivePlayer(playerOneContainer, playerTwoContainer, currentState.getActivePlayerNumber());
+    }
+
+    private void bindActivePlayer(
+            @NonNull View playerOneContainer,
+            @NonNull View playerTwoContainer,
+            int activePlayerNumber
+    ) {
+        playerOneContainer.setBackgroundResource(
+                activePlayerNumber == 1 ? R.drawable.game_header_active_player_background : 0
+        );
+        playerTwoContainer.setBackgroundResource(
+                activePlayerNumber == 2 ? R.drawable.game_header_active_player_background : 0
+        );
+        playerOneContainer.setPadding(dpToPx(4), dpToPx(3), dpToPx(4), dpToPx(3));
+        playerTwoContainer.setPadding(dpToPx(4), dpToPx(3), dpToPx(4), dpToPx(3));
     }
 
     @NonNull
@@ -124,6 +143,10 @@ public class GameHeaderFragment extends Fragment {
         } catch (Throwable ignored) {
             imageView.setImageResource(R.drawable.ic_avatar_placeholder);
         }
+    }
+
+    private int dpToPx(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     @NonNull

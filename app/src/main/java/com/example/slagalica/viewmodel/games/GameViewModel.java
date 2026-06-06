@@ -50,4 +50,11 @@ public class GameViewModel extends ViewModel {
             setHeaderState(currentState.withScores(playerOneScore, playerTwoScore));
         }
     }
+
+    protected void updateActivePlayer(int activePlayerNumber) {
+        GameHeaderState currentState = headerState.getValue();
+        if (currentState != null) {
+            setHeaderState(currentState.withActivePlayerNumber(activePlayerNumber));
+        }
+    }
 }

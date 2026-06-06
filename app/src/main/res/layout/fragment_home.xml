@@ -41,6 +41,29 @@
             android:text="@string/notifikacije" />
 
         <TextView
+            android:id="@+id/playSectionTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/play_section_title"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/startOnlineMatch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/start_online_match" />
+
+        <Button
+            android:id="@+id/inviteFriends"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/invite_friends_button" />
+
+        <TextView
             android:id="@+id/gamesSectionTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -8,6 +8,7 @@ public final class GameHeaderState {
     private final String timeText;
     private final GameHeaderPlayerState playerOne;
     private final GameHeaderPlayerState playerTwo;
+    private final int activePlayerNumber;
 
     public GameHeaderState(
             @NonNull String roundText,
@@ -15,10 +16,21 @@ public final class GameHeaderState {
             @NonNull GameHeaderPlayerState playerOne,
             @NonNull GameHeaderPlayerState playerTwo
     ) {
+        this(roundText, timeText, playerOne, playerTwo, 1);
+    }
+
+    public GameHeaderState(
+            @NonNull String roundText,
+            @NonNull String timeText,
+            @NonNull GameHeaderPlayerState playerOne,
+            @NonNull GameHeaderPlayerState playerTwo,
+            int activePlayerNumber
+    ) {
         this.roundText = roundText;
         this.timeText = timeText;
         this.playerOne = playerOne;
         this.playerTwo = playerTwo;
+        this.activePlayerNumber = activePlayerNumber;
     }
 
     @NonNull
@@ -41,14 +53,18 @@ public final class GameHeaderState {
         return playerTwo;
     }
 
+    public int getActivePlayerNumber() {
+        return activePlayerNumber;
+    }
+
     @NonNull
     public GameHeaderState withRoundText(@NonNull String newRoundText) {
-        return new GameHeaderState(newRoundText, timeText, playerOne, playerTwo);
+        return new GameHeaderState(newRoundText, timeText, playerOne, playerTwo, activePlayerNumber);
     }
 
     @NonNull
     public GameHeaderState withTimeText(@NonNull String newTimeText) {
-        return new GameHeaderState(roundText, newTimeText, playerOne, playerTwo);
+        return new GameHeaderState(roundText, newTimeText, playerOne, playerTwo, activePlayerNumber);
     }
 
     @NonNull
@@ -57,7 +73,13 @@ public final class GameHeaderState {
                 roundText,
                 timeText,
                 playerOne.withScore(playerOneScore),
-                playerTwo.withScore(playerTwoScore)
+                playerTwo.withScore(playerTwoScore),
+                activePlayerNumber
         );
+    }
+
+    @NonNull
+    public GameHeaderState withActivePlayerNumber(int newActivePlayerNumber) {
+        return new GameHeaderState(roundText, timeText, playerOne, playerTwo, newActivePlayerNumber);
     }
 }
