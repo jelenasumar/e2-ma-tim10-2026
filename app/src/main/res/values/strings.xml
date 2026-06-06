@@ -187,6 +187,7 @@
     <string name="kzz_waiting_sync">Sinhronizacija meča…</string>
     <string name="kzz_waiting_opponent">Odgovor poslat. Čekam protivnika…</string>
     <string name="kzz_missing_match_args">Meč nije pronađen. Vrati se i pokušaj ponovo.</string>
+    <string name="kzz_firestore_permission_denied">Firebase odbio pristup. U konzoli objavi pravila iz firestore.rules i uključi Anonymous prijavu.</string>
     <string name="error_guest_sign_in">Nije moguće nastaviti kao gost. Proveri internet i uključi anonimnu prijavu u Firebase konzoli.</string>
     <string name="guest_player_name">Gost %1$s</string>
     <string name="guest_player_default">Gost</string>

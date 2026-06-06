@@ -106,7 +106,7 @@ public class KoZnaZnaMatchmakingViewModel extends AndroidViewModel {
             listenLobby(code, uid, username, true);
         }, error -> {
             isLoading.setValue(false);
-            statusMessage.setValue(error);
+            statusMessage.setValue(mapJoinError(error));
         });
     }
 
@@ -192,14 +192,14 @@ public class KoZnaZnaMatchmakingViewModel extends AndroidViewModel {
                             createdMatchId -> { },
                             error -> {
                                 matchCreationStarted = false;
-                                statusMessage.setValue(error);
+                                statusMessage.setValue(mapJoinError(error));
                             }
                     );
                 }
             } else {
                 statusMessage.setValue(getApplication().getString(R.string.kzz_lobby_waiting_start));
             }
-        }, error -> statusMessage.setValue(error));
+        }, error -> statusMessage.setValue(mapJoinError(error)));
     }
 
     @NonNull
@@ -211,6 +211,8 @@ public class KoZnaZnaMatchmakingViewModel extends AndroidViewModel {
                 return getApplication().getString(R.string.kzz_lobby_full);
             case "LOBBY_INVALID":
                 return getApplication().getString(R.string.kzz_lobby_invalid);
+            case "PERMISSION_DENIED":
+                return getApplication().getString(R.string.kzz_firestore_permission_denied);
             default:
                 return error;
         }

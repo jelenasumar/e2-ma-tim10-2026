@@ -393,7 +393,13 @@ public final class KoZnaZnaMatchDataSource {
 
     @NonNull
     private static String errorMessage(@NonNull Exception error) {
-        return error.getMessage() != null ? error.getMessage() : "Unknown error";
+        String message = error.getMessage();
+        if (message != null
+                && (message.contains("PERMISSION_DENIED")
+                || message.contains("Missing or insufficient permissions"))) {
+            return "PERMISSION_DENIED";
+        }
+        return message != null ? message : "Unknown error";
     }
 
     @NonNull
