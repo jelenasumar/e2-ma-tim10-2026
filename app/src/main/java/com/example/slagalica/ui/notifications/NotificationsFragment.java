@@ -54,6 +54,9 @@ public class NotificationsFragment extends Fragment {
         setupStatusSpinner(statusFilterSpinner);
 
         viewModel.getVisibleNotifications().observe(getViewLifecycleOwner(), this::renderNotifications);
+        viewModel.getMessage().observe(getViewLifecycleOwner(), message ->
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+        );
     }
 
     private void setupCategorySpinner(@NonNull Spinner spinner) {

@@ -112,6 +112,11 @@
 
     <string name="profile_title">Profil</string>
     <string name="profile_button">Profil</string>
+    <string name="invite_friends_button">Pozovi</string>
+    <string name="invite_friends_title">Pozovi prijatelja</string>
+    <string name="invite_send">Pozovi</string>
+    <string name="invite_pending">Čeka se odgovor</string>
+    <string name="invite_no_users">Nema drugih korisnika za pozivanje.</string>
     <string name="profile_back">Nazad</string>
     <string name="profile_tokens">Tokeni</string>
     <string name="profile_stars">Ukupno zvezda</string>

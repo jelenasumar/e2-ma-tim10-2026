@@ -35,6 +35,10 @@
             app:destination="@id/profileFragment" />
 
         <action
+            android:id="@+id/action_home_to_inviteFriends"
+            app:destination="@id/inviteFriendsFragment" />
+
+        <action
             android:id="@+id/action_home_to_koZnaZna"
             app:destination="@id/koZnaZnaMatchmakingFragment" />
 
@@ -78,6 +82,11 @@
         android:id="@+id/profileFragment"
         android:name="com.example.slagalica.ui.profile.ProfileFragment"
         android:label="@string/profile_title" />
+
+    <fragment
+        android:id="@+id/inviteFriendsFragment"
+        android:name="com.example.slagalica.ui.invites.InviteFriendsFragment"
+        android:label="@string/invite_friends_title" />
 
     <fragment
         android:id="@+id/koZnaZnaMatchmakingFragment"

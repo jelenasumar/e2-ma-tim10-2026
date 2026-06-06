@@ -14,6 +14,8 @@ public final class SystemNotification {
     private final boolean read;
     private final NotificationAction action;
     private final String actionLabel;
+    private final String inviteId;
+    private final String roomId;
 
     public SystemNotification(
             @NonNull String id,
@@ -26,6 +28,22 @@ public final class SystemNotification {
             @NonNull NotificationAction action,
             @Nullable String actionLabel
     ) {
+        this(id, category, categoryLabel, title, message, dateLabel, read, action, actionLabel, null, null);
+    }
+
+    public SystemNotification(
+            @NonNull String id,
+            @NonNull NotificationCategory category,
+            @NonNull String categoryLabel,
+            @NonNull String title,
+            @NonNull String message,
+            @NonNull String dateLabel,
+            boolean read,
+            @NonNull NotificationAction action,
+            @Nullable String actionLabel,
+            @Nullable String inviteId,
+            @Nullable String roomId
+    ) {
         this.id = id;
         this.category = category;
         this.categoryLabel = categoryLabel;
@@ -35,6 +53,8 @@ public final class SystemNotification {
         this.read = read;
         this.action = action;
         this.actionLabel = actionLabel;
+        this.inviteId = inviteId;
+        this.roomId = roomId;
     }
 
     @NonNull
@@ -81,6 +101,16 @@ public final class SystemNotification {
         return actionLabel;
     }
 
+    @Nullable
+    public String getInviteId() {
+        return inviteId;
+    }
+
+    @Nullable
+    public String getRoomId() {
+        return roomId;
+    }
+
     @NonNull
     public SystemNotification markRead() {
         return new SystemNotification(
@@ -92,7 +122,9 @@ public final class SystemNotification {
                 dateLabel,
                 true,
                 action,
-                actionLabel
+                actionLabel,
+                inviteId,
+                roomId
         );
     }
 }
