@@ -8,6 +8,7 @@ import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -57,7 +58,22 @@ public class SkockoFragment extends Fragment {
         observeGameState();
 
         submitButton.setOnClickListener(v -> viewModel.submitAttempt());
-        viewModel.startGame(createPlayerOneState(), createPlayerTwoState());
+        viewModel.getErrorMessage().observe(getViewLifecycleOwner(), message -> {
+            if (message != null && !message.isEmpty()) {
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        String roomId = "";
+        Bundle args = getArguments();
+        if (args != null) {
+            roomId = args.getString("roomId", "");
+        }
+        if (!roomId.isEmpty()) {
+            viewModel.startRoomGame(roomId);
+        } else {
+            viewModel.startGame(createPlayerOneState(), createPlayerTwoState());
+        }
     }
 
     private void setupGameHeader() {
