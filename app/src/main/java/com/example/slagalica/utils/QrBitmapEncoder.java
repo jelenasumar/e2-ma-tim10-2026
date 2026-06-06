@@ -1,4 +1,4 @@
-package com.example.slagalica.util;
+package com.example.slagalica.utils;
 
 import android.graphics.Bitmap;
 import android.graphics.Color;

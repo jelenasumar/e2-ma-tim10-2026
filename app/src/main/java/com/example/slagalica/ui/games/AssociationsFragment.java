@@ -1,4 +1,4 @@
-package com.example.slagalica.fragments.games;
+package com.example.slagalica.ui.games;
 
 import android.os.Bundle;
 import android.view.View;

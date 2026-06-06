@@ -1,4 +1,4 @@
-package com.example.slagalica.activities;
+package com.example.slagalica.ui.main;
 
 import android.os.Bundle;
 

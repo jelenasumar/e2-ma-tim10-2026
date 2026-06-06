@@ -1,4 +1,4 @@
-package com.example.slagalica.fragments;
+package com.example.slagalica.ui.profile;
 
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -20,11 +20,11 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
-import com.example.slagalica.activities.LoginActivity;
-import com.example.slagalica.data.UserProfileRepository;
+import com.example.slagalica.ui.auth.LoginActivity;
+import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.UserProfile;
-import com.example.slagalica.util.QrBitmapEncoder;
+import com.example.slagalica.utils.QrBitmapEncoder;
 import com.google.android.material.button.MaterialButton;
 import com.google.zxing.WriterException;
 

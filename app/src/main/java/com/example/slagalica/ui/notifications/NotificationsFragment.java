@@ -1,4 +1,4 @@
-package com.example.slagalica.fragments;
+package com.example.slagalica.ui.notifications;
 
 import android.os.Bundle;
 import android.view.View;

@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/homeFragment"
-        android:name="com.example.slagalica.fragments.HomeFragment"
+        android:name="com.example.slagalica.ui.home.HomeFragment"
         android:label="Home">
 
         <action
@@ -51,47 +51,47 @@
 
     <fragment
         android:id="@+id/mojBrojFragment"
-        android:name="com.example.slagalica.fragments.games.MyNumberFragment"
+        android:name="com.example.slagalica.ui.games.MyNumberFragment"
         android:label="Moj Broj" />
 
     <fragment
         android:id="@+id/stepByStepFragment"
-        android:name="com.example.slagalica.fragments.games.StepByStepFragment"
+        android:name="com.example.slagalica.ui.games.StepByStepFragment"
         android:label="Korak po korak" />
 
     <fragment
         android:id="@+id/associationsFragment"
-        android:name="com.example.slagalica.fragments.games.AssociationsFragment"
+        android:name="com.example.slagalica.ui.games.AssociationsFragment"
         android:label="Asocijacije" />
 
     <fragment
         android:id="@+id/skockoFragment"
-        android:name="com.example.slagalica.fragments.games.SkockoFragment"
+        android:name="com.example.slagalica.ui.games.SkockoFragment"
         android:label="Skočko" />
 
     <fragment
         android:id="@+id/notificationsFragment"
-        android:name="com.example.slagalica.fragments.NotificationsFragment"
+        android:name="com.example.slagalica.ui.notifications.NotificationsFragment"
         android:label="Notifikacije" />
 
     <fragment
         android:id="@+id/profileFragment"
-        android:name="com.example.slagalica.fragments.ProfileFragment"
+        android:name="com.example.slagalica.ui.profile.ProfileFragment"
         android:label="@string/profile_title" />
 
     <fragment
         android:id="@+id/koZnaZnaFragment"
-        android:name="com.example.slagalica.fragments.games.KoZnaZnaFragment"
+        android:name="com.example.slagalica.ui.games.KoZnaZnaFragment"
         android:label="@string/game_ko_zna_zna" />
 
     <fragment
         android:id="@+id/spojniceFragment"
-        android:name="com.example.slagalica.fragments.games.SpojniceFragment"
+        android:name="com.example.slagalica.ui.games.SpojniceFragment"
         android:label="@string/game_spojnice" />
 
     <fragment
         android:id="@+id/changePassword"
-        android:name="com.example.slagalica.fragments.ChangePasswordFragment"
+        android:name="com.example.slagalica.ui.profile.ChangePasswordFragment"
         android:label="@string/change_password" />
 
 </navigation>

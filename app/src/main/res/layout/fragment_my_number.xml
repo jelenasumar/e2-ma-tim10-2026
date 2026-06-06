@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="24dp"
-    tools:context=".fragments.games.MyNumberFragment">
+    tools:context=".ui.games.MyNumberFragment">
 
     <TextView
         android:id="@+id/timerText"

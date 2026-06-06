@@ -1,6 +1,5 @@
-package com.example.slagalica.fragments.games;
+package com.example.slagalica.ui.games;
 
-import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -14,14 +13,13 @@ import android.view.ViewGroup;
 import android.widget.Button;
 
 import com.example.slagalica.R;
-import com.example.slagalica.activities.LoginActivity;
 
 /**
  * A simple {@link Fragment} subclass.
- * Use the {@link MyNumberFragment#newInstance} factory method to
+ * Use the {@link StepByStepFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class MyNumberFragment extends Fragment {
+public class StepByStepFragment extends Fragment {
 
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -32,7 +30,7 @@ public class MyNumberFragment extends Fragment {
     private String mParam1;
     private String mParam2;
 
-    public MyNumberFragment() {
+    public StepByStepFragment() {
         // Required empty public constructor
     }
 
@@ -42,11 +40,11 @@ public class MyNumberFragment extends Fragment {
      *
      * @param param1 Parameter 1.
      * @param param2 Parameter 2.
-     * @return A new instance of fragment MyNumberFragment.
+     * @return A new instance of fragment StepByStepFragment.
      */
     // TODO: Rename and change types and number of parameters
-    public static MyNumberFragment newInstance(String param1, String param2) {
-        MyNumberFragment fragment = new MyNumberFragment();
+    public static StepByStepFragment newInstance(String param1, String param2) {
+        StepByStepFragment fragment = new StepByStepFragment();
         Bundle args = new Bundle();
         args.putString(ARG_PARAM1, param1);
         args.putString(ARG_PARAM2, param2);
@@ -67,7 +65,7 @@ public class MyNumberFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_my_number, container, false);
+        return inflater.inflate(R.layout.fragment_step_by_step, container, false);
     }
 
     @Override
@@ -81,4 +79,5 @@ public class MyNumberFragment extends Fragment {
                     .navigateUp();
         });
     }
+
 }

@@ -1,4 +1,4 @@
-package com.example.slagalica.activities;
+package com.example.slagalica.ui.auth;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -14,7 +14,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.slagalica.R;
-import com.example.slagalica.data.UserProfileRepository;
+import com.example.slagalica.data.repository.UserProfileRepository;
 
 public class RegisterActivity extends AppCompatActivity {
 
