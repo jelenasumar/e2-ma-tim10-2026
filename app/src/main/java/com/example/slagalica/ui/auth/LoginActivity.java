@@ -83,11 +83,20 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         findViewById(R.id.continueAsGuest).setOnClickListener(v -> {
-            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-            intent.putExtra(MainActivity.EXTRA_GUEST_MODE, true);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
+            repo.ensureAuthenticated(
+                    () -> {
+                        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                        intent.putExtra(MainActivity.EXTRA_GUEST_MODE, true);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish();
+                    },
+                    error -> Toast.makeText(
+                            LoginActivity.this,
+                            error != null ? error : getString(R.string.error_guest_sign_in),
+                            Toast.LENGTH_SHORT
+                    ).show()
+            );
         });
 
     }

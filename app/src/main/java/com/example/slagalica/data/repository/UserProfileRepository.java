@@ -1,174 +1,289 @@
 package com.example.slagalica.data.repository;
 
 import android.content.Context;
-import android.content.SharedPreferences;
+import android.net.Uri;
 
 import androidx.annotation.NonNull;
 
+import com.example.slagalica.data.local.UserPreferences;
+import com.example.slagalica.data.remote.FireBaseUserDataSource;
 import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.UserProfile;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.example.slagalica.R;
+import com.example.slagalica.utils.AvatarFileStorage;
 
-import java.util.ArrayList;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.Arrays;
-import java.util.List;
+import java.util.function.Consumer;
 
-/**
- * Local persistence for profile and statistics. Games or a future Java backend client can update
- * values through the same keys.
- */
 public final class UserProfileRepository {
 
-    private static final String PREFS = "slagalica_user_profile";
-
-    private static final String KEY_USERNAME = "username";
-    private static final String KEY_EMAIL = "email";
-    private static final String KEY_AVATAR_URI = "avatar_uri";
-    private static final String KEY_TOKENS = "tokens";
-    private static final String KEY_STARS = "stars_total";
-    private static final String KEY_LEAGUE_NAME = "league_name";
-    private static final String KEY_LEAGUE_TIER = "league_tier";
-    private static final String KEY_REGION = "region";
-    private static final String KEY_INVITE_CODE = "invite_code";
-
-    private static final String KEY_AVG_KZZ = "avg_score_ko_zna_zna";
-    private static final String KEY_AVG_SPOJNICE = "avg_score_spojnice";
-    private static final String KEY_AVG_MOJ_BROJ = "avg_score_moj_broj";
-    private static final String KEY_AVG_KPK = "avg_score_kpk";
-    private static final String KEY_AVG_ASOC = "avg_score_asocijacije";
-    private static final String KEY_AVG_SKOCKO = "avg_score_skocko";
-
-    private static final String KEY_KZZ_HITS = "kzz_hits";
-    private static final String KEY_KZZ_MISSES = "kzz_misses";
-    private static final String KEY_MOJ_BROJ_PCT = "moj_broj_correct_pct";
-    private static final String KEY_KPK_STEPS_PCT = "kpk_step_pcts";
-    private static final String KEY_ASOC_SOLVED = "asoc_solved";
-    private static final String KEY_ASOC_UNSOLVED = "asoc_unsolved";
-    private static final String KEY_SKOCKO_COMBO_PCT = "skocko_combo_pct";
-    private static final String KEY_SPOJNICE_LINKED_PCT = "spojnice_linked_pct";
-    private static final String KEY_TOTAL_MATCHES = "total_matches";
-    private static final String KEY_WIN_PCT = "matches_win_pct";
-    private static final String KEY_LOSS_PCT = "matches_loss_pct";
-
-    private final SharedPreferences prefs;
-    private final FirebaseAuth auth;
-    private final FirebaseFirestore db;
-
-
+    private final Context appContext;
+    private final UserPreferences preferences;
+    private final FireBaseUserDataSource remote;
 
     public UserProfileRepository(@NonNull Context context) {
+        this.appContext = context.getApplicationContext();
+        this.preferences = new UserPreferences(appContext);
+        this.remote = new FireBaseUserDataSource();
 
-        this.prefs = context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-
-        this.db = FirebaseFirestore.getInstance();
-        this.auth = FirebaseAuth.getInstance();
-
-        ensureSeedDefaults();
-
-        if (!hasRegisteredAccount()) {
-            prefs.edit()
-                    .remove(KEY_USERNAME)
-                    .remove(KEY_EMAIL)
-                    .remove(KEY_REGION)
-                    .apply();
+        if (!remote.isLoggedIn()) {
+            preferences.clearSessionFields();
         }
     }
 
-    public UserProfile loadProfile() {
-        PlayerStatistics stats = new PlayerStatistics(
-                prefs.getFloat(KEY_AVG_KZZ, 0f),
-                prefs.getFloat(KEY_AVG_SPOJNICE, 0f),
-                prefs.getFloat(KEY_AVG_MOJ_BROJ, 0f),
-                prefs.getFloat(KEY_AVG_KPK, 0f),
-                prefs.getFloat(KEY_AVG_ASOC, 0f),
-                prefs.getFloat(KEY_AVG_SKOCKO, 0f),
-                prefs.getInt(KEY_KZZ_HITS, 0),
-                prefs.getInt(KEY_KZZ_MISSES, 0),
-                prefs.getFloat(KEY_MOJ_BROJ_PCT, 0f),
-                parseStepPercents(prefs.getString(KEY_KPK_STEPS_PCT, "")),
-                prefs.getInt(KEY_ASOC_SOLVED, 0),
-                prefs.getInt(KEY_ASOC_UNSOLVED, 0),
-                prefs.getFloat(KEY_SKOCKO_COMBO_PCT, 0f),
-                prefs.getFloat(KEY_SPOJNICE_LINKED_PCT, 0f),
-                prefs.getInt(KEY_TOTAL_MATCHES, 0),
-                prefs.getFloat(KEY_WIN_PCT, 0f),
-                prefs.getFloat(KEY_LOSS_PCT, 0f)
-        );
-
-        return new UserProfile(
-                prefs.getString(KEY_USERNAME, ""),
-                prefs.getString(KEY_EMAIL, ""),
-                prefs.getString(KEY_AVATAR_URI, ""),
-                prefs.getLong(KEY_TOKENS, 0L),
-                prefs.getLong(KEY_STARS, 0L),
-                prefs.getString(KEY_LEAGUE_NAME, ""),
-                prefs.getString(KEY_LEAGUE_TIER, "bronze"),
-                prefs.getString(KEY_REGION, ""),
-                buildInvitePayload(),
-                stats
-        );
+    public boolean isRegisteredPlayer() {
+        return remote.isRegisteredUser();
     }
 
-    public void saveAvatarUri(@NonNull String uriString) {
-        prefs.edit().putString(KEY_AVATAR_URI, uriString).apply();
+    @NonNull
+    public String getDisplayNameForGames() {
+        if (remote.isAnonymousUser()) {
+            String uid = remote.getCurrentUid();
+            if (uid != null && uid.length() >= 4) {
+                return appContext.getString(
+                        R.string.guest_player_name,
+                        uid.substring(uid.length() - 4)
+                );
+            }
+            return appContext.getString(R.string.guest_player_default);
+        }
+        UserProfile profile = loadProfile();
+        String username = profile.getUsername();
+        return username != null && !username.isEmpty() ? username : appContext.getString(R.string.player_default);
+    }
+
+    public void ensureAuthenticated(
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (remote.isLoggedIn()) {
+            onSuccess.run();
+            return;
+        }
+        remote.signInAnonymously(onSuccess, onError);
+    }
+
+    @NonNull
+    public UserProfile loadProfile() {
+        return preferences.loadProfile();
+    }
+
+    public void fetchProfile(
+            @NonNull Consumer<UserProfile> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (!remote.isLoggedIn()) {
+            onSuccess.accept(preferences.loadProfile());
+            return;
+        }
+
+        String uid = remote.getCurrentUid();
+        if (uid == null) {
+            onSuccess.accept(preferences.loadProfile());
+            return;
+        }
+
+        remote.fetchUserProfile(uid, profile -> {
+            preferences.saveProfile(profile);
+            onSuccess.accept(profile);
+        }, onError);
+    }
+
+    public void saveAvatarUri(
+            @NonNull Uri pickedImageUri,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (!remote.isLoggedIn()) {
+            onError.accept("NOT_LOGGED_IN");
+            return;
+        }
+
+        String uid = remote.getCurrentUid();
+        if (uid == null) {
+            onError.accept("NOT_LOGGED_IN");
+            return;
+        }
+
+        try {
+            java.io.File localFile = AvatarFileStorage.copyToInternalStorage(appContext, uid, pickedImageUri);
+            byte[] imageBytes = AvatarFileStorage.readBytes(localFile);
+            String localPath = localFile.getAbsolutePath();
+
+            remote.uploadAvatar(uid, imageBytes, downloadUrl -> {
+                persistAvatar(downloadUrl, onSuccess);
+            }, error -> {
+                if ("STORAGE_NOT_AVAILABLE".equals(error) || "STORAGE_PERMISSION_DENIED".equals(error)) {
+                    remote.saveAvatarUriToFirestore(uid, localPath, savedUri -> {
+                        persistAvatar(savedUri, onSuccess);
+                    }, onError);
+                    return;
+                }
+                onError.accept(error);
+            });
+        } catch (Exception e) {
+            onError.accept(e.getMessage() != null ? e.getMessage() : "Avatar save failed.");
+        }
+    }
+
+    private void persistAvatar(
+            @NonNull String avatarUri,
+            @NonNull Runnable onSuccess
+    ) {
+        preferences.saveAvatarUri(avatarUri);
+        UserProfile cached = preferences.loadProfile();
+        UserProfile updated = new UserProfile(
+                cached.getUsername(),
+                cached.getEmail(),
+                avatarUri,
+                cached.getTokens(),
+                cached.getTotalStars(),
+                cached.getLeagueName(),
+                cached.getLeagueTierKey(),
+                cached.getRegion(),
+                cached.getInvitePayload(),
+                cached.getStatistics()
+        );
+        preferences.saveProfile(updated);
+        onSuccess.run();
     }
 
     public boolean hasRegisteredAccount() {
-        return auth.getCurrentUser() != null;
+        return remote.isRegisteredUser();
     }
 
-    public void register(@NonNull String email, @NonNull String username,
-                         @NonNull String region, @NonNull String password,
-                         @NonNull Runnable onSuccess,
-                         @NonNull java.util.function.Consumer<String> onError)
-    {
+    public void register(
+            @NonNull String email,
+            @NonNull String username,
+            @NonNull String region,
+            @NonNull String password,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
         String em = normalizeEmail(email);
         String un = username.trim();
         String reg = region.trim();
 
-        auth.createUserWithEmailAndPassword(em, password)
-                .addOnSuccessListener(result -> {
-                    FirebaseUser firebaseUser = result.getUser();
+        remote.createUserWithEmailAndPassword(em, password, firebaseUser -> {
+            String uid = firebaseUser.getUid();
+            UserProfile profile = createDefaultProfile(un, em, reg);
 
-                    if(firebaseUser == null) {
-                        onError.accept("Registration failed.");
-                        return;
-                    }
-
-                    String uid = firebaseUser.getUid();
-
-                    UserProfile profile = createDefaultProfile(un, em, reg);
-
-                    db.collection("users")
-                            .document(uid)
-                            .set(profile)
-                            .addOnSuccessListener(unused -> {
-                                saveSessionLocally(un, em, reg);
-                                onSuccess.run();
-                            })
-                            .addOnFailureListener(e -> onError.accept(e.getMessage()));
-                })
-                .addOnFailureListener(e -> onError.accept(e.getMessage()));
+            remote.saveUserProfile(uid, profile, () -> {
+                preferences.saveProfile(profile);
+                onSuccess.run();
+            }, onError);
+        }, onError);
     }
 
+    public void login(
+            @NonNull String email,
+            @NonNull String password,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String em = normalizeEmail(email);
+
+        remote.signInWithEmailAndPassword(em, password, firebaseUser -> {
+            String uid = firebaseUser.getUid();
+            remote.fetchUserProfile(uid, profile -> {
+                UserProfile merged = mergeWithAuthEmail(profile, em);
+                preferences.saveProfile(merged);
+                onSuccess.run();
+            }, onError);
+        }, onError);
+    }
+
+    public void clearSession() {
+        remote.signOut();
+        preferences.clearSessionFields();
+    }
+
+    public void changePassword(
+            @NonNull String currentPassword,
+            @NonNull String newPassword,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (!remote.isLoggedIn()) {
+            onError.accept("NOT_LOGGED_IN");
+            return;
+        }
+        remote.changePassword(currentPassword, newPassword, onSuccess, onError);
+    }
+
+    public void recordKoZnaZnaRound(int roundScore, int hits, int misses) {
+        if (!isRegisteredPlayer()) {
+            return;
+        }
+        UserProfile profile = preferences.loadProfile();
+        PlayerStatistics stats = profile.getStatistics();
+
+        int newHits = stats.getKoZnaZnaHits() + hits;
+        int newMisses = stats.getKoZnaZnaMisses() + misses;
+        float newAvg;
+        if (stats.getKoZnaZnaHits() == 0 && stats.getKoZnaZnaMisses() == 0 && stats.getAvgScoreKoZnaZna() == 0f) {
+            newAvg = roundScore;
+        } else {
+            int previousRounds = Math.max(1, (stats.getKoZnaZnaHits() + stats.getKoZnaZnaMisses() + 4) / 5);
+            newAvg = ((stats.getAvgScoreKoZnaZna() * previousRounds) + roundScore) / (previousRounds + 1f);
+        }
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                newAvg,
+                stats.getAvgScoreSpojnice(),
+                stats.getAvgScoreMojBroj(),
+                stats.getAvgScoreKorakPoKorak(),
+                stats.getAvgScoreAsocijacije(),
+                stats.getAvgScoreSkocko(),
+                newHits,
+                newMisses,
+                stats.getMojBrojCorrectPercent(),
+                stats.getKorakPoKorakStepPercents(),
+                stats.getAsocijacijeSolved(),
+                stats.getAsocijacijeUnsolved(),
+                stats.getSkockoComboPercent(),
+                stats.getSpojniceLinkedPercent(),
+                stats.getTotalMatches(),
+                stats.getMatchesWinPercent(),
+                stats.getMatchesLossPercent()
+        );
+
+        UserProfile updatedProfile = new UserProfile(
+                profile.getUsername(),
+                profile.getEmail(),
+                profile.getAvatarUri(),
+                profile.getTokens(),
+                profile.getTotalStars(),
+                profile.getLeagueName(),
+                profile.getLeagueTierKey(),
+                profile.getRegion(),
+                profile.getInvitePayload(),
+                updatedStats
+        );
+
+        preferences.saveProfile(updatedProfile);
+
+        if (remote.isLoggedIn()) {
+            String uid = remote.getCurrentUid();
+            if (uid != null) {
+                remote.saveUserProfile(uid, updatedProfile, () -> { }, error -> { });
+            }
+        }
+    }
+
+    @NonNull
     private UserProfile createDefaultProfile(
             @NonNull String username,
             @NonNull String email,
             @NonNull String region
     ) {
-        PlayerStatistics stats = new PlayerStatistics(
-                0f, 0f, 0f, 0f, 0f, 0f,
-                0, 0,
-                0f,
-                Arrays.asList(0f, 0f, 0f, 0f, 0f),
-                0, 0,
-                0f, 0f,
-                0,
-                0f, 0f
+        String inviteCode = UUID.randomUUID().toString();
+        String invitePayload = String.format(
+                Locale.US,
+                "slagalica://invite?user=%s&code=%s",
+                username,
+                inviteCode
         );
 
         return new UserProfile(
@@ -180,147 +295,32 @@ public final class UserProfileRepository {
                 "Liga bronza",
                 "bronze",
                 region,
-                "slagalica://invite?user=" + username + "&code=" + UUID.randomUUID(),
-                stats
+                invitePayload,
+                UserProfileMapper.emptyStatistics()
         );
     }
 
-    private void saveSessionLocally(
-            @NonNull String username,
-            @NonNull String email,
-            @NonNull String region
-    ) {
-        prefs.edit()
-                .putString(KEY_USERNAME, username)
-                .putString(KEY_EMAIL, email)
-                .putString(KEY_REGION, region)
-                .apply();
-    }
-
-
-
-    /**
-     * Provera prijave; ako je uspešna, podaci za profil se ponovo upisuju iz naloga.
-     */
-    public void login(@NonNull String email, @NonNull String password,
-                            @NonNull Runnable onSuccess,
-                            @NonNull java.util.function.Consumer<String> onError) {
-
-        String em = normalizeEmail(email);
-
-        auth.signInWithEmailAndPassword(em, password)
-                .addOnSuccessListener(result -> {
-                    FirebaseUser firebaseUser = result.getUser();
-
-                    if (firebaseUser == null) {
-                        onError.accept("Login unsuccessful");
-                        return;
-                    }
-
-                    String uid = firebaseUser.getUid();
-
-                    db.collection("users")
-                            .document(uid)
-                            .get()
-                            .addOnSuccessListener(document -> {
-                                if (!document.exists()) {
-                                    onError.accept("Profile does not exist.");
-                                    return;
-                                }
-
-                                String username = document.getString("username");
-                                String region = document.getString("region");
-
-                                saveSessionLocally(
-                                        username != null ? username : "",
-                                        em,
-                                        region != null ? region : ""
-                                );
-
-                                onSuccess.run();
-                            })
-                            .addOnFailureListener(e -> onError.accept(e.getMessage()));
-                })
-                .addOnFailureListener(e -> onError.accept(e.getMessage()));
-    }
-
-
-    /**
-     * Logout: briše prikaz sesije na uređaju; registrovani nalog ostaje za sledeću prijavu.
-     */
-    public void clearSession() {
-
-        auth.signOut();
-
-        prefs.edit()
-                .remove(KEY_USERNAME)
-                .remove(KEY_EMAIL)
-                .remove(KEY_REGION)
-                .remove(KEY_AVATAR_URI)
-                .apply();
-        ensureSeedDefaults();
-    }
-
-    private void ensureInviteCodeExists() {
-        if (!prefs.contains(KEY_INVITE_CODE)) {
-            prefs.edit().putString(KEY_INVITE_CODE, UUID.randomUUID().toString()).apply();
+    @NonNull
+    private static UserProfile mergeWithAuthEmail(@NonNull UserProfile profile, @NonNull String email) {
+        if (email.equals(profile.getEmail())) {
+            return profile;
         }
-    }
-
-    private void ensureSeedDefaults() {
-        SharedPreferences.Editor ed = prefs.edit();
-        if (!prefs.contains(KEY_LEAGUE_NAME)) {
-            ed.putString(KEY_LEAGUE_NAME, "Liga bronza");
-        }
-        if (!prefs.contains(KEY_LEAGUE_TIER)) {
-            ed.putString(KEY_LEAGUE_TIER, "bronze");
-        }
-        if (!prefs.contains(KEY_INVITE_CODE)) {
-            ed.putString(KEY_INVITE_CODE, UUID.randomUUID().toString());
-        }
-        if (!prefs.contains(KEY_KPK_STEPS_PCT)) {
-            ed.putString(KEY_KPK_STEPS_PCT, defaultStepPercents());
-        }
-        ed.apply();
+        return new UserProfile(
+                profile.getUsername(),
+                email,
+                profile.getAvatarUri(),
+                profile.getTokens(),
+                profile.getTotalStars(),
+                profile.getLeagueName(),
+                profile.getLeagueTierKey(),
+                profile.getRegion(),
+                profile.getInvitePayload(),
+                profile.getStatistics()
+        );
     }
 
     @NonNull
     private static String normalizeEmail(@NonNull String email) {
         return email.trim().toLowerCase(Locale.ROOT);
-    }
-
-    @NonNull
-    private String buildInvitePayload() {
-        String code = prefs.getString(KEY_INVITE_CODE, "");
-        if (code == null || code.isEmpty()) {
-            code = UUID.randomUUID().toString();
-            prefs.edit().putString(KEY_INVITE_CODE, code).apply();
-        }
-        String user = prefs.getString(KEY_USERNAME, "guest");
-        return String.format(Locale.US, "slagalica://invite?user=%s&code=%s", user, code);
-    }
-
-    private static List<Float> parseStepPercents(@NonNull String raw) {
-        List<Float> out = new ArrayList<>(Arrays.asList(0f, 0f, 0f, 0f, 0f));
-
-        if (raw.isEmpty()) {
-            return out;
-        }
-
-        String[] parts = raw.split(",");
-        for (int i = 0; i < Math.min(parts.length, out.size()); i++) {
-            try {
-                out.set(i, Float.parseFloat(parts[i].trim()));
-            } catch (NumberFormatException ignored) {
-                out.set(i, 0f);
-            }
-        }
-
-        return out;
-    }
-
-    @NonNull
-    private static String defaultStepPercents() {
-        return "0,0,0,0,0";
     }
 }

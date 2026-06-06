@@ -36,7 +36,7 @@
 
         <action
             android:id="@+id/action_home_to_koZnaZna"
-            app:destination="@id/koZnaZnaFragment" />
+            app:destination="@id/koZnaZnaMatchmakingFragment" />
 
         <action
             android:id="@+id/action_home_to_spojnice"
@@ -78,6 +78,16 @@
         android:id="@+id/profileFragment"
         android:name="com.example.slagalica.ui.profile.ProfileFragment"
         android:label="@string/profile_title" />
+
+    <fragment
+        android:id="@+id/koZnaZnaMatchmakingFragment"
+        android:name="com.example.slagalica.ui.games.KoZnaZnaMatchmakingFragment"
+        android:label="@string/kzz_matchmaking_title">
+
+        <action
+            android:id="@+id/action_matchmaking_to_game"
+            app:destination="@id/koZnaZnaFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/koZnaZnaFragment"
