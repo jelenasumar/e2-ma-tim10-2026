@@ -33,12 +33,14 @@ public class HomeFragment extends Fragment {
         Button associationsBtn = view.findViewById(R.id.asocijacije);
         Button skockoBtn = view.findViewById(R.id.skocko);
         Button notificationsBtn = view.findViewById(R.id.notifikacije);
+        Button startOnlineMatchBtn = view.findViewById(R.id.startOnlineMatch);
         Button inviteFriendsBtn = view.findViewById(R.id.inviteFriends);
 
         if (isGuestMode()) {
             view.findViewById(R.id.accountSectionTitle).setVisibility(View.GONE);
             profileBtn.setVisibility(View.GONE);
             notificationsBtn.setVisibility(View.GONE);
+            startOnlineMatchBtn.setVisibility(View.GONE);
             inviteFriendsBtn.setVisibility(View.GONE);
         }
 
@@ -84,6 +86,10 @@ public class HomeFragment extends Fragment {
         notificationsBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
                     .navigate(R.id.action_home_to_notifications);
+        });
+        startOnlineMatchBtn.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_home_to_onlineMatchmaking);
         });
         inviteFriendsBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
