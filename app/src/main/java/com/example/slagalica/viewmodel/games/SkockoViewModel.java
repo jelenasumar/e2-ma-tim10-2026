@@ -165,6 +165,7 @@ public class SkockoViewModel extends GameViewModel {
                 playerOne.withScore(playerOneScore),
                 playerTwo.withScore(playerTwoScore)
         );
+        updateActivePlayer(activePlayerNumber);
         publishGameState();
         startRoundTimer();
     }
@@ -185,6 +186,7 @@ public class SkockoViewModel extends GameViewModel {
         stopRoundTimer();
         bonusPhase = true;
         bonusInput = new ArrayList<>();
+        updateActivePlayer(getBonusPlayerNumber());
         updateTime(formatTimeText(BONUS_DURATION_MILLIS));
         publishGameState();
         startBonusTimer();
@@ -199,6 +201,7 @@ public class SkockoViewModel extends GameViewModel {
         bonusPhase = false;
         roundOver = true;
         updateTime(formatTimeText(0));
+        updateActivePlayer(activePlayerNumber);
         updateScores(playerOneScore, playerTwoScore);
         publishGameState();
 
@@ -266,6 +269,10 @@ public class SkockoViewModel extends GameViewModel {
         } else {
             playerOneScore += BONUS_SCORE;
         }
+    }
+
+    private int getBonusPlayerNumber() {
+        return activePlayerNumber == 1 ? 2 : 1;
     }
 
     private void publishGameState() {

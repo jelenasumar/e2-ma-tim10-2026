@@ -37,21 +37,29 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <ImageView
-                android:id="@+id/gameHeaderPlayerOneAvatar"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:contentDescription="@string/player_avatar"
-                android:scaleType="centerCrop"
-                android:src="@drawable/ic_avatar_placeholder" />
-
-            <TextView
-                android:id="@+id/gameHeaderPlayerOneScore"
+            <LinearLayout
+                android:id="@+id/gameHeaderPlayerOneContainer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="@string/game_header_player_score_default"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/gameHeaderPlayerOneAvatar"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:contentDescription="@string/player_avatar"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_avatar_placeholder" />
+
+                <TextView
+                    android:id="@+id/gameHeaderPlayerOneScore"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/game_header_player_score_default"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout
@@ -61,21 +69,29 @@
             android:gravity="center_vertical|end"
             android:orientation="horizontal">
 
-            <ImageView
-                android:id="@+id/gameHeaderPlayerTwoAvatar"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:contentDescription="@string/player_avatar"
-                android:scaleType="centerCrop"
-                android:src="@drawable/ic_avatar_placeholder" />
-
-            <TextView
-                android:id="@+id/gameHeaderPlayerTwoScore"
+            <LinearLayout
+                android:id="@+id/gameHeaderPlayerTwoContainer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="@string/game_header_opponent_score_default"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/gameHeaderPlayerTwoAvatar"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:contentDescription="@string/player_avatar"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_avatar_placeholder" />
+
+                <TextView
+                    android:id="@+id/gameHeaderPlayerTwoScore"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/game_header_opponent_score_default"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>
