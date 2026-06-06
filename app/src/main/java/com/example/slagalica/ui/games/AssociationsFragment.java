@@ -25,6 +25,7 @@ public class AssociationsFragment extends Fragment {
         Button submitBtn = view.findViewById(R.id.submitButton);
         Button nextBtn = view.findViewById(R.id.nextButton);
 
+        setupGameHeader();
         setupAssociationFields(view);
 
         submitBtn.setOnClickListener(v -> {
@@ -36,6 +37,18 @@ public class AssociationsFragment extends Fragment {
             NavHostFragment.findNavController(this)
                     .navigateUp();
         });
+    }
+
+    private void setupGameHeader() {
+        Fragment fragment = getChildFragmentManager().findFragmentById(R.id.associationsGameHeader);
+        if (fragment instanceof GameHeaderFragment) {
+            ((GameHeaderFragment) fragment).setGameState(
+                    getString(R.string.associations_round_label),
+                    getString(R.string.associations_time_label),
+                    0,
+                    0
+            );
+        }
     }
 
     private void setupAssociationFields(@NonNull View view) {
