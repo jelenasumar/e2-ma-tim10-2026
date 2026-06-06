@@ -12,19 +12,17 @@ import androidx.fragment.app.Fragment;
 
 import com.example.slagalica.R;
 import com.example.slagalica.data.repository.UserProfileRepository;
+import com.example.slagalica.model.GameHeaderPlayerState;
+import com.example.slagalica.model.GameHeaderState;
 import com.example.slagalica.model.UserProfile;
 
 import java.util.Locale;
 
 public class GameHeaderFragment extends Fragment {
 
-    private String roundText;
-    private String timeText;
-    private String playerOneName;
-    private String playerTwoName;
-    private int playerOneScore;
-    private int playerTwoScore;
-    private String playerOneAvatarUri;
+    private GameHeaderState state;
+    private GameHeaderPlayerState defaultPlayerOne;
+    private GameHeaderPlayerState defaultPlayerTwo;
 
     public GameHeaderFragment() {
         super(R.layout.fragment_game_header);
@@ -37,16 +35,8 @@ public class GameHeaderFragment extends Fragment {
         render(view);
     }
 
-    public void setGameState(
-            @NonNull String roundText,
-            @NonNull String timeText,
-            int playerOneScore,
-            int playerTwoScore
-    ) {
-        this.roundText = roundText;
-        this.timeText = timeText;
-        this.playerOneScore = playerOneScore;
-        this.playerTwoScore = playerTwoScore;
+    public void setHeaderState(@NonNull GameHeaderState state) {
+        this.state = state;
 
         View view = getView();
         if (view != null) {
@@ -54,17 +44,30 @@ public class GameHeaderFragment extends Fragment {
         }
     }
 
+    public void setGameState(
+            @NonNull String roundText,
+            @NonNull String timeText,
+            int playerOneScore,
+            int playerTwoScore
+    ) {
+        GameHeaderPlayerState playerOne = getDefaultPlayerOne().withScore(playerOneScore);
+        GameHeaderPlayerState playerTwo = getDefaultPlayerTwo().withScore(playerTwoScore);
+        setHeaderState(new GameHeaderState(roundText, timeText, playerOne, playerTwo));
+    }
+
     private void loadDefaultPlayers() {
         UserProfile profile = new UserProfileRepository(requireContext()).loadProfile();
-        playerOneName = profile.getUsername();
-        if (playerOneName == null || playerOneName.trim().isEmpty()) {
+        String playerOneName = profile.getUsername();
+        if (playerOneName.trim().isEmpty()) {
             playerOneName = getString(R.string.guest_player);
         }
-        playerTwoName = getString(R.string.opponent_player);
-        playerOneAvatarUri = profile.getAvatarUri();
+        defaultPlayerOne = new GameHeaderPlayerState(playerOneName, 0, profile.getAvatarUri());
+        defaultPlayerTwo = new GameHeaderPlayerState(getString(R.string.opponent_player), 0, null);
     }
 
     private void render(@NonNull View view) {
+        GameHeaderState currentState = state != null ? state : createDefaultState();
+
         TextView round = view.findViewById(R.id.gameHeaderRound);
         TextView time = view.findViewById(R.id.gameHeaderTime);
         TextView playerOne = view.findViewById(R.id.gameHeaderPlayerOneScore);
@@ -72,13 +75,39 @@ public class GameHeaderFragment extends Fragment {
         ImageView playerOneAvatar = view.findViewById(R.id.gameHeaderPlayerOneAvatar);
         ImageView playerTwoAvatar = view.findViewById(R.id.gameHeaderPlayerTwoAvatar);
 
-        round.setText(roundText != null ? roundText : getString(R.string.game_header_round_default));
-        time.setText(timeText != null ? timeText : getString(R.string.game_header_time_default));
-        playerOne.setText(formatScore(playerOneName, playerOneScore));
-        playerTwo.setText(formatScore(playerTwoName, playerTwoScore));
+        round.setText(currentState.getRoundText());
+        time.setText(currentState.getTimeText());
+        playerOne.setText(formatScore(currentState.getPlayerOne()));
+        playerTwo.setText(formatScore(currentState.getPlayerTwo()));
 
-        bindAvatar(playerOneAvatar, playerOneAvatarUri);
-        playerTwoAvatar.setImageResource(R.drawable.ic_avatar_placeholder);
+        bindAvatar(playerOneAvatar, currentState.getPlayerOne().getAvatarUri());
+        bindAvatar(playerTwoAvatar, currentState.getPlayerTwo().getAvatarUri());
+    }
+
+    @NonNull
+    private GameHeaderState createDefaultState() {
+        return new GameHeaderState(
+                getString(R.string.game_header_round_default),
+                getString(R.string.game_header_time_default),
+                getDefaultPlayerOne(),
+                getDefaultPlayerTwo()
+        );
+    }
+
+    @NonNull
+    private GameHeaderPlayerState getDefaultPlayerOne() {
+        if (defaultPlayerOne == null) {
+            loadDefaultPlayers();
+        }
+        return defaultPlayerOne;
+    }
+
+    @NonNull
+    private GameHeaderPlayerState getDefaultPlayerTwo() {
+        if (defaultPlayerTwo == null) {
+            loadDefaultPlayers();
+        }
+        return defaultPlayerTwo;
     }
 
     private void bindAvatar(@NonNull ImageView imageView, @Nullable String avatarUri) {
@@ -98,7 +127,7 @@ public class GameHeaderFragment extends Fragment {
     }
 
     @NonNull
-    private static String formatScore(@NonNull String playerName, int score) {
-        return String.format(Locale.getDefault(), "%s: %d", playerName, score);
+    private static String formatScore(@NonNull GameHeaderPlayerState player) {
+        return String.format(Locale.getDefault(), "%s: %d", player.getUsername(), player.getScore());
     }
 }
