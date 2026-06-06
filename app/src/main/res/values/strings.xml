@@ -187,7 +187,11 @@
     <string name="kzz_waiting_sync">Sinhronizacija meča…</string>
     <string name="kzz_waiting_opponent">Odgovor poslat. Čekam protivnika…</string>
     <string name="kzz_missing_match_args">Meč nije pronađen. Vrati se i pokušaj ponovo.</string>
-    <string name="kzz_firestore_permission_denied">Firebase odbio pristup. U konzoli objavi pravila iz firestore.rules i uključi Anonymous prijavu.</string>
+    <string name="kzz_firestore_permission_denied">Firebase odbio pristup — potrebna je jednokratna podešavanja u konzoli (vidi dijalog).</string>
+    <string name="kzz_firebase_setup_title">Podešavanje Firebase-a (1×)</string>
+    <string name="kzz_firebase_setup_message">Aplikacija ne može sama da promeni Firebase server.\n\n1) Otvori Firestore Rules, obriši postojeća pravila i nalepi sadržaj fajla firestore.rules iz projekta, pa Publish.\n\n2) U Authentication uključi Anonymous (Anonimna prijava).\n\nPosle toga restartuj aplikaciju i probaj ponovo.</string>
+    <string name="kzz_open_firestore_rules">Otvori Rules</string>
+    <string name="kzz_open_anonymous_auth">Uključi Anonymous</string>
     <string name="error_guest_sign_in">Nije moguće nastaviti kao gost. Proveri internet i uključi anonimnu prijavu u Firebase konzoli.</string>
     <string name="guest_player_name">Gost %1$s</string>
     <string name="guest_player_default">Gost</string>
