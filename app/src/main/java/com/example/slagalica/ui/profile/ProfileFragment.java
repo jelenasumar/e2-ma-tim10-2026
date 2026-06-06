@@ -28,6 +28,7 @@ import com.example.slagalica.utils.QrBitmapEncoder;
 import com.google.android.material.button.MaterialButton;
 import com.google.zxing.WriterException;
 
+import java.util.List;
 import java.util.Locale;
 
 public class ProfileFragment extends Fragment {
@@ -170,9 +171,15 @@ public class ProfileFragment extends Fragment {
         sb.append(getString(R.string.profile_stat_moj_broj, s.getMojBrojCorrectPercent())).append("\n\n");
 
         sb.append(getString(R.string.profile_stat_kpk_header)).append('\n');
-        float[] steps = s.getKorakPoKorakStepPercents();
-        for (int i = 0; i < steps.length; i++) {
-            sb.append(getString(R.string.profile_stat_kpk_step, i + 1, steps[i])).append('\n');
+        List<Float> steps = s.getKorakPoKorakStepPercents();
+        for (int i = 0; i < steps.size(); i++) {
+            sb.append(
+                    getString(
+                            R.string.profile_stat_kpk_step,
+                            i + 1,
+                            steps.get(i)
+                    )
+            ).append('\n');
         }
         sb.append('\n');
 

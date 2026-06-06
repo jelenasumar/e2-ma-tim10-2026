@@ -51,19 +51,28 @@ public class LoginActivity extends AppCompatActivity {
             String email = emailEt.getText() != null ? emailEt.getText().toString() : "";
             String password = passwordEt.getText() != null ? passwordEt.getText().toString() : "";
 
-            if (!repo.hasRegisteredAccount()) {
-                Toast.makeText(this, R.string.error_register_first, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (!repo.tryLogin(email, password)) {
-                Toast.makeText(this, R.string.error_login_failed, Toast.LENGTH_SHORT).show();
+            if(email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Unesite email i lozinku.", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
+            repo.login(
+                    email,
+                    password,
+                    () -> {
+                        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish();
+                    },
+                    errorMessage -> {
+                        Toast.makeText(
+                                LoginActivity.this,
+                                errorMessage != null ? errorMessage : getString(R.string.error_login_failed),
+                                Toast.LENGTH_SHORT
+                        ).show();
+                    }
+            );
         });
 
         Button registerBtn = findViewById(R.id.register);

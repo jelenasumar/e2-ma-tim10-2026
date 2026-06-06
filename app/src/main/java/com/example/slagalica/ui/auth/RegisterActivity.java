@@ -60,10 +60,33 @@ public class RegisterActivity extends AppCompatActivity {
             }
 
             UserProfileRepository repo = new UserProfileRepository(this);
-            repo.saveRegisteredAccount(email, username, region, password);
 
-            startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
-            finish();
+            repo.register(
+                    email,
+                    username,
+                    region,
+                    password,
+                    () -> {
+                        Toast.makeText(
+                                RegisterActivity.this,
+                                "Registracija uspešna",
+                                Toast.LENGTH_SHORT
+                        ).show();
+
+                        startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
+                        finish();
+                    },
+                    errorMessage -> {
+                        Toast.makeText(
+                                RegisterActivity.this,
+                                errorMessage != null
+                                        ? errorMessage
+                                        : "Greška pri registraciji",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                    }
+            );
+
         });
 
     }

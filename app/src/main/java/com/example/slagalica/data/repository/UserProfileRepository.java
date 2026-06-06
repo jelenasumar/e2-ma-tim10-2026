@@ -7,9 +7,15 @@ import androidx.annotation.NonNull;
 
 import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.UserProfile;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Local persistence for profile and statistics. Games or a future Java backend client can update
@@ -21,13 +27,6 @@ public final class UserProfileRepository {
 
     private static final String KEY_USERNAME = "username";
     private static final String KEY_EMAIL = "email";
-
-    /** Registrovani nalog (ostaje posle logout-a). */
-    private static final String KEY_ACC_EMAIL = "acc_email";
-    private static final String KEY_ACC_USERNAME = "acc_username";
-    private static final String KEY_ACC_REGION = "acc_region";
-    private static final String KEY_ACC_PASSWORD = "acc_password";
-
     private static final String KEY_AVATAR_URI = "avatar_uri";
     private static final String KEY_TOKENS = "tokens";
     private static final String KEY_STARS = "stars_total";
@@ -56,10 +55,20 @@ public final class UserProfileRepository {
     private static final String KEY_LOSS_PCT = "matches_loss_pct";
 
     private final SharedPreferences prefs;
+    private final FirebaseAuth auth;
+    private final FirebaseFirestore db;
+
+
 
     public UserProfileRepository(@NonNull Context context) {
+
         this.prefs = context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+
+        this.db = FirebaseFirestore.getInstance();
+        this.auth = FirebaseAuth.getInstance();
+
         ensureSeedDefaults();
+
         if (!hasRegisteredAccount()) {
             prefs.edit()
                     .remove(KEY_USERNAME)
@@ -109,63 +118,140 @@ public final class UserProfileRepository {
     }
 
     public boolean hasRegisteredAccount() {
-        String e = prefs.getString(KEY_ACC_EMAIL, "");
-        return e != null && !e.isEmpty();
+        return auth.getCurrentUser() != null;
     }
 
-    /**
-     * Čuva korisnika iz registracije i odmah puni podatke za prikaz na profilu.
-     * Lozinka je lokalno u SharedPreferences (samo za razvoj bez backend-a).
-     */
-    public void saveRegisteredAccount(
-            @NonNull String email,
-            @NonNull String username,
-            @NonNull String region,
-            @NonNull String password
-    ) {
+    public void register(@NonNull String email, @NonNull String username,
+                         @NonNull String region, @NonNull String password,
+                         @NonNull Runnable onSuccess,
+                         @NonNull java.util.function.Consumer<String> onError)
+    {
         String em = normalizeEmail(email);
         String un = username.trim();
         String reg = region.trim();
-        prefs.edit()
-                .putString(KEY_ACC_EMAIL, em)
-                .putString(KEY_ACC_USERNAME, un)
-                .putString(KEY_ACC_REGION, reg)
-                .putString(KEY_ACC_PASSWORD, password)
-                .putString(KEY_USERNAME, un)
-                .putString(KEY_EMAIL, em)
-                .putString(KEY_REGION, reg)
-                .apply();
-        ensureInviteCodeExists();
-        ensureSeedDefaults();
+
+        auth.createUserWithEmailAndPassword(em, password)
+                .addOnSuccessListener(result -> {
+                    FirebaseUser firebaseUser = result.getUser();
+
+                    if(firebaseUser == null) {
+                        onError.accept("Registration failed.");
+                        return;
+                    }
+
+                    String uid = firebaseUser.getUid();
+
+                    UserProfile profile = createDefaultProfile(un, em, reg);
+
+                    db.collection("users")
+                            .document(uid)
+                            .set(profile)
+                            .addOnSuccessListener(unused -> {
+                                saveSessionLocally(un, em, reg);
+                                onSuccess.run();
+                            })
+                            .addOnFailureListener(e -> onError.accept(e.getMessage()));
+                })
+                .addOnFailureListener(e -> onError.accept(e.getMessage()));
     }
+
+    private UserProfile createDefaultProfile(
+            @NonNull String username,
+            @NonNull String email,
+            @NonNull String region
+    ) {
+        PlayerStatistics stats = new PlayerStatistics(
+                0f, 0f, 0f, 0f, 0f, 0f,
+                0, 0,
+                0f,
+                Arrays.asList(0f, 0f, 0f, 0f, 0f),
+                0, 0,
+                0f, 0f,
+                0,
+                0f, 0f
+        );
+
+        return new UserProfile(
+                username,
+                email,
+                "",
+                0L,
+                0L,
+                "Liga bronza",
+                "bronze",
+                region,
+                "slagalica://invite?user=" + username + "&code=" + UUID.randomUUID(),
+                stats
+        );
+    }
+
+    private void saveSessionLocally(
+            @NonNull String username,
+            @NonNull String email,
+            @NonNull String region
+    ) {
+        prefs.edit()
+                .putString(KEY_USERNAME, username)
+                .putString(KEY_EMAIL, email)
+                .putString(KEY_REGION, region)
+                .apply();
+    }
+
+
 
     /**
      * Provera prijave; ako je uspešna, podaci za profil se ponovo upisuju iz naloga.
      */
-    public boolean tryLogin(@NonNull String email, @NonNull String password) {
-        String savedEmail = prefs.getString(KEY_ACC_EMAIL, "");
-        String savedPass = prefs.getString(KEY_ACC_PASSWORD, "");
-        if (savedEmail == null || savedEmail.isEmpty()) {
-            return false;
-        }
-        if (!savedEmail.equals(normalizeEmail(email))) {
-            return false;
-        }
-        if (!savedPass.equals(password)) {
-            return false;
-        }
-        prefs.edit()
-                .putString(KEY_USERNAME, prefs.getString(KEY_ACC_USERNAME, ""))
-                .putString(KEY_EMAIL, savedEmail)
-                .putString(KEY_REGION, prefs.getString(KEY_ACC_REGION, ""))
-                .apply();
-        return true;
+    public void login(@NonNull String email, @NonNull String password,
+                            @NonNull Runnable onSuccess,
+                            @NonNull java.util.function.Consumer<String> onError) {
+
+        String em = normalizeEmail(email);
+
+        auth.signInWithEmailAndPassword(em, password)
+                .addOnSuccessListener(result -> {
+                    FirebaseUser firebaseUser = result.getUser();
+
+                    if (firebaseUser == null) {
+                        onError.accept("Login unsuccessful");
+                        return;
+                    }
+
+                    String uid = firebaseUser.getUid();
+
+                    db.collection("users")
+                            .document(uid)
+                            .get()
+                            .addOnSuccessListener(document -> {
+                                if (!document.exists()) {
+                                    onError.accept("Profile does not exist.");
+                                    return;
+                                }
+
+                                String username = document.getString("username");
+                                String region = document.getString("region");
+
+                                saveSessionLocally(
+                                        username != null ? username : "",
+                                        em,
+                                        region != null ? region : ""
+                                );
+
+                                onSuccess.run();
+                            })
+                            .addOnFailureListener(e -> onError.accept(e.getMessage()));
+                })
+                .addOnFailureListener(e -> onError.accept(e.getMessage()));
     }
+
 
     /**
      * Logout: briše prikaz sesije na uređaju; registrovani nalog ostaje za sledeću prijavu.
      */
     public void clearSession() {
+
+        auth.signOut();
+
         prefs.edit()
                 .remove(KEY_USERNAME)
                 .remove(KEY_EMAIL)
@@ -214,19 +300,22 @@ public final class UserProfileRepository {
         return String.format(Locale.US, "slagalica://invite?user=%s&code=%s", user, code);
     }
 
-    private static float[] parseStepPercents(@NonNull String raw) {
-        float[] out = new float[]{0f, 0f, 0f, 0f, 0f};
-        if (raw == null || raw.isEmpty()) {
+    private static List<Float> parseStepPercents(@NonNull String raw) {
+        List<Float> out = new ArrayList<>(Arrays.asList(0f, 0f, 0f, 0f, 0f));
+
+        if (raw.isEmpty()) {
             return out;
         }
+
         String[] parts = raw.split(",");
-        for (int i = 0; i < Math.min(parts.length, out.length); i++) {
+        for (int i = 0; i < Math.min(parts.length, out.size()); i++) {
             try {
-                out[i] = Float.parseFloat(parts[i].trim());
+                out.set(i, Float.parseFloat(parts[i].trim()));
             } catch (NumberFormatException ignored) {
-                out[i] = 0f;
+                out.set(i, 0f);
             }
         }
+
         return out;
     }
 
