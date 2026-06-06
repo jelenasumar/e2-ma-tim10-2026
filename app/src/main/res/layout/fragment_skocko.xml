@@ -115,51 +115,51 @@
             app:layout_constraintTop_toBottomOf="@id/symbolsContainer">
 
             <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
-                <TextView android:id="@+id/skockoAttemptCell1" style="@style/SkockoCell" />
-                <TextView android:id="@+id/skockoAttemptCell2" style="@style/SkockoCell" />
-                <TextView android:id="@+id/skockoAttemptCell3" style="@style/SkockoCell" />
-                <TextView android:id="@+id/skockoAttemptCell4" style="@style/SkockoCell" />
-                <TextView style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
+                <TextView android:id="@+id/skockoAttempt1Cell1" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt1Cell2" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt1Cell3" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt1Cell4" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt1Result" style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
             </LinearLayout>
 
             <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
+                <TextView android:id="@+id/skockoAttempt2Cell1" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt2Cell2" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt2Cell3" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt2Cell4" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt2Result" style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
             </LinearLayout>
 
             <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
+                <TextView android:id="@+id/skockoAttempt3Cell1" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt3Cell2" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt3Cell3" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt3Cell4" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt3Result" style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
             </LinearLayout>
 
             <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
+                <TextView android:id="@+id/skockoAttempt4Cell1" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt4Cell2" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt4Cell3" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt4Cell4" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt4Result" style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
             </LinearLayout>
 
             <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
+                <TextView android:id="@+id/skockoAttempt5Cell1" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt5Cell2" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt5Cell3" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt5Cell4" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt5Result" style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
             </LinearLayout>
 
             <LinearLayout style="@style/SkockoAttemptRow" android:orientation="horizontal">
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoCell" />
-                <TextView style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
+                <TextView android:id="@+id/skockoAttempt6Cell1" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt6Cell2" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt6Cell3" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt6Cell4" style="@style/SkockoCell" />
+                <TextView android:id="@+id/skockoAttempt6Result" style="@style/SkockoResultCell" android:text="@string/skocko_result_placeholder" />
             </LinearLayout>
         </LinearLayout>
 
@@ -182,10 +182,10 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/skockoDivider">
 
-            <TextView style="@style/SkockoCell" />
-            <TextView style="@style/SkockoCell" />
-            <TextView style="@style/SkockoCell" />
-            <TextView style="@style/SkockoCell" />
+            <TextView android:id="@+id/skockoOpponentCell1" style="@style/SkockoCell" />
+            <TextView android:id="@+id/skockoOpponentCell2" style="@style/SkockoCell" />
+            <TextView android:id="@+id/skockoOpponentCell3" style="@style/SkockoCell" />
+            <TextView android:id="@+id/skockoOpponentCell4" style="@style/SkockoCell" />
         </LinearLayout>
 
         <LinearLayout
@@ -197,10 +197,10 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/opponentAttemptRow">
 
-            <TextView style="@style/SkockoCell" />
-            <TextView style="@style/SkockoCell" />
-            <TextView style="@style/SkockoCell" />
-            <TextView style="@style/SkockoCell" />
+            <TextView android:id="@+id/skockoFinalCell1" style="@style/SkockoCell" />
+            <TextView android:id="@+id/skockoFinalCell2" style="@style/SkockoCell" />
+            <TextView android:id="@+id/skockoFinalCell3" style="@style/SkockoCell" />
+            <TextView android:id="@+id/skockoFinalCell4" style="@style/SkockoCell" />
         </LinearLayout>
 
         <Button
