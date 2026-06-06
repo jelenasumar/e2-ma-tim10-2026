@@ -9,13 +9,19 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
+import com.example.slagalica.data.repository.UserProfileRepository;
+import com.example.slagalica.model.GameHeaderPlayerState;
+import com.example.slagalica.model.UserProfile;
+import com.example.slagalica.viewmodel.games.SkockoViewModel;
 
 public class SkockoFragment extends Fragment {
 
     private final TextView[] currentAttemptCells = new TextView[4];
+    private SkockoViewModel viewModel;
     private int nextCellIndex = 0;
 
     public SkockoFragment() {
@@ -26,9 +32,11 @@ public class SkockoFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        viewModel = new ViewModelProvider(this).get(SkockoViewModel.class);
         Button submitBtn = view.findViewById(R.id.submitButton);
 
         setupGameHeader();
+        viewModel.startGameHeader(createPlayerOneState(), createPlayerTwoState());
         setupCombinationInput(view);
 
         submitBtn.setOnClickListener(v -> {
@@ -40,13 +48,24 @@ public class SkockoFragment extends Fragment {
     private void setupGameHeader() {
         Fragment fragment = getChildFragmentManager().findFragmentById(R.id.skockoGameHeader);
         if (fragment instanceof GameHeaderFragment) {
-            ((GameHeaderFragment) fragment).setGameState(
-                    getString(R.string.skocko_round_label),
-                    getString(R.string.skocko_time_label),
-                    0,
-                    0
-            );
+            GameHeaderFragment gameHeader = (GameHeaderFragment) fragment;
+            viewModel.getHeaderState().observe(getViewLifecycleOwner(), gameHeader::setHeaderState);
         }
+    }
+
+    @NonNull
+    private GameHeaderPlayerState createPlayerOneState() {
+        UserProfile profile = new UserProfileRepository(requireContext()).loadProfile();
+        String username = profile.getUsername();
+        if (username.trim().isEmpty()) {
+            username = getString(R.string.guest_player);
+        }
+        return new GameHeaderPlayerState(username, 0, profile.getAvatarUri());
+    }
+
+    @NonNull
+    private GameHeaderPlayerState createPlayerTwoState() {
+        return new GameHeaderPlayerState(getString(R.string.opponent_player), 0, null);
     }
 
     private void setupCombinationInput(@NonNull View view) {
