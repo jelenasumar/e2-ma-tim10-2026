@@ -13,6 +13,7 @@ import com.example.slagalica.model.NotificationAction;
 import com.example.slagalica.model.NotificationCategory;
 import com.example.slagalica.model.NotificationStatus;
 import com.example.slagalica.model.SystemNotification;
+import com.example.slagalica.utils.SingleLiveEvent;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ public class NotificationsViewModel extends AndroidViewModel {
     private final MutableLiveData<NotificationAction> selectedAction = new MutableLiveData<>();
     private final MutableLiveData<String> message = new MutableLiveData<>();
     private final MutableLiveData<String> roomNavigation = new MutableLiveData<>();
+    private final SingleLiveEvent<String> notificationPageTitle = new SingleLiveEvent<>();
 
     private List<SystemNotification> allNotifications = new ArrayList<>();
     private NotificationCategory selectedCategory = NotificationCategory.ALL;
@@ -57,6 +59,11 @@ public class NotificationsViewModel extends AndroidViewModel {
     @NonNull
     public LiveData<String> getRoomNavigation() {
         return roomNavigation;
+    }
+
+    @NonNull
+    public LiveData<String> getNotificationPageTitle() {
+        return notificationPageTitle;
     }
 
     public void setCategoryFilter(@NonNull NotificationCategory category) {
@@ -108,13 +115,13 @@ public class NotificationsViewModel extends AndroidViewModel {
         } else if (notification.getAction() == NotificationAction.OPEN_ROOM
                 && notification.getRoomId() != null
                 && !notification.getRoomId().isEmpty()) {
-            openRoomNotification(notification);
+            handleOpenRoomNotification(notification);
         } else if (notification.getAction() == NotificationAction.OPEN_CHAT) {
-            completeSimpleAction(notification, "Otvaranje ceta...");
+            notificationPageTitle.setValue("Čet");
         } else if (notification.getAction() == NotificationAction.OPEN_LEAGUE) {
-            completeSimpleAction(notification, "Otvaranje lige...");
+            notificationPageTitle.setValue("Liga");
         } else if (notification.getAction() == NotificationAction.NONE) {
-            message.setValue(destinationMessage(notification));
+            notificationPageTitle.setValue(destinationTitle(notification));
         } else if (!notification.isRead()) {
             markAsRead(notification.getId());
         }
@@ -134,7 +141,7 @@ public class NotificationsViewModel extends AndroidViewModel {
     }
 
     public void openNotification(@NonNull SystemNotification notification) {
-        if (notification.isActionHandled()) {
+        if (notification.isActionHandled() && notification.getAction() == NotificationAction.ACCEPT_INVITE) {
             message.setValue(notification.getActionResult());
             return;
         }
@@ -144,23 +151,31 @@ public class NotificationsViewModel extends AndroidViewModel {
         switch (notification.getAction()) {
             case OPEN_ROOM:
                 if (notification.getRoomId() != null && !notification.getRoomId().isEmpty()) {
-                    openRoomNotification(notification);
+                    handleOpenRoomNotification(notification);
                 } else {
                     message.setValue("Soba jos nije dostupna.");
                 }
                 break;
             case OPEN_CHAT:
-                message.setValue("Otvaranje ceta...");
+                notificationPageTitle.setValue("Čet");
                 break;
             case OPEN_LEAGUE:
-                message.setValue("Otvaranje lige...");
+                notificationPageTitle.setValue("Liga");
                 break;
             case NONE:
             case ACCEPT_INVITE:
             default:
-                message.setValue(destinationMessage(notification));
+                notificationPageTitle.setValue(destinationTitle(notification));
                 break;
         }
+    }
+
+    private void handleOpenRoomNotification(@NonNull SystemNotification notification) {
+        if (notification.isRead() && !notification.isActionHandled()) {
+            markRoomNotificationHandled(notification);
+            return;
+        }
+        openRoomNotification(notification);
     }
 
     private void openRoomNotification(@NonNull SystemNotification notification) {
@@ -181,39 +196,32 @@ public class NotificationsViewModel extends AndroidViewModel {
         );
     }
 
-    private void completeSimpleAction(
-            @NonNull SystemNotification notification,
-            @NonNull String actionResult
-    ) {
-        if (notification.isActionHandled()) {
-            message.setValue(notification.getActionResult());
-            return;
-        }
+    private void markRoomNotificationHandled(@NonNull SystemNotification notification) {
         inviteRepository.markNotificationActionHandled(
                 notification.getId(),
-                actionResult,
-                () -> message.setValue(actionResult),
+                "Otvorili ste sobu",
+                () -> message.setValue("Otvorili ste sobu"),
                 error -> {
-                    repository.markActionHandled(notification.getId(), actionResult);
+                    repository.markActionHandled(notification.getId(), "Otvorili ste sobu");
                     refreshNotifications();
-                    message.setValue(actionResult);
+                    message.setValue("Otvorili ste sobu");
                 }
         );
     }
 
     @NonNull
-    private static String destinationMessage(@NonNull SystemNotification notification) {
+    private static String destinationTitle(@NonNull SystemNotification notification) {
         switch (notification.getCategory()) {
             case REWARD:
-                return "Otvaranje stranice nagrade...";
+                return "Nagrada";
             case RANKING:
-                return "Otvaranje rang liste...";
+                return "Rang lista";
             case CHAT:
-                return "Otvaranje ceta...";
+                return "Čet";
             case OTHER:
             case ALL:
             default:
-                return "Otvaranje detalja notifikacije...";
+                return "Detalji notifikacije";
         }
     }
 

@@ -61,6 +61,7 @@ public class NotificationsFragment extends Fragment {
             }
         });
         viewModel.getRoomNavigation().observe(getViewLifecycleOwner(), this::navigateToRoom);
+        viewModel.getNotificationPageTitle().observe(getViewLifecycleOwner(), this::navigateToNotificationPage);
     }
 
     private void setupCategorySpinner(@NonNull Spinner spinner) {
@@ -296,25 +297,6 @@ public class NotificationsFragment extends Fragment {
                 || notification.getAction() == NotificationAction.OPEN_ROOM;
     }
 
-    private void handleAction(@NonNull NotificationAction action) {
-        switch (action) {
-            case ACCEPT_INVITE:
-                Toast.makeText(requireContext(), R.string.notification_action_invite, Toast.LENGTH_SHORT).show();
-                break;
-            case OPEN_ROOM:
-                break;
-            case OPEN_CHAT:
-                Toast.makeText(requireContext(), R.string.notification_action_chat, Toast.LENGTH_SHORT).show();
-                break;
-            case OPEN_LEAGUE:
-                Toast.makeText(requireContext(), R.string.notification_action_league, Toast.LENGTH_SHORT).show();
-                break;
-            case NONE:
-            default:
-                break;
-        }
-    }
-
     private int dpToPx(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
@@ -327,5 +309,14 @@ public class NotificationsFragment extends Fragment {
         Bundle args = new Bundle();
         args.putString("roomId", roomId);
         NavHostFragment.findNavController(this).navigate(R.id.roomSessionFragment, args);
+    }
+
+    private void navigateToNotificationPage(@NonNull String title) {
+        if (title.isEmpty()) {
+            return;
+        }
+        Bundle args = new Bundle();
+        args.putString(NotificationDestinationFragment.ARG_TITLE, title);
+        NavHostFragment.findNavController(this).navigate(R.id.notificationDestinationFragment, args);
     }
 }

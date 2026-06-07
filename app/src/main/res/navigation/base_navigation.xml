@@ -87,6 +87,11 @@
         android:label="Notifikacije" />
 
     <fragment
+        android:id="@+id/notificationDestinationFragment"
+        android:name="com.example.slagalica.ui.notifications.NotificationDestinationFragment"
+        android:label="@string/notification_destination_default_title" />
+
+    <fragment
         android:id="@+id/profileFragment"
         android:name="com.example.slagalica.ui.profile.ProfileFragment"
         android:label="@string/profile_title" />

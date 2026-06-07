@@ -91,6 +91,12 @@
     <string name="notification_action_invite">Poziv je prihvacen.</string>
     <string name="notification_action_chat">Otvaranje ceta ce biti povezano sa cet ekranom.</string>
     <string name="notification_action_league">Otvaranje lige ce biti povezano sa ligama.</string>
+    <string name="notification_destination_default_title">Notifikacija</string>
+    <string name="notification_destination_reward">Nagrada</string>
+    <string name="notification_destination_ranking">Rang lista</string>
+    <string name="notification_destination_chat">Čet</string>
+    <string name="notification_destination_league">Liga</string>
+    <string name="notification_destination_details">Detalji notifikacije</string>
     <string name="filter_category">Kategorija</string>
     <string name="filter_status">Status</string>
     <string name="filter_chat">Čet</string>
