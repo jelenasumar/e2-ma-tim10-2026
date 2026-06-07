@@ -77,6 +77,7 @@
     <string name="notification_chat_message">Marko: Vidimo se u turniru večeras?</string>
     <string name="notification_chat_date">Juče, 18:35 - Pročitano</string>
     <string name="accept_invite">Prihvati poziv</string>
+    <string name="decline_invite">Odbij poziv</string>
     <string name="back">Nazad</string>
     <string name="notification_type_other">Ostalo</string>
     <string name="notification_league_title">Promena lige</string>
@@ -85,6 +86,7 @@
     <string name="open_chat">Udji u čet</string>
     <string name="open_league">Pogledaj ligu</string>
     <string name="mark_as_read">Označi kao pročitano</string>
+    <string name="mark_as_unread">Označi kao nepročitano</string>
     <string name="no_notifications">Nema notifikacija za izabrane filtere.</string>
     <string name="notification_action_invite">Poziv je prihvacen.</string>
     <string name="notification_action_chat">Otvaranje ceta ce biti povezano sa cet ekranom.</string>

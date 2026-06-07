@@ -19,6 +19,8 @@ public final class NotificationsRepository {
 
     private static final String PREFS = "slagalica_notifications";
     private static final String READ_PREFIX = "notification_read_";
+    private static final String HANDLED_PREFIX = "notification_handled_";
+    private static final String RESULT_PREFIX = "notification_result_";
 
     private final Context appContext;
     private final SharedPreferences prefs;
@@ -96,6 +98,21 @@ public final class NotificationsRepository {
         prefs.edit().putBoolean(READ_PREFIX + notificationId, true).apply();
     }
 
+    public void markAsUnread(@NonNull String notificationId) {
+        prefs.edit().putBoolean(READ_PREFIX + notificationId, false).apply();
+    }
+
+    public void markActionHandled(
+            @NonNull String notificationId,
+            @NonNull String actionResult
+    ) {
+        prefs.edit()
+                .putBoolean(READ_PREFIX + notificationId, true)
+                .putBoolean(HANDLED_PREFIX + notificationId, true)
+                .putString(RESULT_PREFIX + notificationId, actionResult)
+                .apply();
+    }
+
     private SystemNotification createNotification(
             @NonNull String id,
             @NonNull NotificationCategory category,
@@ -108,7 +125,23 @@ public final class NotificationsRepository {
             String actionLabel
     ) {
         boolean read = prefs.getBoolean(READ_PREFIX + id, readByDefault);
-        return new SystemNotification(id, category, categoryLabel, title, message, dateLabel, read, action, actionLabel);
+        boolean handled = prefs.getBoolean(HANDLED_PREFIX + id, false);
+        String result = prefs.getString(RESULT_PREFIX + id, "");
+        return new SystemNotification(
+                id,
+                category,
+                categoryLabel,
+                title,
+                message,
+                dateLabel,
+                read,
+                action,
+                actionLabel,
+                null,
+                null,
+                handled,
+                result
+        );
     }
 
     private void createNotificationChannels() {

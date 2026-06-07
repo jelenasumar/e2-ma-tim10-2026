@@ -55,9 +55,11 @@ public class NotificationsFragment extends Fragment {
         setupStatusSpinner(statusFilterSpinner);
 
         viewModel.getVisibleNotifications().observe(getViewLifecycleOwner(), this::renderNotifications);
-        viewModel.getMessage().observe(getViewLifecycleOwner(), message ->
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-        );
+        viewModel.getMessage().observe(getViewLifecycleOwner(), message -> {
+            if (message != null && !message.isEmpty()) {
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+            }
+        });
         viewModel.getRoomNavigation().observe(getViewLifecycleOwner(), this::navigateToRoom);
     }
 
@@ -154,6 +156,8 @@ public class NotificationsFragment extends Fragment {
         card.setBackgroundResource(notification.isRead()
                 ? android.R.drawable.edit_text
                 : R.drawable.notification_unread_background);
+        card.setOnClickListener(v -> viewModel.openNotification(notification));
+        card.setClickable(true);
 
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -170,27 +174,43 @@ public class NotificationsFragment extends Fragment {
         type.setText(notification.getCategoryLabel());
         type.setTextSize(12);
         type.setTypeface(type.getTypeface(), android.graphics.Typeface.BOLD);
+        type.setOnClickListener(v -> viewModel.openNotification(notification));
         header.addView(type, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
 
-        if (!notification.isRead()) {
-            Button markReadButton = new Button(requireContext());
-            markReadButton.setText(R.string.mark_as_read);
-            markReadButton.setTextSize(11);
-            markReadButton.setMinHeight(0);
-            markReadButton.setMinWidth(0);
-            markReadButton.setPadding(dpToPx(8), 0, dpToPx(8), 0);
-            markReadButton.setOnClickListener(v -> viewModel.markAsRead(notification.getId()));
-            header.addView(markReadButton, new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    dpToPx(32)
-            ));
-        }
+        Button readButton = new Button(requireContext());
+        readButton.setText(notification.isRead() ? R.string.mark_as_unread : R.string.mark_as_read);
+        readButton.setTextSize(11);
+        readButton.setMinHeight(0);
+        readButton.setMinWidth(0);
+        readButton.setPadding(dpToPx(8), 0, dpToPx(8), 0);
+        readButton.setOnClickListener(v -> {
+            if (notification.isRead()) {
+                viewModel.markAsUnread(notification.getId());
+            } else {
+                viewModel.markAsRead(notification.getId());
+            }
+        });
+        header.addView(readButton, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                dpToPx(32)
+        ));
 
         card.addView(header);
-        card.addView(createText(notification.getTitle(), 17, true, 4));
-        card.addView(createText(notification.getMessage(), 14, false, 6));
+        TextView title = createText(notification.getTitle(), 17, true, 4);
+        title.setOnClickListener(v -> viewModel.openNotification(notification));
+        card.addView(title);
+        TextView message = createText(notification.getMessage(), 14, false, 6);
+        message.setOnClickListener(v -> viewModel.openNotification(notification));
+        card.addView(message);
+        if (shouldShowActionResult(notification)) {
+            TextView result = createText(notification.getActionResult(), 13, true, 8);
+            result.setOnClickListener(v -> viewModel.openNotification(notification));
+            card.addView(result);
+        }
         addActionButton(card, notification);
-        card.addView(createText(buildDateStatus(notification), 12, false, 8));
+        TextView dateStatus = createText(buildDateStatus(notification), 12, false, 8);
+        dateStatus.setOnClickListener(v -> viewModel.openNotification(notification));
+        card.addView(dateStatus);
 
         return card;
     }
@@ -217,29 +237,63 @@ public class NotificationsFragment extends Fragment {
             @NonNull LinearLayout card,
             @NonNull SystemNotification notification
     ) {
-        if (notification.getAction() == NotificationAction.NONE || notification.getActionLabel() == null) {
+        if (!notification.hasPendingAction()
+                || notification.getAction() != NotificationAction.ACCEPT_INVITE) {
             return;
         }
 
-        Button actionButton = new Button(requireContext());
-        actionButton.setText(notification.getActionLabel());
+        LinearLayout actions = new LinearLayout(requireContext());
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+
+        String actionLabel = notification.getActionLabel() != null
+                ? notification.getActionLabel()
+                : getString(R.string.accept_invite);
+        Button actionButton = createSmallActionButton(actionLabel);
         actionButton.setOnClickListener(v -> {
             viewModel.reactToNotification(notification);
-            handleAction(notification.getAction());
         });
+        actions.addView(actionButton);
+
+        Button declineButton = createSmallActionButton(getString(R.string.decline_invite));
+        declineButton.setOnClickListener(v -> viewModel.declineInvite(notification));
+        LinearLayout.LayoutParams declineParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        declineParams.setMargins(dpToPx(8), 0, 0, 0);
+        actions.addView(declineButton, declineParams);
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
         );
         params.setMargins(0, dpToPx(8), 0, 0);
-        card.addView(actionButton, params);
+        card.addView(actions, params);
+    }
+
+    @NonNull
+    private Button createSmallActionButton(@NonNull String text) {
+        Button button = new Button(requireContext());
+        button.setText(text);
+        button.setTextSize(12);
+        button.setMinHeight(0);
+        button.setMinWidth(0);
+        button.setPadding(dpToPx(10), 0, dpToPx(10), 0);
+        return button;
     }
 
     @NonNull
     private String buildDateStatus(@NonNull SystemNotification notification) {
         String status = notification.isRead() ? "Procitano" : "Neprocitano";
         return notification.getDateLabel() + " - " + status;
+    }
+
+    private boolean shouldShowActionResult(@NonNull SystemNotification notification) {
+        if (!notification.isActionHandled() || notification.getActionResult().isEmpty()) {
+            return false;
+        }
+        return notification.getAction() == NotificationAction.ACCEPT_INVITE
+                || notification.getAction() == NotificationAction.OPEN_ROOM;
     }
 
     private void handleAction(@NonNull NotificationAction action) {
