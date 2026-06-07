@@ -16,6 +16,10 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
+
+      match /notifications/{notificationId} {
+        allow read, create, update: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     match /kzz_lobbies/{code} {
@@ -45,6 +49,10 @@ service cloud.firestore {
         && request.resource.data.hostUid == request.auth.uid;
 
       allow update: if isMatchParticipant();
+    }
+
+    match /association_puzzles/{puzzleId} {
+      allow read: if isSignedIn();
     }
 
     match /rooms/{roomId} {
