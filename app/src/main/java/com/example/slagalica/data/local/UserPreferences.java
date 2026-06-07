@@ -42,6 +42,7 @@ public final class UserPreferences {
     private static final String KEY_ASOC_UNSOLVED = "asoc_unsolved";
     private static final String KEY_SKOCKO_COMBO_PCT = "skocko_combo_pct";
     private static final String KEY_SPOJNICE_LINKED_PCT = "spojnice_linked_pct";
+    private static final String KEY_SPOJNICE_GAMES = "spojnice_games_count";
     private static final String KEY_TOTAL_MATCHES = "total_matches";
     private static final String KEY_WIN_PCT = "matches_win_pct";
     private static final String KEY_LOSS_PCT = "matches_loss_pct";
@@ -92,6 +93,14 @@ public final class UserPreferences {
                 invitePayload,
                 stats
         );
+    }
+
+    public int getSpojniceGamesPlayed() {
+        return prefs.getInt(KEY_SPOJNICE_GAMES, 0);
+    }
+
+    public void setSpojniceGamesPlayed(int count) {
+        prefs.edit().putInt(KEY_SPOJNICE_GAMES, count).apply();
     }
 
     public void saveProfile(@NonNull UserProfile profile) {

@@ -12,11 +12,13 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.example.slagalica.R;
 import com.example.slagalica.data.repository.KoZnaZnaMatchRepository;
+import com.example.slagalica.data.repository.RoomSessionRepository;
 import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.KoZnaZnaMatch;
 import com.example.slagalica.model.KoZnaZnaQuestion;
 import com.example.slagalica.model.KoZnaZnaScoring;
 import com.example.slagalica.model.KoZnaZnaUiState;
+import com.example.slagalica.model.RoomSession;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.List;
@@ -27,6 +29,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
 
     private final KoZnaZnaMatchRepository matchRepository;
     private final UserProfileRepository profileRepository;
+    private final RoomSessionRepository roomRepository = new RoomSessionRepository();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Runnable timerTickRunnable = this::onTimerTick;
 
@@ -34,12 +37,15 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
 
     private ListenerRegistration matchListener;
+    private ListenerRegistration roomListener;
     private String matchId;
     private String myUid;
+    private String activeRoomId = "";
     private boolean isHost;
     private boolean iHaveAnswered;
     private boolean statsRecorded;
     private boolean advancingQuestion;
+    private boolean roomMatchCreationStarted;
     private int lastScheduledAdvanceIndex = -1;
     private int selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
     private int myHits;
@@ -87,6 +93,91 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 error -> errorMessage.setValue(error)
         );
         mainHandler.post(timerTickRunnable);
+    }
+
+    public void startRoomGame(@NonNull String roomId) {
+        if (roomId.isEmpty() || roomId.equals(activeRoomId)) {
+            return;
+        }
+        activeRoomId = roomId;
+        localStatusMessage = getApplication().getString(R.string.kzz_waiting_sync);
+
+        profileRepository.ensureAuthenticated(
+                () -> {
+                    String uid = matchRepository.getCurrentUid();
+                    if (uid == null) {
+                        errorMessage.setValue(getApplication().getString(R.string.error_guest_sign_in));
+                        return;
+                    }
+                    myUid = uid;
+                    if (roomListener != null) {
+                        roomListener.remove();
+                    }
+                    roomListener = roomRepository.listenRoom(
+                            roomId,
+                            this::onRoomSessionUpdated,
+                            error -> errorMessage.setValue(error)
+                    );
+                },
+                error -> errorMessage.setValue(error)
+        );
+    }
+
+    private void onRoomSessionUpdated(@NonNull RoomSession room) {
+        String existingMatchId = room.getKoZnaZnaMatchId();
+        if (!existingMatchId.isEmpty()) {
+            if (roomListener != null) {
+                roomListener.remove();
+                roomListener = null;
+            }
+            if (matchListener == null || !existingMatchId.equals(matchId)) {
+                startOnlineMatch(existingMatchId, myUid);
+            }
+            return;
+        }
+
+        if (!myUid.equals(room.getHostUid()) || roomMatchCreationStarted) {
+            return;
+        }
+        if (room.getGuestUid().isEmpty()) {
+            localStatusMessage = getApplication().getString(R.string.kzz_waiting_opponent);
+            publishWaitingState(room);
+            return;
+        }
+
+        roomMatchCreationStarted = true;
+        matchRepository.createMatchFromRoom(
+                room.getRoomId(),
+                room.getHostUid(),
+                room.getHostUsername(),
+                room.getGuestUid(),
+                room.getGuestUsername(),
+                createdMatchId -> { },
+                error -> {
+                    roomMatchCreationStarted = false;
+                    errorMessage.setValue(error);
+                }
+        );
+    }
+
+    private void publishWaitingState(@NonNull RoomSession room) {
+        uiState.setValue(new KoZnaZnaUiState(
+                1,
+                TOTAL_QUESTIONS,
+                0,
+                0,
+                0,
+                0,
+                room.getHostUsername(),
+                room.getGuestUsername(),
+                "",
+                KoZnaZnaQuestion.defaultQuestions().get(0).getOptions(),
+                KoZnaZnaUiState.NO_SELECTION,
+                false,
+                false,
+                localStatusMessage,
+                false
+        ));
     }
 
     public void selectAnswer(int answerIndex) {
@@ -146,6 +237,10 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             matchListener.remove();
             matchListener = null;
         }
+        if (roomListener != null) {
+            roomListener.remove();
+            roomListener = null;
+        }
         mainHandler.removeCallbacks(timerTickRunnable);
     }
 
@@ -161,7 +256,13 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
         isHost = myUid.equals(match.getHostUid());
 
-        if (match.getCurrentQuestionIndex() != (latestMatch != null ? latestMatch.getCurrentQuestionIndex() : -1)
+        int previousQuestionIndex = latestMatch != null ? latestMatch.getCurrentQuestionIndex() : -1;
+        if (match.getCurrentQuestionIndex() != previousQuestionIndex) {
+            lastScheduledAdvanceIndex = -1;
+            advancingQuestion = false;
+        }
+
+        if (match.getCurrentQuestionIndex() != previousQuestionIndex
                 || (latestMatch != null && latestMatch.isQuestionResolved() && !match.isQuestionResolved())) {
             iHaveAnswered = false;
             selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
@@ -192,7 +293,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         long now = System.currentTimeMillis();
         boolean hostPending = match.getHostAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
         boolean guestPending = match.getGuestAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
-        boolean timeUp = now >= match.getQuestionEndsAtMs();
+        boolean timeUp = now >= match.getQuestionEndsAtMs()
+                || now >= match.getRoundEndsAtMs();
 
         if (hostPending && guestPending && !timeUp) {
             return;
@@ -238,6 +340,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 },
                 error -> {
                     advancingQuestion = false;
+                    lastScheduledAdvanceIndex = -1;
                     errorMessage.setValue(error);
                 }
         ), 1200L);

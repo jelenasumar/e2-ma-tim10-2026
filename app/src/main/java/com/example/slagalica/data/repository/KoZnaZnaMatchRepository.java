@@ -63,6 +63,18 @@ public final class KoZnaZnaMatchRepository {
         remote.createMatchFromLobby(lobbyCode, hostUid, hostUsername, guestUid, guestUsername, onSuccess, onError);
     }
 
+    public void createMatchFromRoom(
+            @NonNull String roomId,
+            @NonNull String hostUid,
+            @NonNull String hostUsername,
+            @NonNull String guestUid,
+            @NonNull String guestUsername,
+            @NonNull Consumer<String> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        remote.createMatchFromRoom(roomId, hostUid, hostUsername, guestUid, guestUsername, onSuccess, onError);
+    }
+
     @NonNull
     public ListenerRegistration listenMatch(
             @NonNull String matchId,

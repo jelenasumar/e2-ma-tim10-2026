@@ -35,7 +35,7 @@ public class RoomSessionFragment extends Fragment {
                 NavHostFragment.findNavController(this).navigateUp()
         );
         view.findViewById(R.id.roomSessionKoZnaZna).setOnClickListener(v ->
-                NavHostFragment.findNavController(this).navigate(R.id.koZnaZnaMatchmakingFragment)
+                navigateToGame(R.id.koZnaZnaFragment)
         );
         view.findViewById(R.id.roomSessionSpojnice).setOnClickListener(v ->
                 navigateToGame(R.id.spojniceFragment)
