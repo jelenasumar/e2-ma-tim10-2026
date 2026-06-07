@@ -105,21 +105,45 @@ public class SpojniceViewModel extends AndroidViewModel {
         if (connectedLeft.contains(rowIndex)) {
             return;
         }
+        applyFollowupRowSelection(rowIndex);
+    }
+
+    public void selectRightOption(int rowIndex, int spinnerPosition) {
+        if (!canCurrentUserPlay()) {
+            return;
+        }
+        if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
+            if (connectedLeft.contains(rowIndex)) {
+                return;
+            }
+            selectedRow = rowIndex;
+        } else if (!isRowSelectable(rowIndex)) {
+            return;
+        }
+
+        List<Integer> available = buildAvailableRightIndices();
+        int availableIndex = spinnerPosition - 1;
+        if (availableIndex < 0) {
+            selectedRightIndex = SpojniceUiState.NO_SELECTION;
+            publishUiState(remainingSeconds());
+            return;
+        }
+        if (availableIndex >= available.size()) {
+            return;
+        }
         selectedRow = rowIndex;
-        selectedRightIndex = SpojniceUiState.NO_SELECTION;
+        selectedRightIndex = available.get(availableIndex);
         publishUiState(remainingSeconds());
     }
 
-    public void selectRightOption(int rowIndex, int availableListIndex) {
-        if (!canCurrentUserPlay() || !isRowSelectable(rowIndex)) {
-            return;
-        }
-        List<Integer> available = buildAvailableRightIndices();
-        if (availableListIndex < 0 || availableListIndex >= available.size()) {
-            return;
-        }
+    private void applyFollowupRowSelection(int rowIndex) {
         selectedRow = rowIndex;
-        selectedRightIndex = available.get(availableListIndex);
+        List<Integer> available = buildAvailableRightIndices();
+        if (available.size() == 1) {
+            selectedRightIndex = available.get(0);
+        } else {
+            selectedRightIndex = SpojniceUiState.NO_SELECTION;
+        }
         publishUiState(remainingSeconds());
     }
 
@@ -218,9 +242,9 @@ public class SpojniceViewModel extends AndroidViewModel {
         }
         if (SpojniceRoomRepository.PHASE_ACTIVE.equals(phase)) {
             selectedRow = currentLeftIndex;
-        } else if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)
+        } else         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)
                 && (phaseChanged || !isFollowupRowValid(selectedRow))) {
-            selectedRow = firstUnconnectedRowIndex();
+            applyFollowupRowSelection(firstUnconnectedRowIndex());
         }
 
         if (gameOver) {
@@ -270,7 +294,8 @@ public class SpojniceViewModel extends AndroidViewModel {
         if (selectedRightIndex < 0) {
             return SpojniceUiState.NO_SELECTION;
         }
-        return buildAvailableRightIndices().indexOf(selectedRightIndex);
+        int index = buildAvailableRightIndices().indexOf(selectedRightIndex);
+        return index >= 0 ? index + 1 : SpojniceUiState.NO_SELECTION;
     }
 
     private void publishUiState(int secondsLeft) {
@@ -321,7 +346,7 @@ public class SpojniceViewModel extends AndroidViewModel {
         }
         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
             if (myTurn) {
-                return "Klikni na preostali pojam levo, pa izaberi odgovor desno.";
+                return "Izaberi preostali pojam levo ili direktno odgovor desno.";
             }
             return "Protivnik povezuje preostale pojmove…";
         }
@@ -371,9 +396,15 @@ public class SpojniceViewModel extends AndroidViewModel {
             return rowIndex == currentLeftIndex;
         }
         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
-            return rowIndex == selectedRow;
+            return !connectedLeft.contains(rowIndex);
         }
         return false;
+    }
+
+    public boolean isFollowupRowRightEnabled(int rowIndex) {
+        return SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)
+                && canCurrentUserPlay()
+                && !connectedLeft.contains(rowIndex);
     }
 
     private void startRemotePhaseTimer(long phaseEndsAtMillis) {

@@ -3,6 +3,7 @@ package com.example.slagalica.ui.games;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -45,6 +46,7 @@ public class SpojniceFragment extends Fragment {
     private final View[] rowContainers = new View[ROW_COUNT];
     private final List<String>[] cachedRightItems = new List[ROW_COUNT];
     private boolean suppressSpinnerCallbacks;
+    private String lastRenderedPhase = "";
 
     public SpojniceFragment() {
         for (int i = 0; i < ROW_COUNT; i++) {
@@ -70,6 +72,12 @@ public class SpojniceFragment extends Fragment {
         for (int i = 0; i < ROW_COUNT; i++) {
             int rowIndex = i;
             leftLabels[i].setOnClickListener(v -> viewModel.selectFollowupRow(rowIndex));
+            rightSpinners[i].setOnTouchListener((v, event) -> {
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    viewModel.selectFollowupRow(rowIndex);
+                }
+                return false;
+            });
             rightSpinners[i].setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> parent, View itemView, int position, long id) {
@@ -136,6 +144,11 @@ public class SpojniceFragment extends Fragment {
     }
 
     private void renderState(@NonNull SpojniceUiState state) {
+        if (!state.getPhase().equals(lastRenderedPhase)) {
+            clearRightSpinnerCache();
+            lastRenderedPhase = state.getPhase();
+        }
+
         roundView.setText(getString(R.string.spojnice_round_value, state.getCurrentRound(), state.getTotalRounds()));
         timeView.setText(getString(R.string.spojnice_time_value, state.getSecondsLeft()));
         scoreP1View.setText(getString(R.string.spojnice_score_named, state.getPlayerOneLabel(), state.getPlayerOneScore()));
@@ -149,7 +162,7 @@ public class SpojniceFragment extends Fragment {
         backBtn.setVisibility(state.isGameOver() ? View.VISIBLE : View.GONE);
 
         List<String> leftTerms = state.getLeftTerms();
-        List<String> availableRightTerms = state.getAvailableRightTerms();
+        List<String> spinnerOptions = buildSpinnerOptions(state);
         boolean followupPhase = SpojniceRoomRepository.PHASE_FOLLOWUP.equals(state.getPhase());
 
         suppressSpinnerCallbacks = true;
@@ -158,20 +171,15 @@ public class SpojniceFragment extends Fragment {
                 String leftLabel = i < leftTerms.size() ? leftTerms.get(i) : "";
                 bindLeftLabel(i, leftLabel, state, followupPhase);
 
-                boolean rowRightEnabled = state.isRowSelectable(i);
-                rightSpinners[i].setEnabled(rowRightEnabled);
-
                 if (state.isRowConnected(i)) {
-                    bindRightSpinner(i, List.of("✓ Povezano"), false, 0);
-                } else if (rowRightEnabled && !availableRightTerms.isEmpty()) {
+                    configureRightSpinner(i, List.of("✓ Povezano"), false, 0);
+                } else if (shouldShowAnswerSpinner(state, i)) {
                     int selection = (i == state.getSelectedRow())
                             ? state.getSelectedRightIndex()
                             : SpojniceUiState.NO_SELECTION;
-                    bindRightSpinner(i, availableRightTerms, true, selection);
-                } else if (followupPhase && state.isFollowupPending(i)) {
-                    bindRightSpinner(i, List.of(getString(R.string.spojnice_pick_left_first)), false, 0);
+                    configureRightSpinner(i, spinnerOptions, true, selection);
                 } else {
-                    bindRightSpinner(i, List.of("—"), false, 0);
+                    configureRightSpinner(i, List.of("—"), false, 0);
                 }
 
                 rowContainers[i].setBackgroundColor(resolveRowColor(state, i, followupPhase));
@@ -179,6 +187,27 @@ public class SpojniceFragment extends Fragment {
         } finally {
             suppressSpinnerCallbacks = false;
         }
+    }
+
+    private boolean shouldShowAnswerSpinner(@NonNull SpojniceUiState state, int rowIndex) {
+        if (state.isRowConnected(rowIndex) || !state.isMyTurn()) {
+            return false;
+        }
+        if (state.isRowSelectable(rowIndex)) {
+            return !state.getAvailableRightTerms().isEmpty();
+        }
+        if (state.isFollowupRowRightEnabled(rowIndex)) {
+            return !state.getAvailableRightTerms().isEmpty();
+        }
+        return false;
+    }
+
+    @NonNull
+    private List<String> buildSpinnerOptions(@NonNull SpojniceUiState state) {
+        List<String> options = new ArrayList<>();
+        options.add(getString(R.string.spojnice_choose_answer));
+        options.addAll(state.getAvailableRightTerms());
+        return options;
     }
 
     private void bindLeftLabel(
@@ -197,12 +226,13 @@ public class SpojniceFragment extends Fragment {
         }
 
         if (followupPhase && state.isFollowupPending(rowIndex)) {
-            label.setText(leftLabel);
             label.setTypeface(Typeface.DEFAULT_BOLD);
             label.setClickable(state.isMyTurn());
             label.setAlpha(1f);
             if (state.isFollowupSelected(rowIndex)) {
                 label.setText("▶ " + leftLabel);
+            } else {
+                label.setText(leftLabel);
             }
             return;
         }
@@ -228,13 +258,26 @@ public class SpojniceFragment extends Fragment {
         if (followupPhase && state.isFollowupSelected(rowIndex)) {
             return ContextCompat.getColor(requireContext(), R.color.spojnice_followup_selected);
         }
-        if (followupPhase && state.isFollowupPending(rowIndex)) {
+        if (followupPhase && state.isFollowupPending(rowIndex) && state.isMyTurn()) {
             return ContextCompat.getColor(requireContext(), R.color.spojnice_followup_row);
         }
         if (state.isActiveRow(rowIndex)) {
             return ContextCompat.getColor(requireContext(), R.color.spojnice_active_row);
         }
         return ContextCompat.getColor(requireContext(), R.color.spojnice_inactive_row);
+    }
+
+    private void configureRightSpinner(
+            int rowIndex,
+            @NonNull List<String> items,
+            boolean enabled,
+            int selectionIndex
+    ) {
+        bindRightSpinner(rowIndex, items, enabled, selectionIndex);
+        Spinner spinner = rightSpinners[rowIndex];
+        spinner.setEnabled(enabled);
+        spinner.setClickable(enabled);
+        spinner.setAlpha(enabled ? 1f : 0.6f);
     }
 
     private void bindRightSpinner(
@@ -244,7 +287,6 @@ public class SpojniceFragment extends Fragment {
             int selectionIndex
     ) {
         if (sameItems(cachedRightItems[rowIndex], items)) {
-            rightSpinners[rowIndex].setEnabled(enabled);
             applySelection(rightSpinners[rowIndex], selectionIndex, items.size());
             return;
         }
@@ -270,12 +312,18 @@ public class SpojniceFragment extends Fragment {
     }
 
     private void applySelection(@NonNull Spinner spinner, int selectionIndex, int itemCount) {
-        if (selectionIndex < 0 || itemCount <= 0) {
+        if (itemCount <= 0) {
             return;
         }
-        int safeIndex = Math.min(selectionIndex, itemCount - 1);
+        int safeIndex = selectionIndex < 0 ? 0 : Math.min(selectionIndex, itemCount - 1);
         if (spinner.getSelectedItemPosition() != safeIndex) {
             spinner.setSelection(safeIndex);
+        }
+    }
+
+    private void clearRightSpinnerCache() {
+        for (int i = 0; i < ROW_COUNT; i++) {
+            cachedRightItems[i] = new ArrayList<>();
         }
     }
 

@@ -235,9 +235,16 @@ public final class SpojniceUiState {
             return rowIndex == currentLeftIndex;
         }
         if (PHASE_FOLLOWUP.equals(phase)) {
-            return rowIndex == selectedRow && !connectedLeftIndices.contains(rowIndex);
+            return !connectedLeftIndices.contains(rowIndex);
         }
         return false;
+    }
+
+    public boolean isFollowupRowRightEnabled(int rowIndex) {
+        return PHASE_FOLLOWUP.equals(phase)
+                && inputsEnabled
+                && myTurn
+                && !connectedLeftIndices.contains(rowIndex);
     }
 
     public boolean isFollowupPending(int rowIndex) {
