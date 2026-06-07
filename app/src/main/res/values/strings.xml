@@ -24,6 +24,8 @@
     <string name="association_column_c">C</string>
     <string name="association_column_d">D</string>
     <string name="final_solution">Konačno rešenje</string>
+    <string name="association_guess_column">Pogodi</string>
+    <string name="association_finish_turn">Završi potez</string>
     <string name="available_symbols">Dostupni znakovi</string>
     <string name="skocko_timer">00:30</string>
     <string name="associations_round_label">Runda: 1/2</string>

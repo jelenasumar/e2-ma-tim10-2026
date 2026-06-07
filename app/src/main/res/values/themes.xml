@@ -68,6 +68,17 @@
         <item name="android:textSize">14sp</item>
     </style>
 
+    <style name="AssociationGuessButton">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingStart">6dp</item>
+        <item name="android:paddingEnd">6dp</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+
     <style name="SkockoSymbolBox">
         <item name="android:layout_width">48dp</item>
         <item name="android:layout_height">48dp</item>

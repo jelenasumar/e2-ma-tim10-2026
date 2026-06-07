@@ -54,9 +54,15 @@
                 <TextView android:id="@+id/associationA3" style="@style/AssociationField" android:text="A3" />
                 <TextView android:id="@+id/associationA4" style="@style/AssociationField" android:text="A4" />
                 <EditText
+                    android:id="@+id/associationAAnswerInput"
                     style="@style/AssociationAnswer"
                     android:hint="@string/association_column_a"
                     android:inputType="text" />
+
+                <Button
+                    android:id="@+id/associationASubmitButton"
+                    style="@style/AssociationGuessButton"
+                    android:text="@string/association_guess_column" />
             </LinearLayout>
 
             <LinearLayout
@@ -68,9 +74,15 @@
                 <TextView android:id="@+id/associationB3" style="@style/AssociationField" android:text="B3" />
                 <TextView android:id="@+id/associationB4" style="@style/AssociationField" android:text="B4" />
                 <EditText
+                    android:id="@+id/associationBAnswerInput"
                     style="@style/AssociationAnswer"
                     android:hint="@string/association_column_b"
                     android:inputType="text" />
+
+                <Button
+                    android:id="@+id/associationBSubmitButton"
+                    style="@style/AssociationGuessButton"
+                    android:text="@string/association_guess_column" />
             </LinearLayout>
 
             <LinearLayout
@@ -82,9 +94,15 @@
                 <TextView android:id="@+id/associationC3" style="@style/AssociationField" android:text="C3" />
                 <TextView android:id="@+id/associationC4" style="@style/AssociationField" android:text="C4" />
                 <EditText
+                    android:id="@+id/associationCAnswerInput"
                     style="@style/AssociationAnswer"
                     android:hint="@string/association_column_c"
                     android:inputType="text" />
+
+                <Button
+                    android:id="@+id/associationCSubmitButton"
+                    style="@style/AssociationGuessButton"
+                    android:text="@string/association_guess_column" />
             </LinearLayout>
 
             <LinearLayout
@@ -96,9 +114,15 @@
                 <TextView android:id="@+id/associationD3" style="@style/AssociationField" android:text="D3" />
                 <TextView android:id="@+id/associationD4" style="@style/AssociationField" android:text="D4" />
                 <EditText
+                    android:id="@+id/associationDAnswerInput"
                     style="@style/AssociationAnswer"
                     android:hint="@string/association_column_d"
                     android:inputType="text" />
+
+                <Button
+                    android:id="@+id/associationDSubmitButton"
+                    style="@style/AssociationGuessButton"
+                    android:text="@string/association_guess_column" />
             </LinearLayout>
         </GridLayout>
 
