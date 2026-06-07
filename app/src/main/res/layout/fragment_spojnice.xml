@@ -112,12 +112,14 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
-            <Spinner
+            <TextView
                 android:id="@+id/spojniceLeft1"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:entries="@array/spojnice_left_items" />
+                android:padding="10dp"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="10dp"
@@ -137,12 +139,14 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
-            <Spinner
+            <TextView
                 android:id="@+id/spojniceLeft2"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:entries="@array/spojnice_left_items" />
+                android:padding="10dp"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="10dp"
@@ -162,12 +166,14 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
-            <Spinner
+            <TextView
                 android:id="@+id/spojniceLeft3"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:entries="@array/spojnice_left_items" />
+                android:padding="10dp"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="10dp"
@@ -187,12 +193,14 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
-            <Spinner
+            <TextView
                 android:id="@+id/spojniceLeft4"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:entries="@array/spojnice_left_items" />
+                android:padding="10dp"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="10dp"
@@ -212,12 +220,14 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
-            <Spinner
+            <TextView
                 android:id="@+id/spojniceLeft5"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:entries="@array/spojnice_left_items" />
+                android:padding="10dp"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="10dp"

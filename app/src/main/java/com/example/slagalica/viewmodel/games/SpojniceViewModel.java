@@ -1,16 +1,19 @@
 package com.example.slagalica.viewmodel.games;
 
+import android.app.Application;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.slagalica.data.repository.RoomSessionRepository;
 import com.example.slagalica.data.repository.SpojniceRoomRepository;
+import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.RoomSession;
 import com.example.slagalica.model.spojnice.SpojnicePuzzle;
 import com.example.slagalica.model.spojnice.SpojniceUiState;
@@ -22,10 +25,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 
-public class SpojniceViewModel extends GameViewModel {
+public class SpojniceViewModel extends AndroidViewModel {
 
     private static final int TOTAL_ROUNDS = 2;
     private static final int PAIRS_PER_ROUND = 5;
+    private static final int TOTAL_PAIRS_PER_GAME = TOTAL_ROUNDS * PAIRS_PER_ROUND;
     private static final long TIMER_INTERVAL_MS = 1_000L;
 
     private final MutableLiveData<SpojniceUiState> uiState = new MutableLiveData<>();
@@ -34,6 +38,7 @@ public class SpojniceViewModel extends GameViewModel {
     private final Random random = new Random();
     private final RoomSessionRepository roomRepository = new RoomSessionRepository();
     private final SpojniceRoomRepository spojniceRepository = new SpojniceRoomRepository();
+    private final UserProfileRepository profileRepository;
 
     private CountDownTimer phaseTimer;
     private ListenerRegistration roomListener;
@@ -55,11 +60,18 @@ public class SpojniceViewModel extends GameViewModel {
     private List<String> rightTerms = new ArrayList<>();
     private List<Integer> connectedLeft = new ArrayList<>();
     private List<Integer> attemptedLeft = new ArrayList<>();
+    private List<Integer> usedRightIndices = new ArrayList<>();
     private String criterion = "";
     private String playerOneLabel = "Igrač 1";
     private String playerTwoLabel = "Igrač 2";
     private boolean roundOver = false;
     private boolean gameOver = false;
+    private boolean statsRecorded = false;
+
+    public SpojniceViewModel(@NonNull Application application) {
+        super(application);
+        profileRepository = new UserProfileRepository(application);
+    }
 
     @NonNull
     public LiveData<SpojniceUiState> getUiState() {
@@ -86,12 +98,28 @@ public class SpojniceViewModel extends GameViewModel {
         );
     }
 
-    public void selectRightOption(int rowIndex, int rightIndex) {
-        if (!canCurrentUserPlay() || !isRowSelectable(rowIndex)) {
+    public void selectFollowupRow(int rowIndex) {
+        if (!SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase) || !canCurrentUserPlay()) {
+            return;
+        }
+        if (connectedLeft.contains(rowIndex)) {
             return;
         }
         selectedRow = rowIndex;
-        selectedRightIndex = rightIndex;
+        selectedRightIndex = SpojniceUiState.NO_SELECTION;
+        publishUiState(remainingSeconds());
+    }
+
+    public void selectRightOption(int rowIndex, int availableListIndex) {
+        if (!canCurrentUserPlay() || !isRowSelectable(rowIndex)) {
+            return;
+        }
+        List<Integer> available = buildAvailableRightIndices();
+        if (availableListIndex < 0 || availableListIndex >= available.size()) {
+            return;
+        }
+        selectedRow = rowIndex;
+        selectedRightIndex = available.get(availableListIndex);
         publishUiState(remainingSeconds());
     }
 
@@ -156,11 +184,13 @@ public class SpojniceViewModel extends GameViewModel {
         int newLeftIndex = intOrDefault(snapshot.get("currentLeftIndex"), 0);
         String newPhase = stringOrDefault(snapshot.getString("phase"), SpojniceRoomRepository.PHASE_ACTIVE);
         List<Integer> newConnected = intList(snapshot.get("connectedLeft"));
+        List<Integer> newUsedRight = intList(snapshot.get("usedRightIndices"));
 
         boolean phaseChanged = !newPhase.equals(phase);
         boolean leftAdvanced = newLeftIndex != currentLeftIndex;
         boolean roundChanged = newRound != currentRound;
         boolean connectionMade = newConnected.size() > connectedLeft.size();
+        boolean usedRightChanged = !newUsedRight.equals(usedRightIndices);
 
         currentRound = newRound;
         activePlayerNumber = intOrDefault(snapshot.get("activePlayerNumber"), currentRound);
@@ -175,6 +205,7 @@ public class SpojniceViewModel extends GameViewModel {
         rightTerms = stringList(snapshot.get("rightTerms"));
         connectedLeft = newConnected;
         attemptedLeft = intList(snapshot.get("attemptedLeft"));
+        usedRightIndices = newUsedRight;
         roundOver = SpojniceRoomRepository.PHASE_ROUND_OVER.equals(phase)
                 || SpojniceRoomRepository.PHASE_GAME_OVER.equals(phase);
         gameOver = SpojniceRoomRepository.PHASE_GAME_OVER.equals(phase);
@@ -182,16 +213,64 @@ public class SpojniceViewModel extends GameViewModel {
         playerOneLabel = stringOrDefault(snapshot.getString("playerOneUsername"), playerOneLabel);
         playerTwoLabel = stringOrDefault(snapshot.getString("playerTwoUsername"), playerTwoLabel);
 
-        if (phaseChanged || leftAdvanced || roundChanged || connectionMade) {
+        if (phaseChanged || leftAdvanced || roundChanged || connectionMade || usedRightChanged) {
             selectedRightIndex = SpojniceUiState.NO_SELECTION;
         }
         if (SpojniceRoomRepository.PHASE_ACTIVE.equals(phase)) {
             selectedRow = currentLeftIndex;
+        } else if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)
+                && (phaseChanged || !isFollowupRowValid(selectedRow))) {
+            selectedRow = firstUnconnectedRowIndex();
+        }
+
+        if (gameOver) {
+            recordStatsIfNeeded();
         }
 
         long phaseEndsAt = longOrZero(snapshot.get("phaseEndsAtMillis"));
         publishUiState(Math.max(0, (int) Math.ceil((phaseEndsAt - System.currentTimeMillis()) / 1000.0)));
         startRemotePhaseTimer(phaseEndsAt);
+    }
+
+    private void recordStatsIfNeeded() {
+        if (statsRecorded || roomSession == null) {
+            return;
+        }
+        statsRecorded = true;
+        int myScore = myUid.equals(roomSession.getHostUid()) ? playerOneScore : playerTwoScore;
+        int correctPairs = myScore / 2;
+        profileRepository.recordSpojniceGame(myScore, correctPairs, TOTAL_PAIRS_PER_GAME);
+    }
+
+    private boolean isFollowupRowValid(int rowIndex) {
+        return rowIndex >= 0 && rowIndex < PAIRS_PER_ROUND && !connectedLeft.contains(rowIndex);
+    }
+
+    private int firstUnconnectedRowIndex() {
+        for (int i = 0; i < PAIRS_PER_ROUND; i++) {
+            if (!connectedLeft.contains(i)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    @NonNull
+    private List<Integer> buildAvailableRightIndices() {
+        List<Integer> available = new ArrayList<>();
+        for (int i = 0; i < rightTerms.size(); i++) {
+            if (!usedRightIndices.contains(i)) {
+                available.add(i);
+            }
+        }
+        return available;
+    }
+
+    private int availableListIndexForSelection() {
+        if (selectedRightIndex < 0) {
+            return SpojniceUiState.NO_SELECTION;
+        }
+        return buildAvailableRightIndices().indexOf(selectedRightIndex);
     }
 
     private void publishUiState(int secondsLeft) {
@@ -210,6 +289,7 @@ public class SpojniceViewModel extends GameViewModel {
                 rightTerms,
                 connectedLeft,
                 attemptedLeft,
+                usedRightIndices,
                 currentLeftIndex,
                 displayActivePlayerNumber(),
                 myTurn,
@@ -219,7 +299,7 @@ public class SpojniceViewModel extends GameViewModel {
                 buildStatusMessage(myTurn),
                 phase,
                 selectedRow,
-                selectedRightIndex,
+                availableListIndexForSelection(),
                 canSubmit
         ));
     }
@@ -241,7 +321,7 @@ public class SpojniceViewModel extends GameViewModel {
         }
         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
             if (myTurn) {
-                return "Tvoj red — poveži preostale pojmove (2 boda po tačnoj spojnici).";
+                return "Klikni na preostali pojam levo, pa izaberi odgovor desno.";
             }
             return "Protivnik povezuje preostale pojmove…";
         }
@@ -291,7 +371,7 @@ public class SpojniceViewModel extends GameViewModel {
             return rowIndex == currentLeftIndex;
         }
         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
-            return true;
+            return rowIndex == selectedRow;
         }
         return false;
     }

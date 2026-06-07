@@ -272,6 +272,68 @@ public final class UserProfileRepository {
         }
     }
 
+    public void recordSpojniceGame(int gameScore, int correctPairs, int totalPairsInGame) {
+        if (!isRegisteredPlayer()) {
+            return;
+        }
+        UserProfile profile = preferences.loadProfile();
+        PlayerStatistics stats = profile.getStatistics();
+
+        int gamesPlayed = preferences.getSpojniceGamesPlayed();
+        float gamePercent = totalPairsInGame > 0
+                ? (correctPairs * 100f) / totalPairsInGame
+                : 0f;
+        float newAvg = gamesPlayed == 0
+                ? gameScore
+                : ((stats.getAvgScoreSpojnice() * gamesPlayed) + gameScore) / (gamesPlayed + 1f);
+        float newPercent = gamesPlayed == 0
+                ? gamePercent
+                : ((stats.getSpojniceLinkedPercent() * gamesPlayed) + gamePercent) / (gamesPlayed + 1f);
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                stats.getAvgScoreKoZnaZna(),
+                newAvg,
+                stats.getAvgScoreMojBroj(),
+                stats.getAvgScoreKorakPoKorak(),
+                stats.getAvgScoreAsocijacije(),
+                stats.getAvgScoreSkocko(),
+                stats.getKoZnaZnaHits(),
+                stats.getKoZnaZnaMisses(),
+                stats.getMojBrojCorrectPercent(),
+                stats.getKorakPoKorakStepPercents(),
+                stats.getAsocijacijeSolved(),
+                stats.getAsocijacijeUnsolved(),
+                stats.getSkockoComboPercent(),
+                newPercent,
+                stats.getTotalMatches(),
+                stats.getMatchesWinPercent(),
+                stats.getMatchesLossPercent()
+        );
+
+        UserProfile updatedProfile = new UserProfile(
+                profile.getUsername(),
+                profile.getEmail(),
+                profile.getAvatarUri(),
+                profile.getTokens(),
+                profile.getTotalStars(),
+                profile.getLeagueName(),
+                profile.getLeagueTierKey(),
+                profile.getRegion(),
+                profile.getInvitePayload(),
+                updatedStats
+        );
+
+        preferences.setSpojniceGamesPlayed(gamesPlayed + 1);
+        preferences.saveProfile(updatedProfile);
+
+        if (remote.isLoggedIn()) {
+            String uid = remote.getCurrentUid();
+            if (uid != null) {
+                remote.saveUserProfile(uid, updatedProfile, () -> { }, error -> { });
+            }
+        }
+    }
+
     @NonNull
     private UserProfile createDefaultProfile(
             @NonNull String username,

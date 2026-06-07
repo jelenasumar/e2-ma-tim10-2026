@@ -109,6 +109,7 @@ public final class SpojniceRoomRepository {
 
             List<Integer> connected = intList(snapshot.get("connectedLeft"));
             List<Integer> attempted = intList(snapshot.get("attemptedLeft"));
+            List<Integer> usedRight = intList(snapshot.get("usedRightIndices"));
             List<Integer> answers = intList(snapshot.get("answers"));
             int currentLeftIndex = intOrZero(snapshot.get("currentLeftIndex"));
 
@@ -134,6 +135,10 @@ public final class SpojniceRoomRepository {
                 attempted = new ArrayList<>(attempted);
                 attempted.add(leftIndex);
             }
+            if (!usedRight.contains(selectedRightIndex)) {
+                usedRight = new ArrayList<>(usedRight);
+                usedRight.add(selectedRightIndex);
+            }
             if (correct) {
                 connected = new ArrayList<>(connected);
                 connected.add(leftIndex);
@@ -147,6 +152,7 @@ public final class SpojniceRoomRepository {
             Map<String, Object> updates = new HashMap<>();
             updates.put("connectedLeft", connected);
             updates.put("attemptedLeft", attempted);
+            updates.put("usedRightIndices", usedRight);
             updates.put("playerOneScore", playerOneScore);
             updates.put("playerTwoScore", playerTwoScore);
 
@@ -320,6 +326,7 @@ public final class SpojniceRoomRepository {
         fields.put("answers", puzzleRound.getAnswers());
         fields.put("connectedLeft", new ArrayList<Integer>());
         fields.put("attemptedLeft", new ArrayList<Integer>());
+        fields.put("usedRightIndices", new ArrayList<Integer>());
         fields.put("currentLeftIndex", 0);
         return fields;
     }

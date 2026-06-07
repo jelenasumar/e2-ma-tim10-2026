@@ -23,6 +23,7 @@ public final class SpojniceUiState {
     private final List<String> rightTerms;
     private final List<Integer> connectedLeftIndices;
     private final List<Integer> attemptedLeftIndices;
+    private final List<Integer> usedRightIndices;
     private final int currentLeftIndex;
     private final int activePlayerNumber;
     private final boolean myTurn;
@@ -48,6 +49,7 @@ public final class SpojniceUiState {
             @NonNull List<String> rightTerms,
             @NonNull List<Integer> connectedLeftIndices,
             @NonNull List<Integer> attemptedLeftIndices,
+            @NonNull List<Integer> usedRightIndices,
             int currentLeftIndex,
             int activePlayerNumber,
             boolean myTurn,
@@ -72,6 +74,7 @@ public final class SpojniceUiState {
         this.rightTerms = new ArrayList<>(rightTerms);
         this.connectedLeftIndices = new ArrayList<>(connectedLeftIndices);
         this.attemptedLeftIndices = new ArrayList<>(attemptedLeftIndices);
+        this.usedRightIndices = new ArrayList<>(usedRightIndices);
         this.currentLeftIndex = currentLeftIndex;
         this.activePlayerNumber = activePlayerNumber;
         this.myTurn = myTurn;
@@ -140,6 +143,33 @@ public final class SpojniceUiState {
         return new ArrayList<>(attemptedLeftIndices);
     }
 
+    @NonNull
+    public List<Integer> getUsedRightIndices() {
+        return new ArrayList<>(usedRightIndices);
+    }
+
+    @NonNull
+    public List<Integer> getAvailableRightIndices() {
+        List<Integer> available = new ArrayList<>();
+        for (int i = 0; i < rightTerms.size(); i++) {
+            if (!usedRightIndices.contains(i)) {
+                available.add(i);
+            }
+        }
+        return available;
+    }
+
+    @NonNull
+    public List<String> getAvailableRightTerms() {
+        List<String> terms = new ArrayList<>();
+        for (int index : getAvailableRightIndices()) {
+            if (index >= 0 && index < rightTerms.size()) {
+                terms.add(rightTerms.get(index));
+            }
+        }
+        return terms;
+    }
+
     public int getCurrentLeftIndex() {
         return currentLeftIndex;
     }
@@ -205,8 +235,20 @@ public final class SpojniceUiState {
             return rowIndex == currentLeftIndex;
         }
         if (PHASE_FOLLOWUP.equals(phase)) {
-            return !connectedLeftIndices.contains(rowIndex);
+            return rowIndex == selectedRow && !connectedLeftIndices.contains(rowIndex);
         }
         return false;
+    }
+
+    public boolean isFollowupPending(int rowIndex) {
+        return PHASE_FOLLOWUP.equals(phase) && !connectedLeftIndices.contains(rowIndex);
+    }
+
+    public boolean isFollowupSelected(int rowIndex) {
+        return PHASE_FOLLOWUP.equals(phase) && rowIndex == selectedRow && isFollowupPending(rowIndex);
+    }
+
+    public boolean isActiveRow(int rowIndex) {
+        return PHASE_ACTIVE.equals(phase) && rowIndex == currentLeftIndex && !connectedLeftIndices.contains(rowIndex);
     }
 }

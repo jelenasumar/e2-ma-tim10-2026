@@ -1,6 +1,6 @@
 package com.example.slagalica.ui.games;
 
-import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,12 +20,12 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
+import com.example.slagalica.data.repository.SpojniceRoomRepository;
 import com.example.slagalica.model.spojnice.SpojniceUiState;
 import com.example.slagalica.viewmodel.games.SpojniceViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class SpojniceFragment extends Fragment {
 
@@ -40,11 +40,10 @@ public class SpojniceFragment extends Fragment {
     private TextView statusView;
     private Button submitBtn;
     private Button backBtn;
-    private final Spinner[] leftSpinners = new Spinner[ROW_COUNT];
+    private final TextView[] leftLabels = new TextView[ROW_COUNT];
     private final Spinner[] rightSpinners = new Spinner[ROW_COUNT];
     private final View[] rowContainers = new View[ROW_COUNT];
     private final List<String>[] cachedRightItems = new List[ROW_COUNT];
-    private final String[] cachedLeftItems = new String[ROW_COUNT];
     private boolean suppressSpinnerCallbacks;
 
     public SpojniceFragment() {
@@ -70,6 +69,7 @@ public class SpojniceFragment extends Fragment {
 
         for (int i = 0; i < ROW_COUNT; i++) {
             int rowIndex = i;
+            leftLabels[i].setOnClickListener(v -> viewModel.selectFollowupRow(rowIndex));
             rightSpinners[i].setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> parent, View itemView, int position, long id) {
@@ -116,11 +116,11 @@ public class SpojniceFragment extends Fragment {
         submitBtn = view.findViewById(R.id.spojniceSubmitButton);
         backBtn = view.findViewById(R.id.spojniceNextRoundButton);
 
-        leftSpinners[0] = view.findViewById(R.id.spojniceLeft1);
-        leftSpinners[1] = view.findViewById(R.id.spojniceLeft2);
-        leftSpinners[2] = view.findViewById(R.id.spojniceLeft3);
-        leftSpinners[3] = view.findViewById(R.id.spojniceLeft4);
-        leftSpinners[4] = view.findViewById(R.id.spojniceLeft5);
+        leftLabels[0] = view.findViewById(R.id.spojniceLeft1);
+        leftLabels[1] = view.findViewById(R.id.spojniceLeft2);
+        leftLabels[2] = view.findViewById(R.id.spojniceLeft3);
+        leftLabels[3] = view.findViewById(R.id.spojniceLeft4);
+        leftLabels[4] = view.findViewById(R.id.spojniceLeft5);
 
         rightSpinners[0] = view.findViewById(R.id.spojniceRight1);
         rightSpinners[1] = view.findViewById(R.id.spojniceRight2);
@@ -128,11 +128,11 @@ public class SpojniceFragment extends Fragment {
         rightSpinners[3] = view.findViewById(R.id.spojniceRight4);
         rightSpinners[4] = view.findViewById(R.id.spojniceRight5);
 
-        rowContainers[0] = (View) leftSpinners[0].getParent();
-        rowContainers[1] = (View) leftSpinners[1].getParent();
-        rowContainers[2] = (View) leftSpinners[2].getParent();
-        rowContainers[3] = (View) leftSpinners[3].getParent();
-        rowContainers[4] = (View) leftSpinners[4].getParent();
+        rowContainers[0] = (View) leftLabels[0].getParent();
+        rowContainers[1] = (View) leftLabels[1].getParent();
+        rowContainers[2] = (View) leftLabels[2].getParent();
+        rowContainers[3] = (View) leftLabels[3].getParent();
+        rowContainers[4] = (View) leftLabels[4].getParent();
     }
 
     private void renderState(@NonNull SpojniceUiState state) {
@@ -149,47 +149,92 @@ public class SpojniceFragment extends Fragment {
         backBtn.setVisibility(state.isGameOver() ? View.VISIBLE : View.GONE);
 
         List<String> leftTerms = state.getLeftTerms();
-        List<String> rightTerms = state.getRightTerms();
+        List<String> availableRightTerms = state.getAvailableRightTerms();
+        boolean followupPhase = SpojniceRoomRepository.PHASE_FOLLOWUP.equals(state.getPhase());
+
         suppressSpinnerCallbacks = true;
         try {
             for (int i = 0; i < ROW_COUNT; i++) {
                 String leftLabel = i < leftTerms.size() ? leftTerms.get(i) : "";
-                bindLeftSpinner(i, leftLabel);
+                bindLeftLabel(i, leftLabel, state, followupPhase);
 
-                boolean rowEnabled = state.isRowSelectable(i);
-                rightSpinners[i].setEnabled(rowEnabled);
+                boolean rowRightEnabled = state.isRowSelectable(i);
+                rightSpinners[i].setEnabled(rowRightEnabled);
 
                 if (state.isRowConnected(i)) {
                     bindRightSpinner(i, List.of("✓ Povezano"), false, 0);
-                } else if (rowEnabled && !rightTerms.isEmpty()) {
+                } else if (rowRightEnabled && !availableRightTerms.isEmpty()) {
                     int selection = (i == state.getSelectedRow())
                             ? state.getSelectedRightIndex()
                             : SpojniceUiState.NO_SELECTION;
-                    bindRightSpinner(i, rightTerms, true, selection);
+                    bindRightSpinner(i, availableRightTerms, true, selection);
+                } else if (followupPhase && state.isFollowupPending(i)) {
+                    bindRightSpinner(i, List.of(getString(R.string.spojnice_pick_left_first)), false, 0);
                 } else {
                     bindRightSpinner(i, List.of("—"), false, 0);
                 }
 
-                int highlightColor = Color.TRANSPARENT;
-                if (state.isRowConnected(i)) {
-                    highlightColor = Color.parseColor("#E8F5E9");
-                } else if (rowEnabled) {
-                    highlightColor = ContextCompat.getColor(requireContext(), R.color.spojnice_active_row);
-                }
-                rowContainers[i].setBackgroundColor(highlightColor);
+                rowContainers[i].setBackgroundColor(resolveRowColor(state, i, followupPhase));
             }
         } finally {
             suppressSpinnerCallbacks = false;
         }
     }
 
-    private void bindLeftSpinner(int rowIndex, @NonNull String leftLabel) {
-        if (Objects.equals(cachedLeftItems[rowIndex], leftLabel)) {
-            leftSpinners[rowIndex].setEnabled(false);
+    private void bindLeftLabel(
+            int rowIndex,
+            @NonNull String leftLabel,
+            @NonNull SpojniceUiState state,
+            boolean followupPhase
+    ) {
+        TextView label = leftLabels[rowIndex];
+        if (state.isRowConnected(rowIndex)) {
+            label.setText("✓ " + leftLabel);
+            label.setTypeface(Typeface.DEFAULT);
+            label.setClickable(false);
+            label.setAlpha(1f);
             return;
         }
-        cachedLeftItems[rowIndex] = leftLabel;
-        setSpinnerAdapter(leftSpinners[rowIndex], List.of(leftLabel), false, 0);
+
+        if (followupPhase && state.isFollowupPending(rowIndex)) {
+            label.setText(leftLabel);
+            label.setTypeface(Typeface.DEFAULT_BOLD);
+            label.setClickable(state.isMyTurn());
+            label.setAlpha(1f);
+            if (state.isFollowupSelected(rowIndex)) {
+                label.setText("▶ " + leftLabel);
+            }
+            return;
+        }
+
+        if (state.isActiveRow(rowIndex)) {
+            label.setText("▶ " + leftLabel);
+            label.setTypeface(Typeface.DEFAULT_BOLD);
+            label.setClickable(false);
+            label.setAlpha(1f);
+            return;
+        }
+
+        label.setText(leftLabel);
+        label.setTypeface(Typeface.DEFAULT);
+        label.setClickable(false);
+        label.setAlpha(0.85f);
+    }
+
+    private int resolveRowColor(@NonNull SpojniceUiState state, int rowIndex, boolean followupPhase) {
+        if (state.isRowConnected(rowIndex)) {
+            return ContextCompat.getColor(requireContext(), R.color.spojnice_connected_row);
+        }
+        if (followupPhase && state.isFollowupSelected(rowIndex)) {
+            return ContextCompat.getColor(requireContext(), R.color.spojnice_followup_selected);
+        }
+        if (followupPhase && state.isFollowupPending(rowIndex)) {
+            return ContextCompat.getColor(requireContext(), R.color.spojnice_followup_row);
+        }
+        if (state.isActiveRow(rowIndex)) {
+            return ContextCompat.getColor(requireContext(), R.color.spojnice_active_row);
+        }
+        return ContextCompat.getColor(requireContext(), R.color.spojnice_inactive_row);
     }
 
     private void bindRightSpinner(
