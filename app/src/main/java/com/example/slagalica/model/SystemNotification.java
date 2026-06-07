@@ -148,6 +148,30 @@ public final class SystemNotification {
 
     @NonNull
     public SystemNotification markRead() {
+        return withRead(true);
+    }
+
+    @NonNull
+    public SystemNotification withRead(boolean read) {
+        return new SystemNotification(
+                id,
+                category,
+                categoryLabel,
+                title,
+                message,
+                dateLabel,
+                read,
+                action,
+                actionLabel,
+                inviteId,
+                roomId,
+                actionHandled,
+                actionResult
+        );
+    }
+
+    @NonNull
+    public SystemNotification withActionHandled(@NonNull String actionResult) {
         return new SystemNotification(
                 id,
                 category,
@@ -160,7 +184,7 @@ public final class SystemNotification {
                 actionLabel,
                 inviteId,
                 roomId,
-                actionHandled,
+                true,
                 actionResult
         );
     }

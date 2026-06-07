@@ -238,8 +238,7 @@ public class NotificationsFragment extends Fragment {
             @NonNull LinearLayout card,
             @NonNull SystemNotification notification
     ) {
-        if (!notification.hasPendingAction()
-                || notification.getAction() != NotificationAction.ACCEPT_INVITE) {
+        if (!shouldShowActionButton(notification)) {
             return;
         }
 
@@ -255,14 +254,16 @@ public class NotificationsFragment extends Fragment {
         });
         actions.addView(actionButton);
 
-        Button declineButton = createSmallActionButton(getString(R.string.decline_invite));
-        declineButton.setOnClickListener(v -> viewModel.declineInvite(notification));
-        LinearLayout.LayoutParams declineParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        declineParams.setMargins(dpToPx(8), 0, 0, 0);
-        actions.addView(declineButton, declineParams);
+        if (notification.getAction() == NotificationAction.ACCEPT_INVITE) {
+            Button declineButton = createSmallActionButton(getString(R.string.decline_invite));
+            declineButton.setOnClickListener(v -> viewModel.declineInvite(notification));
+            LinearLayout.LayoutParams declineParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            declineParams.setMargins(dpToPx(8), 0, 0, 0);
+            actions.addView(declineButton, declineParams);
+        }
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -270,6 +271,16 @@ public class NotificationsFragment extends Fragment {
         );
         params.setMargins(0, dpToPx(8), 0, 0);
         card.addView(actions, params);
+    }
+
+    private boolean shouldShowActionButton(@NonNull SystemNotification notification) {
+        if (!notification.hasPendingAction()) {
+            return false;
+        }
+        if (notification.getAction() == NotificationAction.ACCEPT_INVITE) {
+            return true;
+        }
+        return notification.getAction() == NotificationAction.OPEN_ROOM && !notification.isRead();
     }
 
     @NonNull

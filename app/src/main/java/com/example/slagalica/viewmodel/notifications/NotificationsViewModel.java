@@ -26,7 +26,7 @@ public class NotificationsViewModel extends AndroidViewModel {
     private final MutableLiveData<List<SystemNotification>> visibleNotifications = new MutableLiveData<>();
     private final MutableLiveData<NotificationAction> selectedAction = new MutableLiveData<>();
     private final MutableLiveData<String> message = new MutableLiveData<>();
-    private final MutableLiveData<String> roomNavigation = new MutableLiveData<>();
+    private final SingleLiveEvent<String> roomNavigation = new SingleLiveEvent<>();
     private final SingleLiveEvent<String> notificationPageTitle = new SingleLiveEvent<>();
 
     private List<SystemNotification> allNotifications = new ArrayList<>();
@@ -79,10 +79,10 @@ public class NotificationsViewModel extends AndroidViewModel {
     public void markAsRead(@NonNull String notificationId) {
         inviteRepository.markNotificationAsRead(
                 notificationId,
-                this::refreshNotifications,
+                () -> updateLocalReadState(notificationId, true),
                 error -> {
                     repository.markAsRead(notificationId);
-                    refreshNotifications();
+                    updateLocalReadState(notificationId, true);
                 }
         );
     }
@@ -90,10 +90,10 @@ public class NotificationsViewModel extends AndroidViewModel {
     public void markAsUnread(@NonNull String notificationId) {
         inviteRepository.markNotificationAsUnread(
                 notificationId,
-                this::refreshNotifications,
+                () -> updateLocalReadState(notificationId, false),
                 error -> {
                     repository.markAsUnread(notificationId);
-                    refreshNotifications();
+                    updateLocalReadState(notificationId, false);
                 }
         );
     }
@@ -107,6 +107,7 @@ public class NotificationsViewModel extends AndroidViewModel {
             inviteRepository.acceptInvite(
                     notification,
                     roomId -> {
+                        updateLocalActionHandled(notification.getId(), "Prihvatili ste poziv");
                         message.setValue("Poziv je prihvacen.");
                         roomNavigation.setValue(roomId);
                     },
@@ -131,10 +132,13 @@ public class NotificationsViewModel extends AndroidViewModel {
     public void declineInvite(@NonNull SystemNotification notification) {
         inviteRepository.declineInvite(
                 notification,
-                () -> message.setValue("Odbili ste poziv."),
+                () -> {
+                    updateLocalActionHandled(notification.getId(), "Odbili ste poziv");
+                    message.setValue("Odbili ste poziv.");
+                },
                 error -> {
                     repository.markActionHandled(notification.getId(), "Odbili ste poziv");
-                    refreshNotifications();
+                    updateLocalActionHandled(notification.getId(), "Odbili ste poziv");
                     message.setValue("Odbili ste poziv.");
                 }
         );
@@ -187,10 +191,13 @@ public class NotificationsViewModel extends AndroidViewModel {
         inviteRepository.markNotificationActionHandled(
                 notification.getId(),
                 "Otvorili ste sobu",
-                () -> roomNavigation.setValue(roomId),
+                () -> {
+                    updateLocalActionHandled(notification.getId(), "Otvorili ste sobu");
+                    roomNavigation.setValue(roomId);
+                },
                 error -> {
                     repository.markActionHandled(notification.getId(), "Otvorili ste sobu");
-                    refreshNotifications();
+                    updateLocalActionHandled(notification.getId(), "Otvorili ste sobu");
                     roomNavigation.setValue(roomId);
                 }
         );
@@ -200,10 +207,13 @@ public class NotificationsViewModel extends AndroidViewModel {
         inviteRepository.markNotificationActionHandled(
                 notification.getId(),
                 "Otvorili ste sobu",
-                () -> message.setValue("Otvorili ste sobu"),
+                () -> {
+                    updateLocalActionHandled(notification.getId(), "Otvorili ste sobu");
+                    message.setValue("Otvorili ste sobu");
+                },
                 error -> {
                     repository.markActionHandled(notification.getId(), "Otvorili ste sobu");
-                    refreshNotifications();
+                    updateLocalActionHandled(notification.getId(), "Otvorili ste sobu");
                     message.setValue("Otvorili ste sobu");
                 }
         );
@@ -240,10 +250,7 @@ public class NotificationsViewModel extends AndroidViewModel {
                     allNotifications = notifications;
                     applyFilters();
                 },
-                error -> {
-                    message.setValue(error);
-                    refreshNotifications();
-                }
+                error -> message.setValue(error)
         );
 
         if (notificationsListener == null) {
@@ -252,7 +259,36 @@ public class NotificationsViewModel extends AndroidViewModel {
     }
 
     private void refreshNotifications() {
-        allNotifications = repository.loadNotifications();
+        allNotifications = new ArrayList<>();
+        applyFilters();
+    }
+
+    private void updateLocalReadState(@NonNull String notificationId, boolean read) {
+        List<SystemNotification> updated = new ArrayList<>();
+        for (SystemNotification notification : allNotifications) {
+            if (notification.getId().equals(notificationId)) {
+                updated.add(notification.withRead(read));
+            } else {
+                updated.add(notification);
+            }
+        }
+        allNotifications = updated;
+        applyFilters();
+    }
+
+    private void updateLocalActionHandled(
+            @NonNull String notificationId,
+            @NonNull String actionResult
+    ) {
+        List<SystemNotification> updated = new ArrayList<>();
+        for (SystemNotification notification : allNotifications) {
+            if (notification.getId().equals(notificationId)) {
+                updated.add(notification.withActionHandled(actionResult));
+            } else {
+                updated.add(notification);
+            }
+        }
+        allNotifications = updated;
         applyFilters();
     }
 
