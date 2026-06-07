@@ -9,6 +9,7 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.slagalica.data.repository.AssociationPuzzlesRepository;
 import com.example.slagalica.data.repository.AssociationsRoomRepository;
 import com.example.slagalica.data.repository.RoomSessionRepository;
 import com.example.slagalica.model.GameHeaderPlayerState;
@@ -42,6 +43,7 @@ public class AssociationsViewModel extends GameViewModel {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Random random = new Random();
     private final RoomSessionRepository roomRepository = new RoomSessionRepository();
+    private final AssociationPuzzlesRepository puzzleRepository = new AssociationPuzzlesRepository();
     private final AssociationsRoomRepository associationsRoomRepository = new AssociationsRoomRepository();
 
     private CountDownTimer roundTimer;
@@ -67,6 +69,7 @@ public class AssociationsViewModel extends GameViewModel {
     private boolean roundOver = false;
     private boolean gameOver = false;
     private boolean roomMode = false;
+    private boolean roomInitializationRequested = false;
 
     @NonNull
     public LiveData<AssociationsGameState> getGameState() {
@@ -257,10 +260,34 @@ public class AssociationsViewModel extends GameViewModel {
                     errorMessage::setValue
             );
         }
-        associationsRoomRepository.initializeIfNeeded(
-                room,
-                puzzleForRound(1),
-                errorMessage::setValue
+        initializeRoomGameIfNeeded(room);
+    }
+
+    private void initializeRoomGameIfNeeded(@NonNull RoomSession room) {
+        if (roomInitializationRequested) {
+            return;
+        }
+        roomInitializationRequested = true;
+        puzzleRepository.loadPuzzles(
+                puzzles -> {
+                    if (!puzzles.isEmpty()) {
+                        roundPuzzles = new ArrayList<>(puzzles);
+                        Collections.shuffle(roundPuzzles, random);
+                    }
+                    associationsRoomRepository.initializeIfNeeded(
+                            room,
+                            puzzleForRound(1),
+                            errorMessage::setValue
+                    );
+                },
+                error -> {
+                    errorMessage.setValue(error);
+                    associationsRoomRepository.initializeIfNeeded(
+                            room,
+                            puzzleForRound(1),
+                            errorMessage::setValue
+                    );
+                }
         );
     }
 
