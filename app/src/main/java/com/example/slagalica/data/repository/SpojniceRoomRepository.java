@@ -135,13 +135,13 @@ public final class SpojniceRoomRepository {
                 attempted = new ArrayList<>(attempted);
                 attempted.add(leftIndex);
             }
-            if (!usedRight.contains(selectedRightIndex)) {
-                usedRight = new ArrayList<>(usedRight);
-                usedRight.add(selectedRightIndex);
-            }
             if (correct) {
                 connected = new ArrayList<>(connected);
                 connected.add(leftIndex);
+                if (!usedRight.contains(selectedRightIndex)) {
+                    usedRight = new ArrayList<>(usedRight);
+                    usedRight.add(selectedRightIndex);
+                }
                 if (myUid.equals(playerOneUid)) {
                     playerOneScore += POINTS_PER_PAIR;
                 } else if (myUid.equals(playerTwoUid)) {

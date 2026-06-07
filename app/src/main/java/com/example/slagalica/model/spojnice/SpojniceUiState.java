@@ -8,6 +8,7 @@ import java.util.List;
 public final class SpojniceUiState {
 
     public static final int NO_SELECTION = -1;
+    public static final int NO_ROW = -1;
     public static final String PHASE_ACTIVE = "ACTIVE";
     public static final String PHASE_FOLLOWUP = "FOLLOWUP";
 
@@ -235,16 +236,26 @@ public final class SpojniceUiState {
             return rowIndex == currentLeftIndex;
         }
         if (PHASE_FOLLOWUP.equals(phase)) {
-            return !connectedLeftIndices.contains(rowIndex);
+            return rowIndex == selectedRow && selectedRow >= 0;
         }
         return false;
     }
 
-    public boolean isFollowupRowRightEnabled(int rowIndex) {
+    public boolean isFollowupLeftSelectable(int rowIndex) {
         return PHASE_FOLLOWUP.equals(phase)
                 && inputsEnabled
                 && myTurn
                 && !connectedLeftIndices.contains(rowIndex);
+    }
+
+    public boolean isFollowupRightSpinnerEnabled(int rowIndex) {
+        return isFollowupLeftSelectable(rowIndex)
+                && rowIndex == selectedRow
+                && selectedRow >= 0;
+    }
+
+    public boolean hasFollowupLeftSelected() {
+        return PHASE_FOLLOWUP.equals(phase) && selectedRow >= 0;
     }
 
     public boolean isFollowupPending(int rowIndex) {
