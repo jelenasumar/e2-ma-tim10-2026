@@ -105,14 +105,14 @@ public class SpojniceViewModel extends GameViewModel {
         if (!isRowSelectable(leftIndex)) {
             return;
         }
+        final int submittedRightIndex = selectedRightIndex;
         spojniceRepository.submitPair(
                 roomId,
                 myUid,
                 leftIndex,
-                selectedRightIndex,
+                submittedRightIndex,
                 errorMessage::setValue
         );
-        selectedRightIndex = SpojniceUiState.NO_SELECTION;
     }
 
     @Override
@@ -152,18 +152,28 @@ public class SpojniceViewModel extends GameViewModel {
     }
 
     private void onRemoteStateChanged(@NonNull DocumentSnapshot snapshot) {
-        currentRound = intOrDefault(snapshot.get("currentRound"), 1);
+        int newRound = intOrDefault(snapshot.get("currentRound"), 1);
+        int newLeftIndex = intOrDefault(snapshot.get("currentLeftIndex"), 0);
+        String newPhase = stringOrDefault(snapshot.getString("phase"), SpojniceRoomRepository.PHASE_ACTIVE);
+        List<Integer> newConnected = intList(snapshot.get("connectedLeft"));
+
+        boolean phaseChanged = !newPhase.equals(phase);
+        boolean leftAdvanced = newLeftIndex != currentLeftIndex;
+        boolean roundChanged = newRound != currentRound;
+        boolean connectionMade = newConnected.size() > connectedLeft.size();
+
+        currentRound = newRound;
         activePlayerNumber = intOrDefault(snapshot.get("activePlayerNumber"), currentRound);
         playerOneScore = intOrDefault(snapshot.get("playerOneScore"), 0);
         playerTwoScore = intOrDefault(snapshot.get("playerTwoScore"), 0);
         activePlayerUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
         followupPlayerUid = stringOrEmpty(snapshot.getString("followupPlayerUid"));
-        phase = stringOrDefault(snapshot.getString("phase"), SpojniceRoomRepository.PHASE_ACTIVE);
-        currentLeftIndex = intOrDefault(snapshot.get("currentLeftIndex"), 0);
+        phase = newPhase;
+        currentLeftIndex = newLeftIndex;
         criterion = stringOrDefault(snapshot.getString("criterion"), "");
         leftTerms = stringList(snapshot.get("leftTerms"));
         rightTerms = stringList(snapshot.get("rightTerms"));
-        connectedLeft = intList(snapshot.get("connectedLeft"));
+        connectedLeft = newConnected;
         attemptedLeft = intList(snapshot.get("attemptedLeft"));
         roundOver = SpojniceRoomRepository.PHASE_ROUND_OVER.equals(phase)
                 || SpojniceRoomRepository.PHASE_GAME_OVER.equals(phase);
@@ -172,10 +182,12 @@ public class SpojniceViewModel extends GameViewModel {
         playerOneLabel = stringOrDefault(snapshot.getString("playerOneUsername"), playerOneLabel);
         playerTwoLabel = stringOrDefault(snapshot.getString("playerTwoUsername"), playerTwoLabel);
 
+        if (phaseChanged || leftAdvanced || roundChanged || connectionMade) {
+            selectedRightIndex = SpojniceUiState.NO_SELECTION;
+        }
         if (SpojniceRoomRepository.PHASE_ACTIVE.equals(phase)) {
             selectedRow = currentLeftIndex;
         }
-        selectedRightIndex = SpojniceUiState.NO_SELECTION;
 
         long phaseEndsAt = longOrZero(snapshot.get("phaseEndsAtMillis"));
         publishUiState(Math.max(0, (int) Math.ceil((phaseEndsAt - System.currentTimeMillis()) / 1000.0)));
@@ -184,6 +196,7 @@ public class SpojniceViewModel extends GameViewModel {
 
     private void publishUiState(int secondsLeft) {
         boolean myTurn = canCurrentUserPlay();
+        boolean canSubmit = myTurn && !roundOver && !gameOver && selectedRightIndex >= 0;
         uiState.setValue(new SpojniceUiState(
                 currentRound,
                 TOTAL_ROUNDS,
@@ -204,7 +217,10 @@ public class SpojniceViewModel extends GameViewModel {
                 gameOver,
                 roundOver,
                 buildStatusMessage(myTurn),
-                phase
+                phase,
+                selectedRow,
+                selectedRightIndex,
+                canSubmit
         ));
     }
 

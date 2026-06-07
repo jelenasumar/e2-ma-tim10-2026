@@ -25,6 +25,7 @@ import com.example.slagalica.viewmodel.games.SpojniceViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class SpojniceFragment extends Fragment {
 
@@ -42,9 +43,14 @@ public class SpojniceFragment extends Fragment {
     private final Spinner[] leftSpinners = new Spinner[ROW_COUNT];
     private final Spinner[] rightSpinners = new Spinner[ROW_COUNT];
     private final View[] rowContainers = new View[ROW_COUNT];
+    private final List<String>[] cachedRightItems = new List[ROW_COUNT];
+    private final String[] cachedLeftItems = new String[ROW_COUNT];
     private boolean suppressSpinnerCallbacks;
 
     public SpojniceFragment() {
+        for (int i = 0; i < ROW_COUNT; i++) {
+            cachedRightItems[i] = new ArrayList<>();
+        }
     }
 
     @Override
@@ -122,8 +128,7 @@ public class SpojniceFragment extends Fragment {
         rightSpinners[3] = view.findViewById(R.id.spojniceRight4);
         rightSpinners[4] = view.findViewById(R.id.spojniceRight5);
 
-        View root = (View) leftSpinners[0].getParent();
-        rowContainers[0] = root;
+        rowContainers[0] = (View) leftSpinners[0].getParent();
         rowContainers[1] = (View) leftSpinners[1].getParent();
         rowContainers[2] = (View) leftSpinners[2].getParent();
         rowContainers[3] = (View) leftSpinners[3].getParent();
@@ -139,41 +144,75 @@ public class SpojniceFragment extends Fragment {
         statusView.setText(state.getStatusMessage());
         statusView.setVisibility(state.getStatusMessage().isEmpty() ? View.GONE : View.VISIBLE);
 
-        submitBtn.setEnabled(state.isInputsEnabled());
+        submitBtn.setEnabled(state.isCanSubmit());
         submitBtn.setVisibility(state.isGameOver() ? View.GONE : View.VISIBLE);
         backBtn.setVisibility(state.isGameOver() ? View.VISIBLE : View.GONE);
 
         List<String> leftTerms = state.getLeftTerms();
         List<String> rightTerms = state.getRightTerms();
         suppressSpinnerCallbacks = true;
-        for (int i = 0; i < ROW_COUNT; i++) {
-            String leftLabel = i < leftTerms.size() ? leftTerms.get(i) : "";
-            setSpinnerItems(leftSpinners[i], List.of(leftLabel), false);
+        try {
+            for (int i = 0; i < ROW_COUNT; i++) {
+                String leftLabel = i < leftTerms.size() ? leftTerms.get(i) : "";
+                bindLeftSpinner(i, leftLabel);
 
-            boolean rowEnabled = state.isRowSelectable(i);
-            rightSpinners[i].setEnabled(rowEnabled);
-            leftSpinners[i].setEnabled(false);
+                boolean rowEnabled = state.isRowSelectable(i);
+                rightSpinners[i].setEnabled(rowEnabled);
 
-            if (rowEnabled && !rightTerms.isEmpty()) {
-                setSpinnerItems(rightSpinners[i], rightTerms, true);
-            } else if (state.isRowConnected(i)) {
-                setSpinnerItems(rightSpinners[i], List.of("✓ Povezano"), false);
-            } else {
-                setSpinnerItems(rightSpinners[i], List.of("—"), false);
+                if (state.isRowConnected(i)) {
+                    bindRightSpinner(i, List.of("✓ Povezano"), false, 0);
+                } else if (rowEnabled && !rightTerms.isEmpty()) {
+                    int selection = (i == state.getSelectedRow())
+                            ? state.getSelectedRightIndex()
+                            : SpojniceUiState.NO_SELECTION;
+                    bindRightSpinner(i, rightTerms, true, selection);
+                } else {
+                    bindRightSpinner(i, List.of("—"), false, 0);
+                }
+
+                int highlightColor = Color.TRANSPARENT;
+                if (state.isRowConnected(i)) {
+                    highlightColor = Color.parseColor("#E8F5E9");
+                } else if (rowEnabled) {
+                    highlightColor = ContextCompat.getColor(requireContext(), R.color.spojnice_active_row);
+                }
+                rowContainers[i].setBackgroundColor(highlightColor);
             }
-
-            int highlightColor = Color.TRANSPARENT;
-            if (state.isRowConnected(i)) {
-                highlightColor = Color.parseColor("#E8F5E9");
-            } else if (rowEnabled) {
-                highlightColor = ContextCompat.getColor(requireContext(), R.color.spojnice_active_row);
-            }
-            rowContainers[i].setBackgroundColor(highlightColor);
+        } finally {
+            suppressSpinnerCallbacks = false;
         }
-        suppressSpinnerCallbacks = false;
     }
 
-    private void setSpinnerItems(@NonNull Spinner spinner, @NonNull List<String> items, boolean enabled) {
+    private void bindLeftSpinner(int rowIndex, @NonNull String leftLabel) {
+        if (Objects.equals(cachedLeftItems[rowIndex], leftLabel)) {
+            leftSpinners[rowIndex].setEnabled(false);
+            return;
+        }
+        cachedLeftItems[rowIndex] = leftLabel;
+        setSpinnerAdapter(leftSpinners[rowIndex], List.of(leftLabel), false, 0);
+    }
+
+    private void bindRightSpinner(
+            int rowIndex,
+            @NonNull List<String> items,
+            boolean enabled,
+            int selectionIndex
+    ) {
+        if (sameItems(cachedRightItems[rowIndex], items)) {
+            rightSpinners[rowIndex].setEnabled(enabled);
+            applySelection(rightSpinners[rowIndex], selectionIndex, items.size());
+            return;
+        }
+        cachedRightItems[rowIndex] = new ArrayList<>(items);
+        setSpinnerAdapter(rightSpinners[rowIndex], items, enabled, selectionIndex);
+    }
+
+    private void setSpinnerAdapter(
+            @NonNull Spinner spinner,
+            @NonNull List<String> items,
+            boolean enabled,
+            int selectionIndex
+    ) {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_spinner_item,
@@ -182,5 +221,20 @@ public class SpojniceFragment extends Fragment {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
         spinner.setEnabled(enabled);
+        applySelection(spinner, selectionIndex, items.size());
+    }
+
+    private void applySelection(@NonNull Spinner spinner, int selectionIndex, int itemCount) {
+        if (selectionIndex < 0 || itemCount <= 0) {
+            return;
+        }
+        int safeIndex = Math.min(selectionIndex, itemCount - 1);
+        if (spinner.getSelectedItemPosition() != safeIndex) {
+            spinner.setSelection(safeIndex);
+        }
+    }
+
+    private static boolean sameItems(@NonNull List<String> left, @NonNull List<String> right) {
+        return left.size() == right.size() && left.equals(right);
     }
 }

@@ -31,6 +31,9 @@ public final class SpojniceUiState {
     private final boolean roundOver;
     private final String statusMessage;
     private final String phase;
+    private final int selectedRow;
+    private final int selectedRightIndex;
+    private final boolean canSubmit;
 
     public SpojniceUiState(
             int currentRound,
@@ -52,7 +55,10 @@ public final class SpojniceUiState {
             boolean gameOver,
             boolean roundOver,
             @NonNull String statusMessage,
-            @NonNull String phase
+            @NonNull String phase,
+            int selectedRow,
+            int selectedRightIndex,
+            boolean canSubmit
     ) {
         this.currentRound = currentRound;
         this.totalRounds = totalRounds;
@@ -74,6 +80,9 @@ public final class SpojniceUiState {
         this.roundOver = roundOver;
         this.statusMessage = statusMessage;
         this.phase = phase;
+        this.selectedRow = selectedRow;
+        this.selectedRightIndex = selectedRightIndex;
+        this.canSubmit = canSubmit;
     }
 
     public int getCurrentRound() {
@@ -163,6 +172,18 @@ public final class SpojniceUiState {
     @NonNull
     public String getPhase() {
         return phase;
+    }
+
+    public int getSelectedRow() {
+        return selectedRow;
+    }
+
+    public int getSelectedRightIndex() {
+        return selectedRightIndex;
+    }
+
+    public boolean isCanSubmit() {
+        return canSubmit;
     }
 
     public boolean isRowConnected(int rowIndex) {
