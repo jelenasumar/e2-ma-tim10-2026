@@ -24,6 +24,8 @@
     <string name="association_column_c">C</string>
     <string name="association_column_d">D</string>
     <string name="final_solution">Konačno rešenje</string>
+    <string name="association_guess_column">Pogodi</string>
+    <string name="association_finish_turn">Završi potez</string>
     <string name="available_symbols">Dostupni znakovi</string>
     <string name="skocko_timer">00:30</string>
     <string name="associations_round_label">Runda: 1/2</string>
@@ -75,6 +77,7 @@
     <string name="notification_chat_message">Marko: Vidimo se u turniru večeras?</string>
     <string name="notification_chat_date">Juče, 18:35 - Pročitano</string>
     <string name="accept_invite">Prihvati poziv</string>
+    <string name="decline_invite">Odbij poziv</string>
     <string name="back">Nazad</string>
     <string name="notification_type_other">Ostalo</string>
     <string name="notification_league_title">Promena lige</string>
@@ -83,10 +86,17 @@
     <string name="open_chat">Udji u čet</string>
     <string name="open_league">Pogledaj ligu</string>
     <string name="mark_as_read">Označi kao pročitano</string>
+    <string name="mark_as_unread">Označi kao nepročitano</string>
     <string name="no_notifications">Nema notifikacija za izabrane filtere.</string>
     <string name="notification_action_invite">Poziv je prihvacen.</string>
     <string name="notification_action_chat">Otvaranje ceta ce biti povezano sa cet ekranom.</string>
     <string name="notification_action_league">Otvaranje lige ce biti povezano sa ligama.</string>
+    <string name="notification_destination_default_title">Notifikacija</string>
+    <string name="notification_destination_reward">Nagrada</string>
+    <string name="notification_destination_ranking">Rang lista</string>
+    <string name="notification_destination_chat">Čet</string>
+    <string name="notification_destination_league">Liga</string>
+    <string name="notification_destination_details">Detalji notifikacije</string>
     <string name="filter_category">Kategorija</string>
     <string name="filter_status">Status</string>
     <string name="filter_chat">Čet</string>

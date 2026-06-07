@@ -13,6 +13,7 @@ import com.example.slagalica.model.NotificationAction;
 import com.example.slagalica.model.NotificationCategory;
 import com.example.slagalica.model.NotificationStatus;
 import com.example.slagalica.model.SystemNotification;
+import com.example.slagalica.utils.SingleLiveEvent;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
@@ -25,7 +26,8 @@ public class NotificationsViewModel extends AndroidViewModel {
     private final MutableLiveData<List<SystemNotification>> visibleNotifications = new MutableLiveData<>();
     private final MutableLiveData<NotificationAction> selectedAction = new MutableLiveData<>();
     private final MutableLiveData<String> message = new MutableLiveData<>();
-    private final MutableLiveData<String> roomNavigation = new MutableLiveData<>();
+    private final SingleLiveEvent<String> roomNavigation = new SingleLiveEvent<>();
+    private final SingleLiveEvent<String> notificationPageTitle = new SingleLiveEvent<>();
 
     private List<SystemNotification> allNotifications = new ArrayList<>();
     private NotificationCategory selectedCategory = NotificationCategory.ALL;
@@ -59,6 +61,11 @@ public class NotificationsViewModel extends AndroidViewModel {
         return roomNavigation;
     }
 
+    @NonNull
+    public LiveData<String> getNotificationPageTitle() {
+        return notificationPageTitle;
+    }
+
     public void setCategoryFilter(@NonNull NotificationCategory category) {
         selectedCategory = category;
         applyFilters();
@@ -72,19 +79,35 @@ public class NotificationsViewModel extends AndroidViewModel {
     public void markAsRead(@NonNull String notificationId) {
         inviteRepository.markNotificationAsRead(
                 notificationId,
-                () -> { },
+                () -> updateLocalReadState(notificationId, true),
                 error -> {
                     repository.markAsRead(notificationId);
-                    refreshNotifications();
+                    updateLocalReadState(notificationId, true);
+                }
+        );
+    }
+
+    public void markAsUnread(@NonNull String notificationId) {
+        inviteRepository.markNotificationAsUnread(
+                notificationId,
+                () -> updateLocalReadState(notificationId, false),
+                error -> {
+                    repository.markAsUnread(notificationId);
+                    updateLocalReadState(notificationId, false);
                 }
         );
     }
 
     public void reactToNotification(@NonNull SystemNotification notification) {
+        if (notification.isActionHandled()) {
+            message.setValue(notification.getActionResult());
+            return;
+        }
         if (notification.getAction() == NotificationAction.ACCEPT_INVITE) {
             inviteRepository.acceptInvite(
                     notification,
                     roomId -> {
+                        updateLocalActionHandled(notification.getId(), "Prihvatili ste poziv");
                         message.setValue("Poziv je prihvacen.");
                         roomNavigation.setValue(roomId);
                     },
@@ -93,11 +116,123 @@ public class NotificationsViewModel extends AndroidViewModel {
         } else if (notification.getAction() == NotificationAction.OPEN_ROOM
                 && notification.getRoomId() != null
                 && !notification.getRoomId().isEmpty()) {
-            roomNavigation.setValue(notification.getRoomId());
+            handleOpenRoomNotification(notification);
+        } else if (notification.getAction() == NotificationAction.OPEN_CHAT) {
+            notificationPageTitle.setValue("Čet");
+        } else if (notification.getAction() == NotificationAction.OPEN_LEAGUE) {
+            notificationPageTitle.setValue("Liga");
+        } else if (notification.getAction() == NotificationAction.NONE) {
+            notificationPageTitle.setValue(destinationTitle(notification));
         } else if (!notification.isRead()) {
             markAsRead(notification.getId());
         }
         selectedAction.setValue(notification.getAction());
+    }
+
+    public void declineInvite(@NonNull SystemNotification notification) {
+        inviteRepository.declineInvite(
+                notification,
+                () -> {
+                    updateLocalActionHandled(notification.getId(), "Odbili ste poziv");
+                    message.setValue("Odbili ste poziv.");
+                },
+                error -> {
+                    repository.markActionHandled(notification.getId(), "Odbili ste poziv");
+                    updateLocalActionHandled(notification.getId(), "Odbili ste poziv");
+                    message.setValue("Odbili ste poziv.");
+                }
+        );
+    }
+
+    public void openNotification(@NonNull SystemNotification notification) {
+        if (notification.isActionHandled() && notification.getAction() == NotificationAction.ACCEPT_INVITE) {
+            message.setValue(notification.getActionResult());
+            return;
+        }
+        if (!notification.isRead()) {
+            markAsRead(notification.getId());
+        }
+        switch (notification.getAction()) {
+            case OPEN_ROOM:
+                if (notification.getRoomId() != null && !notification.getRoomId().isEmpty()) {
+                    handleOpenRoomNotification(notification);
+                } else {
+                    message.setValue("Soba jos nije dostupna.");
+                }
+                break;
+            case OPEN_CHAT:
+                notificationPageTitle.setValue("Čet");
+                break;
+            case OPEN_LEAGUE:
+                notificationPageTitle.setValue("Liga");
+                break;
+            case NONE:
+            case ACCEPT_INVITE:
+            default:
+                notificationPageTitle.setValue(destinationTitle(notification));
+                break;
+        }
+    }
+
+    private void handleOpenRoomNotification(@NonNull SystemNotification notification) {
+        if (notification.isRead() && !notification.isActionHandled()) {
+            markRoomNotificationHandled(notification);
+            return;
+        }
+        openRoomNotification(notification);
+    }
+
+    private void openRoomNotification(@NonNull SystemNotification notification) {
+        String roomId = notification.getRoomId();
+        if (roomId == null || roomId.isEmpty()) {
+            message.setValue("Soba jos nije dostupna.");
+            return;
+        }
+        inviteRepository.markNotificationActionHandled(
+                notification.getId(),
+                "Otvorili ste sobu",
+                () -> {
+                    updateLocalActionHandled(notification.getId(), "Otvorili ste sobu");
+                    roomNavigation.setValue(roomId);
+                },
+                error -> {
+                    repository.markActionHandled(notification.getId(), "Otvorili ste sobu");
+                    updateLocalActionHandled(notification.getId(), "Otvorili ste sobu");
+                    roomNavigation.setValue(roomId);
+                }
+        );
+    }
+
+    private void markRoomNotificationHandled(@NonNull SystemNotification notification) {
+        inviteRepository.markNotificationActionHandled(
+                notification.getId(),
+                "Otvorili ste sobu",
+                () -> {
+                    updateLocalActionHandled(notification.getId(), "Otvorili ste sobu");
+                    message.setValue("Otvorili ste sobu");
+                },
+                error -> {
+                    repository.markActionHandled(notification.getId(), "Otvorili ste sobu");
+                    updateLocalActionHandled(notification.getId(), "Otvorili ste sobu");
+                    message.setValue("Otvorili ste sobu");
+                }
+        );
+    }
+
+    @NonNull
+    private static String destinationTitle(@NonNull SystemNotification notification) {
+        switch (notification.getCategory()) {
+            case REWARD:
+                return "Nagrada";
+            case RANKING:
+                return "Rang lista";
+            case CHAT:
+                return "Čet";
+            case OTHER:
+            case ALL:
+            default:
+                return "Detalji notifikacije";
+        }
     }
 
     @Override
@@ -115,10 +250,7 @@ public class NotificationsViewModel extends AndroidViewModel {
                     allNotifications = notifications;
                     applyFilters();
                 },
-                error -> {
-                    message.setValue(error);
-                    refreshNotifications();
-                }
+                error -> message.setValue(error)
         );
 
         if (notificationsListener == null) {
@@ -127,7 +259,36 @@ public class NotificationsViewModel extends AndroidViewModel {
     }
 
     private void refreshNotifications() {
-        allNotifications = repository.loadNotifications();
+        allNotifications = new ArrayList<>();
+        applyFilters();
+    }
+
+    private void updateLocalReadState(@NonNull String notificationId, boolean read) {
+        List<SystemNotification> updated = new ArrayList<>();
+        for (SystemNotification notification : allNotifications) {
+            if (notification.getId().equals(notificationId)) {
+                updated.add(notification.withRead(read));
+            } else {
+                updated.add(notification);
+            }
+        }
+        allNotifications = updated;
+        applyFilters();
+    }
+
+    private void updateLocalActionHandled(
+            @NonNull String notificationId,
+            @NonNull String actionResult
+    ) {
+        List<SystemNotification> updated = new ArrayList<>();
+        for (SystemNotification notification : allNotifications) {
+            if (notification.getId().equals(notificationId)) {
+                updated.add(notification.withActionHandled(actionResult));
+            } else {
+                updated.add(notification);
+            }
+        }
+        allNotifications = updated;
         applyFilters();
     }
 

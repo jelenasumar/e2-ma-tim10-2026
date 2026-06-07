@@ -139,6 +139,51 @@ public final class GameInviteRepository {
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Notification could not be updated.")));
     }
 
+    public void markNotificationAsUnread(
+            @NonNull String notificationId,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String uid = getCurrentUid();
+        if (uid == null) {
+            onError.accept("NOT_LOGGED_IN");
+            return;
+        }
+
+        db.collection(USERS)
+                .document(uid)
+                .collection(NOTIFICATIONS)
+                .document(notificationId)
+                .update("read", false)
+                .addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Notification could not be updated.")));
+    }
+
+    public void markNotificationActionHandled(
+            @NonNull String notificationId,
+            @NonNull String actionResult,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String uid = getCurrentUid();
+        if (uid == null) {
+            onError.accept("NOT_LOGGED_IN");
+            return;
+        }
+
+        db.collection(USERS)
+                .document(uid)
+                .collection(NOTIFICATIONS)
+                .document(notificationId)
+                .update(
+                        "read", true,
+                        "actionHandled", true,
+                        "actionResult", actionResult
+                )
+                .addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Notification could not be updated.")));
+    }
+
     public void acceptInvite(
             @NonNull SystemNotification notification,
             @NonNull Consumer<String> onSuccess,
@@ -213,10 +258,54 @@ public final class GameInviteRepository {
             transaction.set(roomRef, room);
             transaction.set(senderNotificationRef, senderNotification);
             transaction.update(inviteRef, "status", "ACCEPTED", "roomId", roomRef.getId(), "acceptedAt", FieldValue.serverTimestamp());
-            transaction.update(notificationRef, "read", true, "roomId", roomRef.getId());
+            transaction.update(
+                    notificationRef,
+                    "read", true,
+                    "roomId", roomRef.getId(),
+                    "actionHandled", true,
+                    "actionResult", "Prihvatili ste poziv"
+            );
             return roomRef.getId();
         }).addOnSuccessListener(onSuccess::accept)
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Invite could not be accepted.")));
+    }
+
+    public void declineInvite(
+            @NonNull SystemNotification notification,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String uid = getCurrentUid();
+        String inviteId = notification.getInviteId();
+        if (uid == null || inviteId == null || inviteId.isEmpty()) {
+            onError.accept("INVITE_NOT_AVAILABLE");
+            return;
+        }
+
+        DocumentReference inviteRef = db.collection(GAME_INVITES).document(inviteId);
+        DocumentReference notificationRef = db.collection(USERS)
+                .document(uid)
+                .collection(NOTIFICATIONS)
+                .document(notification.getId());
+
+        db.runTransaction(transaction -> {
+            DocumentSnapshot invite = transaction.get(inviteRef);
+            if (!invite.exists()) {
+                throw new IllegalStateException("Invite does not exist.");
+            }
+            String status = stringOrDefault(invite.getString("status"), "PENDING");
+            if ("PENDING".equals(status)) {
+                transaction.update(inviteRef, "status", "DECLINED", "declinedAt", FieldValue.serverTimestamp());
+            }
+            transaction.update(
+                    notificationRef,
+                    "read", true,
+                    "actionHandled", true,
+                    "actionResult", "Odbili ste poziv"
+            );
+            return null;
+        }).addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Invite could not be declined.")));
     }
 
     private void createInvite(
@@ -259,6 +348,8 @@ public final class GameInviteRepository {
         notification.put("read", false);
         notification.put("action", "ACCEPT_INVITE");
         notification.put("actionLabel", "Prihvati poziv");
+        notification.put("actionHandled", false);
+        notification.put("actionResult", "");
         notification.put("inviteId", inviteRef.getId());
         notification.put("fromUid", fromUid);
         notification.put("createdAt", FieldValue.serverTimestamp());
@@ -272,20 +363,22 @@ public final class GameInviteRepository {
 
     @NonNull
     private SystemNotification notificationFromDocument(@NonNull DocumentSnapshot document) {
-        String category = stringOrDefault(document.getString("category"), "OTHER");
-        String action = stringOrDefault(document.getString("action"), "NONE");
+        String category = stringOrDefault(stringValue(document.get("category")), "OTHER");
+        String action = stringOrDefault(stringValue(document.get("action")), "NONE");
         return new SystemNotification(
                 document.getId(),
                 categoryFromString(category),
                 categoryLabel(category),
-                stringOrDefault(document.getString("title"), "Notifikacija"),
-                stringOrDefault(document.getString("message"), ""),
+                stringOrDefault(stringValue(document.get("title")), "Notifikacija"),
+                stringOrDefault(stringValue(document.get("message")), ""),
                 dateLabel(document.get("createdAt")),
-                Boolean.TRUE.equals(document.getBoolean("read")),
+                boolValue(document.get("read")),
                 actionFromString(action),
-                document.getString("actionLabel"),
-                document.getString("inviteId"),
-                document.getString("roomId")
+                stringValue(document.get("actionLabel")),
+                stringValue(document.get("inviteId")),
+                stringValue(document.get("roomId")),
+                boolValue(document.get("actionHandled")),
+                stringOrDefault(stringValue(document.get("actionResult")), "")
         );
     }
 
@@ -329,6 +422,21 @@ public final class GameInviteRepository {
             return DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.getDefault()).format(date);
         }
         return "";
+    }
+
+    @Nullable
+    private static String stringValue(@Nullable Object value) {
+        return value != null ? String.valueOf(value) : null;
+    }
+
+    private static boolean boolValue(@Nullable Object value) {
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        if (value instanceof String) {
+            return Boolean.parseBoolean((String) value);
+        }
+        return false;
     }
 
     @NonNull

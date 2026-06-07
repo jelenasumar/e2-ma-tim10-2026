@@ -16,6 +16,8 @@ public final class SystemNotification {
     private final String actionLabel;
     private final String inviteId;
     private final String roomId;
+    private final boolean actionHandled;
+    private final String actionResult;
 
     public SystemNotification(
             @NonNull String id,
@@ -28,7 +30,7 @@ public final class SystemNotification {
             @NonNull NotificationAction action,
             @Nullable String actionLabel
     ) {
-        this(id, category, categoryLabel, title, message, dateLabel, read, action, actionLabel, null, null);
+        this(id, category, categoryLabel, title, message, dateLabel, read, action, actionLabel, null, null, false, "");
     }
 
     public SystemNotification(
@@ -44,6 +46,24 @@ public final class SystemNotification {
             @Nullable String inviteId,
             @Nullable String roomId
     ) {
+        this(id, category, categoryLabel, title, message, dateLabel, read, action, actionLabel, inviteId, roomId, false, "");
+    }
+
+    public SystemNotification(
+            @NonNull String id,
+            @NonNull NotificationCategory category,
+            @NonNull String categoryLabel,
+            @NonNull String title,
+            @NonNull String message,
+            @NonNull String dateLabel,
+            boolean read,
+            @NonNull NotificationAction action,
+            @Nullable String actionLabel,
+            @Nullable String inviteId,
+            @Nullable String roomId,
+            boolean actionHandled,
+            @Nullable String actionResult
+    ) {
         this.id = id;
         this.category = category;
         this.categoryLabel = categoryLabel;
@@ -55,6 +75,8 @@ public final class SystemNotification {
         this.actionLabel = actionLabel;
         this.inviteId = inviteId;
         this.roomId = roomId;
+        this.actionHandled = actionHandled;
+        this.actionResult = actionResult != null ? actionResult : "";
     }
 
     @NonNull
@@ -111,8 +133,45 @@ public final class SystemNotification {
         return roomId;
     }
 
+    public boolean isActionHandled() {
+        return actionHandled;
+    }
+
+    @NonNull
+    public String getActionResult() {
+        return actionResult;
+    }
+
+    public boolean hasPendingAction() {
+        return action != NotificationAction.NONE && !actionHandled;
+    }
+
     @NonNull
     public SystemNotification markRead() {
+        return withRead(true);
+    }
+
+    @NonNull
+    public SystemNotification withRead(boolean read) {
+        return new SystemNotification(
+                id,
+                category,
+                categoryLabel,
+                title,
+                message,
+                dateLabel,
+                read,
+                action,
+                actionLabel,
+                inviteId,
+                roomId,
+                actionHandled,
+                actionResult
+        );
+    }
+
+    @NonNull
+    public SystemNotification withActionHandled(@NonNull String actionResult) {
         return new SystemNotification(
                 id,
                 category,
@@ -124,7 +183,9 @@ public final class SystemNotification {
                 action,
                 actionLabel,
                 inviteId,
-                roomId
+                roomId,
+                true,
+                actionResult
         );
     }
 }
