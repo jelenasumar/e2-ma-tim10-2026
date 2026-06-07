@@ -84,7 +84,8 @@ public final class SpojniceRoomRepository {
             @NonNull String myUid,
             int leftIndex,
             int selectedRightIndex,
-            @NonNull Consumer<String> onError
+            @NonNull Consumer<String> onError,
+            @NonNull Consumer<Boolean> onCorrect
     ) {
         DocumentReference ref = stateRef(roomId);
         db.runTransaction(transaction -> {
@@ -110,6 +111,7 @@ public final class SpojniceRoomRepository {
             List<Integer> connected = intList(snapshot.get("connectedLeft"));
             List<Integer> attempted = intList(snapshot.get("attemptedLeft"));
             List<Integer> usedRight = intList(snapshot.get("usedRightIndices"));
+            List<Integer> followupLocked = intList(snapshot.get("followupLockedLeft"));
             List<Integer> answers = intList(snapshot.get("answers"));
             int currentLeftIndex = intOrZero(snapshot.get("currentLeftIndex"));
 
@@ -121,7 +123,7 @@ public final class SpojniceRoomRepository {
                 if (leftIndex != currentLeftIndex || attempted.contains(leftIndex)) {
                     return null;
                 }
-            } else if (connected.contains(leftIndex)) {
+            } else if (PHASE_FOLLOWUP.equals(phase) && followupLocked.contains(leftIndex)) {
                 return null;
             }
 
@@ -131,9 +133,15 @@ public final class SpojniceRoomRepository {
             String playerOneUid = stringOrEmpty(snapshot.getString("playerOneUid"));
             String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
 
-            if (!attempted.contains(leftIndex)) {
+            if (PHASE_ACTIVE.equals(phase) && !attempted.contains(leftIndex)) {
                 attempted = new ArrayList<>(attempted);
                 attempted.add(leftIndex);
+            }
+            if (PHASE_FOLLOWUP.equals(phase) && !correct) {
+                followupLocked = new ArrayList<>(followupLocked);
+                if (!followupLocked.contains(leftIndex)) {
+                    followupLocked.add(leftIndex);
+                }
             }
             if (correct) {
                 connected = new ArrayList<>(connected);
@@ -153,8 +161,10 @@ public final class SpojniceRoomRepository {
             updates.put("connectedLeft", connected);
             updates.put("attemptedLeft", attempted);
             updates.put("usedRightIndices", usedRight);
+            updates.put("followupLockedLeft", followupLocked);
             updates.put("playerOneScore", playerOneScore);
             updates.put("playerTwoScore", playerTwoScore);
+            updates.put("lastSubmitMillis", System.currentTimeMillis());
 
             if (PHASE_ACTIVE.equals(phase)) {
                 int nextLeftIndex = currentLeftIndex + 1;
@@ -162,14 +172,18 @@ public final class SpojniceRoomRepository {
                 if (nextLeftIndex >= PAIRS_PER_ROUND) {
                     applyFollowupOrRoundOver(snapshot, updates, connected, attempted);
                 }
-            } else {
-                if (allRemainingConnected(connected)) {
-                    applyRoundOver(updates);
-                }
+            } else if (allRemainingConnected(connected)) {
+                applyRoundOver(updates);
+            } else if (allRemainingLockedOrConnected(connected, followupLocked)) {
+                applyRoundOver(updates);
             }
 
             transaction.update(ref, updates);
-            return null;
+            return correct;
+        }).addOnSuccessListener(correct -> {
+            if (correct != null) {
+                onCorrect.accept(correct);
+            }
         }).addOnFailureListener(error ->
                 onError.accept(error.getMessage() != null ? error.getMessage() : "Spojnica nije poslata.")
         );
@@ -247,6 +261,7 @@ public final class SpojniceRoomRepository {
         } else {
             updates.put("phase", PHASE_FOLLOWUP);
             updates.put("followupPlayerUid", followupPlayerUid(snapshot));
+            updates.put("followupLockedLeft", new ArrayList<Integer>());
             updates.put("phaseEndsAtMillis", System.currentTimeMillis() + ROUND_DURATION_MS);
         }
     }
@@ -266,6 +281,18 @@ public final class SpojniceRoomRepository {
 
     private static boolean allRemainingConnected(@NonNull List<Integer> connected) {
         return connected.size() >= PAIRS_PER_ROUND;
+    }
+
+    private static boolean allRemainingLockedOrConnected(
+            @NonNull List<Integer> connected,
+            @NonNull List<Integer> followupLocked
+    ) {
+        for (int i = 0; i < PAIRS_PER_ROUND; i++) {
+            if (!connected.contains(i) && !followupLocked.contains(i)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @NonNull
@@ -327,6 +354,7 @@ public final class SpojniceRoomRepository {
         fields.put("connectedLeft", new ArrayList<Integer>());
         fields.put("attemptedLeft", new ArrayList<Integer>());
         fields.put("usedRightIndices", new ArrayList<Integer>());
+        fields.put("followupLockedLeft", new ArrayList<Integer>());
         fields.put("currentLeftIndex", 0);
         return fields;
     }

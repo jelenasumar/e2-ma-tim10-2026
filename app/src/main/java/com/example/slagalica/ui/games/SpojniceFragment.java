@@ -166,6 +166,8 @@ public class SpojniceFragment extends Fragment {
 
                 if (state.isRowConnected(i)) {
                     configureRightSpinner(i, List.of("✓ Povezano"), false, 0);
+                } else if (state.isFollowupRowLocked(i)) {
+                    configureRightSpinner(i, List.of(getString(R.string.spojnice_locked_row)), false, 0);
                 } else if (state.isFollowupRightSpinnerEnabled(i)) {
                     int selection = state.getSelectedRightIndex();
                     configureRightSpinner(i, spinnerOptions, true, selection);
@@ -181,7 +183,12 @@ public class SpojniceFragment extends Fragment {
                 rowContainers[i].setBackgroundColor(resolveRowColor(state, i, followupPhase));
             }
         } finally {
-            suppressSpinnerCallbacks = false;
+            View root = getView();
+            if (root != null) {
+                root.post(() -> suppressSpinnerCallbacks = false);
+            } else {
+                suppressSpinnerCallbacks = false;
+            }
         }
     }
 
@@ -205,6 +212,14 @@ public class SpojniceFragment extends Fragment {
             label.setTypeface(Typeface.DEFAULT);
             label.setClickable(false);
             label.setAlpha(1f);
+            return;
+        }
+
+        if (followupPhase && state.isFollowupRowLocked(rowIndex)) {
+            label.setText("✗ " + leftLabel);
+            label.setTypeface(Typeface.DEFAULT);
+            label.setClickable(false);
+            label.setAlpha(0.55f);
             return;
         }
 
@@ -233,6 +248,9 @@ public class SpojniceFragment extends Fragment {
     private int resolveRowColor(@NonNull SpojniceUiState state, int rowIndex, boolean followupPhase) {
         if (state.isRowConnected(rowIndex)) {
             return ContextCompat.getColor(requireContext(), R.color.spojnice_connected_row);
+        }
+        if (followupPhase && state.isFollowupRowLocked(rowIndex)) {
+            return ContextCompat.getColor(requireContext(), R.color.spojnice_locked_row);
         }
         if (followupPhase && state.isFollowupSelected(rowIndex)) {
             return ContextCompat.getColor(requireContext(), R.color.spojnice_followup_selected);
@@ -293,7 +311,9 @@ public class SpojniceFragment extends Fragment {
         }
         int safeIndex = selectionIndex < 0 ? 0 : Math.min(selectionIndex, itemCount - 1);
         if (spinner.getSelectedItemPosition() != safeIndex) {
-            spinner.setSelection(safeIndex);
+            suppressSpinnerCallbacks = true;
+            spinner.setSelection(safeIndex, false);
+            spinner.post(() -> suppressSpinnerCallbacks = false);
         }
     }
 

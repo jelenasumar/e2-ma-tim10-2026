@@ -7,4 +7,5 @@
     <color name="spojnice_followup_selected">#BBDEFB</color>
     <color name="spojnice_connected_row">#E8F5E9</color>
     <color name="spojnice_inactive_row">#F5F5F5</color>
+    <color name="spojnice_locked_row">#FFEBEE</color>
 </resources>

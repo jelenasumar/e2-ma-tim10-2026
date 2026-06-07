@@ -25,6 +25,7 @@ public final class SpojniceUiState {
     private final List<Integer> connectedLeftIndices;
     private final List<Integer> attemptedLeftIndices;
     private final List<Integer> usedRightIndices;
+    private final List<Integer> followupLockedLeftIndices;
     private final int currentLeftIndex;
     private final int activePlayerNumber;
     private final boolean myTurn;
@@ -51,6 +52,7 @@ public final class SpojniceUiState {
             @NonNull List<Integer> connectedLeftIndices,
             @NonNull List<Integer> attemptedLeftIndices,
             @NonNull List<Integer> usedRightIndices,
+            @NonNull List<Integer> followupLockedLeftIndices,
             int currentLeftIndex,
             int activePlayerNumber,
             boolean myTurn,
@@ -76,6 +78,7 @@ public final class SpojniceUiState {
         this.connectedLeftIndices = new ArrayList<>(connectedLeftIndices);
         this.attemptedLeftIndices = new ArrayList<>(attemptedLeftIndices);
         this.usedRightIndices = new ArrayList<>(usedRightIndices);
+        this.followupLockedLeftIndices = new ArrayList<>(followupLockedLeftIndices);
         this.currentLeftIndex = currentLeftIndex;
         this.activePlayerNumber = activePlayerNumber;
         this.myTurn = myTurn;
@@ -147,6 +150,11 @@ public final class SpojniceUiState {
     @NonNull
     public List<Integer> getUsedRightIndices() {
         return new ArrayList<>(usedRightIndices);
+    }
+
+    @NonNull
+    public List<Integer> getFollowupLockedLeftIndices() {
+        return new ArrayList<>(followupLockedLeftIndices);
     }
 
     @NonNull
@@ -241,11 +249,16 @@ public final class SpojniceUiState {
         return false;
     }
 
+    public boolean isFollowupRowLocked(int rowIndex) {
+        return PHASE_FOLLOWUP.equals(phase) && followupLockedLeftIndices.contains(rowIndex);
+    }
+
     public boolean isFollowupLeftSelectable(int rowIndex) {
         return PHASE_FOLLOWUP.equals(phase)
                 && inputsEnabled
                 && myTurn
-                && !connectedLeftIndices.contains(rowIndex);
+                && !connectedLeftIndices.contains(rowIndex)
+                && !followupLockedLeftIndices.contains(rowIndex);
     }
 
     public boolean isFollowupRightSpinnerEnabled(int rowIndex) {

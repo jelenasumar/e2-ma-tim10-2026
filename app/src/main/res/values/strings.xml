@@ -249,6 +249,9 @@
     <string name="spojnice_select_right">Izaberi odgovor u desnoj koloni.</string>
     <string name="spojnice_pick_left_first">Izaberi pojam levo</string>
     <string name="spojnice_choose_answer">— Izaberi odgovor —</string>
+    <string name="spojnice_wrong_try_again">Pogrešna spojnica — probaj ponovo, obe opcije su i dalje dostupne.</string>
+    <string name="spojnice_wrong_next_term">Pogrešna spojnica — prelazi se na sledeći preostali pojam.</string>
+    <string name="spojnice_locked_row">Pogrešno — zaključano</string>
     <string name="change_password">Promeni lozinku</string>
     <string name="change_password_header">Promena lozinke</string>
     <string name="current_password">Trenutna lozinka</string>

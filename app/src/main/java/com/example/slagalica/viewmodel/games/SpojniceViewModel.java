@@ -56,11 +56,13 @@ public class SpojniceViewModel extends AndroidViewModel {
     private int currentLeftIndex = 0;
     private int selectedRow = SpojniceUiState.NO_ROW;
     private int selectedRightIndex = SpojniceUiState.NO_SELECTION;
+    private int selectedSpinnerPosition = 0;
     private List<String> leftTerms = new ArrayList<>();
     private List<String> rightTerms = new ArrayList<>();
     private List<Integer> connectedLeft = new ArrayList<>();
     private List<Integer> attemptedLeft = new ArrayList<>();
     private List<Integer> usedRightIndices = new ArrayList<>();
+    private List<Integer> followupLockedLeft = new ArrayList<>();
     private String criterion = "";
     private String playerOneLabel = "Igrač 1";
     private String playerTwoLabel = "Igrač 2";
@@ -102,11 +104,12 @@ public class SpojniceViewModel extends AndroidViewModel {
         if (!SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase) || !canCurrentUserPlay()) {
             return;
         }
-        if (connectedLeft.contains(rowIndex)) {
+        if (connectedLeft.contains(rowIndex) || followupLockedLeft.contains(rowIndex)) {
             return;
         }
         selectedRow = rowIndex;
         selectedRightIndex = SpojniceUiState.NO_SELECTION;
+        selectedSpinnerPosition = 0;
         publishUiState(remainingSeconds());
     }
 
@@ -115,7 +118,8 @@ public class SpojniceViewModel extends AndroidViewModel {
             return;
         }
         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
-            if (rowIndex != selectedRow || selectedRow < 0 || connectedLeft.contains(rowIndex)) {
+            if (rowIndex != selectedRow || selectedRow < 0 || connectedLeft.contains(rowIndex)
+                    || followupLockedLeft.contains(rowIndex)) {
                 return;
             }
         } else if (!isRowSelectable(rowIndex)) {
@@ -124,6 +128,7 @@ public class SpojniceViewModel extends AndroidViewModel {
 
         List<Integer> available = buildAvailableRightIndices();
         int availableIndex = spinnerPosition - 1;
+        selectedSpinnerPosition = spinnerPosition;
         if (availableIndex < 0) {
             selectedRightIndex = SpojniceUiState.NO_SELECTION;
             publishUiState(remainingSeconds());
@@ -143,16 +148,49 @@ public class SpojniceViewModel extends AndroidViewModel {
         int leftIndex = SpojniceRoomRepository.PHASE_ACTIVE.equals(phase)
                 ? currentLeftIndex
                 : selectedRow;
-        if (leftIndex < 0 || !isRowSelectable(leftIndex)) {
+        if (leftIndex < 0) {
             return;
         }
+        if (SpojniceRoomRepository.PHASE_ACTIVE.equals(phase)) {
+            if (!isRowSelectable(leftIndex)) {
+                return;
+            }
+        } else if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
+            if (selectedRow < 0 || connectedLeft.contains(leftIndex)
+                    || followupLockedLeft.contains(leftIndex)) {
+                return;
+            }
+        } else {
+            return;
+        }
+
         final int submittedRightIndex = selectedRightIndex;
+        final boolean followupSubmit = SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase);
         spojniceRepository.submitPair(
                 roomId,
                 myUid,
                 leftIndex,
                 submittedRightIndex,
-                errorMessage::setValue
+                errorMessage::setValue,
+                correct -> {
+                    if (followupSubmit && !correct) {
+                        if (!followupLockedLeft.contains(leftIndex)) {
+                            followupLockedLeft = new ArrayList<>(followupLockedLeft);
+                            followupLockedLeft.add(leftIndex);
+                        }
+                        selectedRow = firstAvailableFollowupRow();
+                        selectedRightIndex = SpojniceUiState.NO_SELECTION;
+                        selectedSpinnerPosition = 0;
+                        errorMessage.setValue(getApplication().getString(
+                                com.example.slagalica.R.string.spojnice_wrong_next_term
+                        ));
+                        publishUiState(remainingSeconds());
+                    } else if (SpojniceRoomRepository.PHASE_ACTIVE.equals(phase) && !correct) {
+                        selectedRightIndex = SpojniceUiState.NO_SELECTION;
+                        selectedSpinnerPosition = 0;
+                        publishUiState(remainingSeconds());
+                    }
+                }
         );
     }
 
@@ -199,6 +237,9 @@ public class SpojniceViewModel extends AndroidViewModel {
         List<Integer> newConnected = intList(snapshot.get("connectedLeft"));
         List<Integer> newUsedRight = intList(snapshot.get("usedRightIndices"));
 
+        List<Integer> newFollowupLocked = intList(snapshot.get("followupLockedLeft"));
+        boolean followupLockedChanged = !newFollowupLocked.equals(followupLockedLeft);
+
         boolean phaseChanged = !newPhase.equals(phase);
         boolean leftAdvanced = newLeftIndex != currentLeftIndex;
         boolean roundChanged = newRound != currentRound;
@@ -219,6 +260,7 @@ public class SpojniceViewModel extends AndroidViewModel {
         connectedLeft = newConnected;
         attemptedLeft = intList(snapshot.get("attemptedLeft"));
         usedRightIndices = newUsedRight;
+        followupLockedLeft = newFollowupLocked;
         roundOver = SpojniceRoomRepository.PHASE_ROUND_OVER.equals(phase)
                 || SpojniceRoomRepository.PHASE_GAME_OVER.equals(phase);
         gameOver = SpojniceRoomRepository.PHASE_GAME_OVER.equals(phase);
@@ -226,8 +268,10 @@ public class SpojniceViewModel extends AndroidViewModel {
         playerOneLabel = stringOrDefault(snapshot.getString("playerOneUsername"), playerOneLabel);
         playerTwoLabel = stringOrDefault(snapshot.getString("playerTwoUsername"), playerTwoLabel);
 
-        if (phaseChanged || leftAdvanced || roundChanged || connectionMade || usedRightChanged) {
+        if (phaseChanged || leftAdvanced || roundChanged || connectionMade || usedRightChanged
+                || followupLockedChanged) {
             selectedRightIndex = SpojniceUiState.NO_SELECTION;
+            selectedSpinnerPosition = 0;
         }
         if (connectionMade && SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
             selectedRow = SpojniceUiState.NO_ROW;
@@ -237,9 +281,14 @@ public class SpojniceViewModel extends AndroidViewModel {
         } else if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase) && phaseChanged) {
             selectedRow = SpojniceUiState.NO_ROW;
         } else if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)
-                && selectedRow >= 0
-                && connectedLeft.contains(selectedRow)) {
-            selectedRow = SpojniceUiState.NO_ROW;
+                && (selectedRow < 0
+                || connectedLeft.contains(selectedRow)
+                || followupLockedLeft.contains(selectedRow))) {
+            selectedRow = firstAvailableFollowupRow();
+        } else if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)
+                && followupLockedChanged
+                && followupLockedLeft.contains(selectedRow)) {
+            selectedRow = firstAvailableFollowupRow();
         }
 
         if (gameOver) {
@@ -286,6 +335,7 @@ public class SpojniceViewModel extends AndroidViewModel {
                 && !roundOver
                 && !gameOver
                 && selectedRightIndex >= 0
+                && selectedSpinnerPosition > 0
                 && (!SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase) || selectedRow >= 0);
         uiState.setValue(new SpojniceUiState(
                 currentRound,
@@ -301,6 +351,7 @@ public class SpojniceViewModel extends AndroidViewModel {
                 connectedLeft,
                 attemptedLeft,
                 usedRightIndices,
+                followupLockedLeft,
                 currentLeftIndex,
                 displayActivePlayerNumber(),
                 myTurn,
@@ -332,7 +383,7 @@ public class SpojniceViewModel extends AndroidViewModel {
         }
         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
             if (myTurn) {
-                return "Klikni pojam levo, zatim izaberi odgovor desno i potvrdi.";
+                return "Klikni preostali pojam levo, zatim izaberi odgovor desno i potvrdi.";
             }
             return "Protivnik povezuje preostale pojmove…";
         }
@@ -385,6 +436,15 @@ public class SpojniceViewModel extends AndroidViewModel {
             return rowIndex == selectedRow && selectedRow >= 0;
         }
         return false;
+    }
+
+    private int firstAvailableFollowupRow() {
+        for (int i = 0; i < PAIRS_PER_ROUND; i++) {
+            if (!connectedLeft.contains(i) && !followupLockedLeft.contains(i)) {
+                return i;
+            }
+        }
+        return SpojniceUiState.NO_ROW;
     }
 
     private void startRemotePhaseTimer(long phaseEndsAtMillis) {
