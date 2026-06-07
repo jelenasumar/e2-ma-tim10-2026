@@ -55,7 +55,16 @@ public class AssociationsFragment extends Fragment {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
         });
-        viewModel.startGame(createPlayerOneState(), createPlayerTwoState());
+        String roomId = "";
+        Bundle args = getArguments();
+        if (args != null) {
+            roomId = args.getString("roomId", "");
+        }
+        if (!roomId.isEmpty()) {
+            viewModel.startRoomGame(roomId);
+        } else {
+            viewModel.startGame(createPlayerOneState(), createPlayerTwoState());
+        }
     }
 
     private void setupGameHeader() {
@@ -156,9 +165,9 @@ public class AssociationsFragment extends Fragment {
         if (revealAll) {
             finalAnswerInput.setText(puzzle.getFinalAnswer());
         }
-        finalAnswerInput.setEnabled(!revealAll);
-        finalSubmitButton.setEnabled(!revealAll && state.isFieldOpenedThisTurn());
-        finishTurnButton.setEnabled(!revealAll);
+        finalAnswerInput.setEnabled(state.isInputsEnabled() && !revealAll);
+        finalSubmitButton.setEnabled(state.isInputsEnabled() && !revealAll && state.isFieldOpenedThisTurn());
+        finishTurnButton.setEnabled(state.isInputsEnabled() && !revealAll && state.isFieldOpenedThisTurn());
     }
 
     private void renderColumn(
@@ -177,6 +186,7 @@ public class AssociationsFragment extends Fragment {
                 clueView.setText(fieldLabel(column, clue));
             }
             clueView.setEnabled(!revealAll
+                    && state.isInputsEnabled()
                     && !columnSolved
                     && !state.isFieldOpenedThisTurn()
                     && !state.isFieldRevealed(column, clue));
@@ -185,8 +195,9 @@ public class AssociationsFragment extends Fragment {
         if (revealAll || columnSolved) {
             columnAnswerInputs[column].setText(associationColumn.getAnswer());
         }
-        columnAnswerInputs[column].setEnabled(!revealAll && !columnSolved);
+        columnAnswerInputs[column].setEnabled(state.isInputsEnabled() && !revealAll && !columnSolved);
         columnSubmitButtons[column].setEnabled(!revealAll
+                && state.isInputsEnabled()
                 && !columnSolved
                 && state.isFieldOpenedThisTurn());
     }

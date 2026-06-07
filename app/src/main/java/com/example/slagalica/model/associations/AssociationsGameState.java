@@ -12,6 +12,8 @@ public final class AssociationsGameState {
     private final boolean[][] revealedFields;
     private final boolean[] solvedColumns;
     private final boolean fieldOpenedThisTurn;
+    private final boolean myTurn;
+    private final boolean inputsEnabled;
     private final boolean finalAnswerSolved;
     private final boolean roundOver;
     private final boolean gameOver;
@@ -25,6 +27,8 @@ public final class AssociationsGameState {
             @NonNull boolean[][] revealedFields,
             @NonNull boolean[] solvedColumns,
             boolean fieldOpenedThisTurn,
+            boolean myTurn,
+            boolean inputsEnabled,
             boolean finalAnswerSolved,
             boolean roundOver,
             boolean gameOver
@@ -37,6 +41,8 @@ public final class AssociationsGameState {
         this.revealedFields = copyRevealedFields(revealedFields);
         this.solvedColumns = copySolvedColumns(solvedColumns);
         this.fieldOpenedThisTurn = fieldOpenedThisTurn;
+        this.myTurn = myTurn;
+        this.inputsEnabled = inputsEnabled;
         this.finalAnswerSolved = finalAnswerSolved;
         this.roundOver = roundOver;
         this.gameOver = gameOver;
@@ -91,6 +97,14 @@ public final class AssociationsGameState {
 
     public boolean isFieldOpenedThisTurn() {
         return fieldOpenedThisTurn;
+    }
+
+    public boolean isMyTurn() {
+        return myTurn;
+    }
+
+    public boolean isInputsEnabled() {
+        return inputsEnabled;
     }
 
     public boolean isFinalAnswerSolved() {
