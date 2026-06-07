@@ -178,7 +178,7 @@
     <string name="error_login_failed">Pogrešan email ili lozinka.</string>
     <string name="ko_zna_zna_button">Ko zna zna</string>
     <string name="kzz_question_counter">Pitanje 1/5</string>
-    <string name="kzz_round_time">Preostalo vreme runde: 25s</string>
+    <string name="kzz_round_time">Preostalo vreme runde: 35s</string>
     <string name="kzz_question_time">Vreme za pitanje: 5s</string>
     <string name="kzz_player_one_score">Igrač 1: 0</string>
     <string name="kzz_player_two_score">Igrač 2: 0</string>
@@ -241,6 +241,12 @@
     <string name="spojnice_right_header">Desna kolona</string>
     <string name="spojnice_submit">Potvrdi spajanje</string>
     <string name="spojnice_next_round">Sledeća runda</string>
+    <string name="spojnice_back">Nazad</string>
+    <string name="spojnice_round_value">Runda %1$d/%2$d</string>
+    <string name="spojnice_time_value">Preostalo vreme: %1$ds</string>
+    <string name="spojnice_score_named">%1$s: %2$d</string>
+    <string name="spojnice_waiting_room">Uđi u sobu partije da igraš Spojnice sa protivnikom.</string>
+    <string name="spojnice_select_right">Izaberi odgovor u desnoj koloni.</string>
     <string name="change_password">Promeni lozinku</string>
     <string name="change_password_header">Promena lozinke</string>
     <string name="current_password">Trenutna lozinka</string>

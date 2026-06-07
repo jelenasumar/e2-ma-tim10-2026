@@ -62,11 +62,27 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/spojniceCriterion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textStyle="italic"
+            tools:text="Poveži izvođače sa pesmama" />
+
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:text="@string/spojnice_hint"
             android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/spojniceStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="?attr/colorPrimary"
+            tools:text="Tvoj red — poveži pojam 1/5" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -228,7 +244,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
-            android:text="@string/spojnice_next_round" />
+            android:text="@string/spojnice_back"
+            android:visibility="gone" />
 
     </LinearLayout>
 

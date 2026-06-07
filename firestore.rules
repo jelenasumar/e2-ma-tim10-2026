@@ -46,5 +46,14 @@ service cloud.firestore {
 
       allow update: if isMatchParticipant();
     }
+
+    match /rooms/{roomId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+
+      match /games/{gameId} {
+        allow read, write: if isSignedIn();
+      }
+    }
   }
 }

@@ -81,6 +81,12 @@ public class KoZnaZnaFragment extends Fragment {
         });
 
         Bundle args = getArguments();
+        String roomId = args != null ? args.getString("roomId", "") : "";
+        if (!roomId.isEmpty()) {
+            viewModel.startRoomGame(roomId);
+            return;
+        }
+
         String matchId = args != null ? args.getString("matchId", "") : "";
         String myUid = args != null ? args.getString("myUid", "") : "";
         if (matchId.isEmpty() || myUid.isEmpty()) {
