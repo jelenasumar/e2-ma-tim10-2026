@@ -363,22 +363,22 @@ public final class GameInviteRepository {
 
     @NonNull
     private SystemNotification notificationFromDocument(@NonNull DocumentSnapshot document) {
-        String category = stringOrDefault(document.getString("category"), "OTHER");
-        String action = stringOrDefault(document.getString("action"), "NONE");
+        String category = stringOrDefault(stringValue(document.get("category")), "OTHER");
+        String action = stringOrDefault(stringValue(document.get("action")), "NONE");
         return new SystemNotification(
                 document.getId(),
                 categoryFromString(category),
                 categoryLabel(category),
-                stringOrDefault(document.getString("title"), "Notifikacija"),
-                stringOrDefault(document.getString("message"), ""),
+                stringOrDefault(stringValue(document.get("title")), "Notifikacija"),
+                stringOrDefault(stringValue(document.get("message")), ""),
                 dateLabel(document.get("createdAt")),
-                Boolean.TRUE.equals(document.getBoolean("read")),
+                boolValue(document.get("read")),
                 actionFromString(action),
-                document.getString("actionLabel"),
-                document.getString("inviteId"),
-                document.getString("roomId"),
-                Boolean.TRUE.equals(document.getBoolean("actionHandled")),
-                stringOrDefault(document.getString("actionResult"), "")
+                stringValue(document.get("actionLabel")),
+                stringValue(document.get("inviteId")),
+                stringValue(document.get("roomId")),
+                boolValue(document.get("actionHandled")),
+                stringOrDefault(stringValue(document.get("actionResult")), "")
         );
     }
 
@@ -422,6 +422,21 @@ public final class GameInviteRepository {
             return DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.getDefault()).format(date);
         }
         return "";
+    }
+
+    @Nullable
+    private static String stringValue(@Nullable Object value) {
+        return value != null ? String.valueOf(value) : null;
+    }
+
+    private static boolean boolValue(@Nullable Object value) {
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        if (value instanceof String) {
+            return Boolean.parseBoolean((String) value);
+        }
+        return false;
     }
 
     @NonNull
