@@ -50,6 +50,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private int selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
     private int myHits;
     private int myMisses;
+    private int roomBaseHostScore;
+    private int roomBaseGuestScore;
     private String localStatusMessage = "";
     private String hostAvatarUri = "";
     private String guestAvatarUri = "";
@@ -84,6 +86,10 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         this.selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
         this.myHits = 0;
         this.myMisses = 0;
+        if (activeRoomId.isEmpty()) {
+            this.roomBaseHostScore = 0;
+            this.roomBaseGuestScore = 0;
+        }
         this.hostAvatarUri = "";
         this.guestAvatarUri = "";
         this.localStatusMessage = getApplication().getString(R.string.kzz_waiting_sync);
@@ -129,6 +135,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     private void onRoomSessionUpdated(@NonNull RoomSession room) {
+        roomBaseHostScore = room.getHostTotalScore();
+        roomBaseGuestScore = room.getGuestTotalScore();
         String existingMatchId = room.getKoZnaZnaMatchId();
         if (!existingMatchId.isEmpty()) {
             if (roomListener != null) {
@@ -176,8 +184,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH,
                 0,
                 0,
-                0,
-                0,
+                room.getHostTotalScore(),
+                room.getGuestTotalScore(),
                 room.getHostUsername(),
                 room.getGuestUsername(),
                 "",
@@ -428,8 +436,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         if (finished && status.isEmpty()) {
             status = getApplication().getString(
                     R.string.kzz_game_finished,
-                    match.getHostScore(),
-                    match.getGuestScore()
+                    displayHostScore(match),
+                    displayGuestScore(match)
             );
         }
 
@@ -438,8 +446,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 totalQuestions,
                 roundLeft,
                 questionLeft,
-                match.getHostScore(),
-                match.getGuestScore(),
+                displayHostScore(match),
+                displayGuestScore(match),
                 match.getHostUsername(),
                 match.getGuestUsername(),
                 hostAvatarUri,
@@ -639,9 +647,17 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
 
         return getApplication().getString(
                 R.string.kzz_question_resolved,
-                match.getHostScore(),
-                match.getGuestScore()
+                displayHostScore(match),
+                displayGuestScore(match)
         );
+    }
+
+    private int displayHostScore(@NonNull KoZnaZnaMatch match) {
+        return roomBaseHostScore + match.getHostScore();
+    }
+
+    private int displayGuestScore(@NonNull KoZnaZnaMatch match) {
+        return roomBaseGuestScore + match.getGuestScore();
     }
 
     private void recordStatsIfNeeded(@NonNull KoZnaZnaMatch match) {

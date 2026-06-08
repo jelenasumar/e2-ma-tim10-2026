@@ -20,6 +20,15 @@ public final class RoomGameFlow {
     }
 
     public static void onGameFinished(@NonNull Fragment fragment, @NonNull String roomId) {
+        onGameFinished(fragment, roomId, Integer.MIN_VALUE, Integer.MIN_VALUE);
+    }
+
+    public static void onGameFinished(
+            @NonNull Fragment fragment,
+            @NonNull String roomId,
+            int hostTotalScore,
+            int guestTotalScore
+    ) {
         RoomSessionRepository repository = new RoomSessionRepository();
         String uid = repository.getCurrentUid();
         if (uid != null) {
@@ -30,10 +39,16 @@ public final class RoomGameFlow {
                                 || !RoomGameKeys.STATUS_PLAYING.equals(room.getStatus())) {
                             return;
                         }
+                        int finalHostScore = hostTotalScore == Integer.MIN_VALUE
+                                ? room.getHostTotalScore()
+                                : hostTotalScore;
+                        int finalGuestScore = guestTotalScore == Integer.MIN_VALUE
+                                ? room.getGuestTotalScore()
+                                : guestTotalScore;
                         if (RoomGameKeys.nextGame(room.getGameOrder(), room.getCurrentGameIndex()) == null) {
-                            repository.advanceToNextGame(room, () -> { }, error -> { });
+                            repository.advanceToNextGame(room, finalHostScore, finalGuestScore, () -> { }, error -> { });
                         } else {
-                            repository.startBreakAfterGame(roomId, () -> { }, error -> { });
+                            repository.startBreakAfterGame(roomId, finalHostScore, finalGuestScore, () -> { }, error -> { });
                         }
                     },
                     error -> { }

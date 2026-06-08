@@ -176,7 +176,12 @@ public class AssociationsFragment extends Fragment {
 
         if (state.isGameOver() && !roomId.isEmpty() && !gameOverHandled) {
             gameOverHandled = true;
-            RoomGameFlow.onGameFinished(this, roomId);
+            RoomGameFlow.onGameFinished(
+                    this,
+                    roomId,
+                    state.getPlayerOneScore(),
+                    state.getPlayerTwoScore()
+            );
         }
     }
 
@@ -186,7 +191,7 @@ public class AssociationsFragment extends Fragment {
         }
         statsRecorded = true;
         new UserProfileRepository(requireContext()).recordAsocijacijeGame(
-                viewModel.getCurrentUserScore(),
+                viewModel.getCurrentUserGameScore(),
                 viewModel.getStatsSolvedRounds(),
                 viewModel.getStatsUnsolvedRounds()
         );

@@ -79,8 +79,8 @@ public final class SkockoRoomRepository {
                     room.getHostUid(),
                     1,
                     secretCombination,
-                    0,
-                    0
+                    room.getHostTotalScore(),
+                    room.getGuestTotalScore()
             );
             transaction.set(ref, state);
             return null;

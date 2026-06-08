@@ -72,7 +72,16 @@ public final class SpojniceRoomRepository {
             if (snapshot.exists()) {
                 return null;
             }
-            transaction.set(ref, baseRoundState(room, 1, room.getHostUid(), 1, round, criterion, 0, 0));
+            transaction.set(ref, baseRoundState(
+                    room,
+                    1,
+                    room.getHostUid(),
+                    1,
+                    round,
+                    criterion,
+                    room.getHostTotalScore(),
+                    room.getGuestTotalScore()
+            ));
             return null;
         }).addOnFailureListener(error ->
                 onError.accept(error.getMessage() != null ? error.getMessage() : "Spojnice ne mogu da se pokrenu.")

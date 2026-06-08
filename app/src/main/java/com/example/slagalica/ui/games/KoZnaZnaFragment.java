@@ -169,7 +169,12 @@ public class KoZnaZnaFragment extends Fragment {
             finishUiApplied = true;
             if (!roomId.isEmpty()) {
                 confirmBtn.setVisibility(View.GONE);
-                RoomGameFlow.onGameFinished(this, roomId);
+                RoomGameFlow.onGameFinished(
+                        this,
+                        roomId,
+                        state.getPlayerOneScore(),
+                        state.getPlayerTwoScore()
+                );
             } else {
                 confirmBtn.setText(R.string.kzz_back_home);
             }

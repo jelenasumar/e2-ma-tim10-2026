@@ -153,7 +153,12 @@ public class SpojniceFragment extends Fragment {
                 backBtn.setVisibility(View.GONE);
                 if (!gameOverHandled) {
                     gameOverHandled = true;
-                    RoomGameFlow.onGameFinished(this, roomId);
+                    RoomGameFlow.onGameFinished(
+                            this,
+                            roomId,
+                            state.getPlayerOneScore(),
+                            state.getPlayerTwoScore()
+                    );
                 }
             } else {
                 backBtn.setVisibility(View.VISIBLE);

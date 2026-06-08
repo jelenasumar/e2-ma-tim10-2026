@@ -139,7 +139,12 @@ public class SkockoFragment extends Fragment {
 
         if (state.isGameOver() && !roomId.isEmpty() && !gameOverHandled) {
             gameOverHandled = true;
-            RoomGameFlow.onGameFinished(this, roomId);
+            RoomGameFlow.onGameFinished(
+                    this,
+                    roomId,
+                    viewModel.getPlayerOneScore(),
+                    viewModel.getPlayerTwoScore()
+            );
         }
     }
 
@@ -149,7 +154,7 @@ public class SkockoFragment extends Fragment {
         }
         statsRecorded = true;
         new UserProfileRepository(requireContext()).recordSkockoGame(
-                viewModel.getCurrentUserScore(),
+                viewModel.getCurrentUserGameScore(),
                 viewModel.getStatsComboPercent()
         );
     }

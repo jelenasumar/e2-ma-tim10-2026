@@ -56,6 +56,8 @@ public class SpojniceViewModel extends AndroidViewModel {
     private int activePlayerNumber = 1;
     private int playerOneScore = 0;
     private int playerTwoScore = 0;
+    private int basePlayerOneScore = 0;
+    private int basePlayerTwoScore = 0;
     private int currentLeftIndex = 0;
     private int selectedRow = SpojniceUiState.NO_ROW;
     private int selectedRightIndex = SpojniceUiState.NO_SELECTION;
@@ -218,6 +220,8 @@ public class SpojniceViewModel extends AndroidViewModel {
 
     private void onRoomChanged(@NonNull RoomSession room) {
         roomSession = room;
+        basePlayerOneScore = room.getHostTotalScore();
+        basePlayerTwoScore = room.getGuestTotalScore();
         playerOneLabel = room.getHostUsername();
         playerTwoLabel = room.getGuestUsername();
         ensurePlayerAvatars(room.getHostUid(), room.getGuestUid());
@@ -382,7 +386,9 @@ public class SpojniceViewModel extends AndroidViewModel {
             return;
         }
         statsRecorded = true;
-        int myScore = myUid.equals(roomSession.getHostUid()) ? playerOneScore : playerTwoScore;
+        int myScore = myUid.equals(roomSession.getHostUid())
+                ? playerOneScore - basePlayerOneScore
+                : playerTwoScore - basePlayerTwoScore;
         int correctPairs = myScore / 2;
         profileRepository.recordSpojniceGame(myScore, correctPairs, TOTAL_PAIRS_PER_GAME);
     }

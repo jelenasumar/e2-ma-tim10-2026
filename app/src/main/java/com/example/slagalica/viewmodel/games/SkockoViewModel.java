@@ -65,6 +65,8 @@ public class SkockoViewModel extends GameViewModel {
     private int activePlayerNumber = 1;
     private int playerOneScore = 0;
     private int playerTwoScore = 0;
+    private int basePlayerOneScore = 0;
+    private int basePlayerTwoScore = 0;
     private boolean bonusPhase = false;
     private boolean roundOver = false;
     private boolean gameOver = false;
@@ -214,6 +216,30 @@ public class SkockoViewModel extends GameViewModel {
         return 0;
     }
 
+    public int getPlayerOneScore() {
+        return playerOneScore;
+    }
+
+    public int getPlayerTwoScore() {
+        return playerTwoScore;
+    }
+
+    public int getCurrentUserGameScore() {
+        if (!roomMode) {
+            return playerOneScore;
+        }
+        if (roomSession == null || myUid.isEmpty()) {
+            return 0;
+        }
+        if (myUid.equals(roomSession.getHostUid())) {
+            return playerOneScore - basePlayerOneScore;
+        }
+        if (myUid.equals(roomSession.getGuestUid())) {
+            return playerTwoScore - basePlayerTwoScore;
+        }
+        return 0;
+    }
+
     public float getStatsComboPercent() {
         if (statsTotalSlots == 0) {
             return 0f;
@@ -236,6 +262,8 @@ public class SkockoViewModel extends GameViewModel {
 
     private void onRoomChanged(@NonNull RoomSession room) {
         roomSession = room;
+        basePlayerOneScore = room.getHostTotalScore();
+        basePlayerTwoScore = room.getGuestTotalScore();
         applyRoomPlayers(room, playerOneScore, playerTwoScore);
         if (skockoListener == null) {
             skockoListener = skockoRoomRepository.listenState(

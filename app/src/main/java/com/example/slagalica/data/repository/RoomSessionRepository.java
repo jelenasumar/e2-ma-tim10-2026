@@ -119,10 +119,22 @@ public final class RoomSessionRepository {
             @NonNull Runnable onDone,
             @NonNull Consumer<String> onError
     ) {
+        advanceToNextGame(room, room.getHostTotalScore(), room.getGuestTotalScore(), onDone, onError);
+    }
+
+    public void advanceToNextGame(
+            @NonNull RoomSession room,
+            int hostTotalScore,
+            int guestTotalScore,
+            @NonNull Runnable onDone,
+            @NonNull Consumer<String> onError
+    ) {
         List<String> gameOrder = room.getGameOrder();
         int nextIndex = room.getCurrentGameIndex() + 1;
         if (nextIndex >= gameOrder.size()) {
             Map<String, Object> updates = new HashMap<>();
+            updates.put("hostTotalScore", hostTotalScore);
+            updates.put("guestTotalScore", guestTotalScore);
             updates.put("status", RoomGameKeys.STATUS_FINISHED);
             updates.put("breakEndsAtMillis", FieldValue.delete());
             updates.put("updatedAt", FieldValue.serverTimestamp());
@@ -138,6 +150,8 @@ public final class RoomSessionRepository {
 
         String nextGame = gameOrder.get(nextIndex);
         Map<String, Object> updates = new HashMap<>();
+        updates.put("hostTotalScore", hostTotalScore);
+        updates.put("guestTotalScore", guestTotalScore);
         updates.put("currentGameIndex", nextIndex);
         updates.put("currentGame", nextGame);
         updates.put("status", RoomGameKeys.STATUS_PLAYING);
@@ -149,6 +163,28 @@ public final class RoomSessionRepository {
                 .addOnSuccessListener(unused -> onDone.run())
                 .addOnFailureListener(e -> onError.accept(
                         e.getMessage() != null ? e.getMessage() : "Next game could not be started."
+                ));
+    }
+
+    public void startBreakAfterGame(
+            @NonNull String roomId,
+            int hostTotalScore,
+            int guestTotalScore,
+            @NonNull Runnable onDone,
+            @NonNull Consumer<String> onError
+    ) {
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("hostTotalScore", hostTotalScore);
+        updates.put("guestTotalScore", guestTotalScore);
+        updates.put("status", RoomGameKeys.STATUS_BREAK);
+        updates.put("breakEndsAtMillis", System.currentTimeMillis() + RoomGameKeys.BREAK_DURATION_MS);
+        updates.put("updatedAt", FieldValue.serverTimestamp());
+        db.collection(ROOMS)
+                .document(roomId)
+                .update(updates)
+                .addOnSuccessListener(unused -> onDone.run())
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Break could not be started."
                 ));
     }
 }

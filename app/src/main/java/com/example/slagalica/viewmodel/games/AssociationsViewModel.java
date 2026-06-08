@@ -66,6 +66,8 @@ public class AssociationsViewModel extends GameViewModel {
     private int activePlayerNumber = 1;
     private int playerOneScore = 0;
     private int playerTwoScore = 0;
+    private int basePlayerOneScore = 0;
+    private int basePlayerTwoScore = 0;
     private boolean fieldOpenedThisTurn = false;
     private boolean finalAnswerSolved = false;
     private boolean roundOver = false;
@@ -269,6 +271,22 @@ public class AssociationsViewModel extends GameViewModel {
         return 0;
     }
 
+    public int getCurrentUserGameScore() {
+        if (!roomMode) {
+            return playerOneScore;
+        }
+        if (roomSession == null || myUid.isEmpty()) {
+            return 0;
+        }
+        if (myUid.equals(roomSession.getHostUid())) {
+            return playerOneScore - basePlayerOneScore;
+        }
+        if (myUid.equals(roomSession.getGuestUid())) {
+            return playerTwoScore - basePlayerTwoScore;
+        }
+        return 0;
+    }
+
     public int getStatsSolvedRounds() {
         return statsSolvedRounds;
     }
@@ -292,6 +310,8 @@ public class AssociationsViewModel extends GameViewModel {
 
     private void onRoomChanged(@NonNull RoomSession room) {
         roomSession = room;
+        basePlayerOneScore = room.getHostTotalScore();
+        basePlayerTwoScore = room.getGuestTotalScore();
         applyRoomPlayers(room, playerOneScore, playerTwoScore);
         if (associationsListener == null) {
             associationsListener = associationsRoomRepository.listenState(
