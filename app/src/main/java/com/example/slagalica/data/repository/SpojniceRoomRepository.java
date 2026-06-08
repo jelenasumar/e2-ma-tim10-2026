@@ -110,6 +110,9 @@ public final class SpojniceRoomRepository {
 
             String followupUid = stringOrEmpty(snapshot.getString("followupPlayerUid"));
             int currentRound = intOrZero(snapshot.get("currentRound"));
+            if (followupUid.isEmpty() && PHASE_FOLLOWUP.equals(phase)) {
+                followupUid = followupPlayerUid(snapshot);
+            }
             if (PHASE_ACTIVE.equals(phase) && !myUid.equals(startingPlayerUid(snapshot, currentRound))) {
                 return null;
             }

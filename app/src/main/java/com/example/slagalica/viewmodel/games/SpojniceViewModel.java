@@ -312,6 +312,10 @@ public class SpojniceViewModel extends AndroidViewModel {
         playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
         activePlayerUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
         followupPlayerUid = stringOrEmpty(snapshot.getString("followupPlayerUid"));
+        if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(newPhase)
+                && (followupPlayerUid.isEmpty() || !followupPlayerUid.equals(followupPlayerUidForRound(newRound)))) {
+            followupPlayerUid = followupPlayerUidForRound(newRound);
+        }
         phase = newPhase;
         currentLeftIndex = newLeftIndex;
         criterion = stringOrDefault(snapshot.getString("criterion"), "");
@@ -341,10 +345,8 @@ public class SpojniceViewModel extends AndroidViewModel {
         }
         if (SpojniceRoomRepository.PHASE_ACTIVE.equals(phase)) {
             selectedRow = currentLeftIndex;
-        } else if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase) && phaseChanged) {
-            selectedRow = SpojniceUiState.NO_ROW;
         } else if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)
-                && (selectedRow < 0
+                && (phaseChanged || selectedRow < 0
                 || connectedLeft.contains(selectedRow)
                 || followupLockedLeft.contains(selectedRow))) {
             selectedRow = firstAvailableFollowupRow();
@@ -538,7 +540,7 @@ public class SpojniceViewModel extends AndroidViewModel {
 
     private int displayActivePlayerNumber() {
         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
-            return playerNumberForUid(followupPlayerUid);
+            return playerNumberForUid(followupPlayerUidForRound(currentRound));
         }
         if (SpojniceRoomRepository.PHASE_ACTIVE.equals(phase)) {
             return startingPlayerNumber(currentRound);
@@ -573,6 +575,11 @@ public class SpojniceViewModel extends AndroidViewModel {
         return round % 2 == 0 ? 2 : 1;
     }
 
+    @NonNull
+    private String followupPlayerUidForRound(int round) {
+        return startingPlayerNumber(round) == 1 ? playerTwoUid : playerOneUid;
+    }
+
     private boolean canCurrentUserPlay() {
         if (roundOver || gameOver || myUid.isEmpty()) {
             return false;
@@ -584,7 +591,7 @@ public class SpojniceViewModel extends AndroidViewModel {
             return myUid.equals(startingPlayerUid(currentRound));
         }
         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
-            return myUid.equals(followupPlayerUid);
+            return myUid.equals(followupPlayerUidForRound(currentRound));
         }
         return false;
     }
