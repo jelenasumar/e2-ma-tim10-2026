@@ -47,6 +47,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private boolean myAvatarPublished;
     private boolean resolveInFlight;
     private boolean presenceMarkInFlight;
+    private int frozenRoundLeft = -1;
+    private int frozenQuestionLeft = -1;
     private int selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
     private int myHits;
     private int myMisses;
@@ -81,6 +83,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         this.myAvatarPublished = false;
         this.resolveInFlight = false;
         this.presenceMarkInFlight = false;
+        this.frozenRoundLeft = -1;
+        this.frozenQuestionLeft = -1;
         this.selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
         this.myHits = 0;
         this.myMisses = 0;
@@ -221,13 +225,21 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
 
         iHaveAnswered = true;
+        publishFromMatch(latestMatch);
         matchRepository.submitAnswer(
                 matchId,
                 myUid,
                 latestMatch.getHostUid(),
                 selectedAnswerIndex,
                 answeredAtMs,
-                () -> publishFromMatch(latestMatch),
+                () -> {
+                    if (latestMatch != null) {
+                        publishFromMatch(latestMatch);
+                        if (isHost) {
+                            maybeResolveQuestion(latestMatch);
+                        }
+                    }
+                },
                 error -> errorMessage.setValue(error)
         );
     }
@@ -237,6 +249,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
         iHaveAnswered = true;
+        publishFromMatch(latestMatch);
         long answeredAtMs = latestMatch.getQuestionStartedAtMs() > 0L
                 ? Math.max(0L, System.currentTimeMillis() - latestMatch.getQuestionStartedAtMs())
                 : 0L;
@@ -246,7 +259,14 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 latestMatch.getHostUid(),
                 KoZnaZnaScoring.ANSWER_SKIP,
                 answeredAtMs,
-                () -> publishFromMatch(latestMatch),
+                () -> {
+                    if (latestMatch != null) {
+                        publishFromMatch(latestMatch);
+                        if (isHost) {
+                            maybeResolveQuestion(latestMatch);
+                        }
+                    }
+                },
                 error -> errorMessage.setValue(error)
         );
     }
@@ -282,6 +302,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         if (match.getCurrentQuestionIndex() != previousQuestionIndex) {
             resolveInFlight = false;
             iHaveAnswered = false;
+            frozenRoundLeft = -1;
+            frozenQuestionLeft = -1;
             selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
             if (latestMatch != null) {
                 localStatusMessage = buildResolutionMessage(latestMatch);
@@ -340,15 +362,10 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
         boolean hostPending = match.getHostAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
         boolean guestPending = match.getGuestAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
+        boolean bothAnswered = !hostPending && !guestPending;
         boolean timeUp = now >= match.getQuestionEndsAtMs() + KoZnaZnaMatchDataSource.RESOLVE_GRACE_MS;
 
-        if (hostPending && guestPending && !timeUp) {
-            return;
-        }
-        if (!hostPending && guestPending && !timeUp) {
-            return;
-        }
-        if (hostPending && !guestPending && !timeUp) {
+        if (!bothAnswered && !timeUp) {
             return;
         }
 
@@ -387,36 +404,40 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
 
         long now = System.currentTimeMillis();
         boolean waitingForStart = !isQuestionTimerActive(match, now);
-        int roundLeft = waitingForStart
-                ? KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH * 5
-                : (int) Math.max(0, Math.ceil((match.getRoundEndsAtMs() - now) / 1000.0));
+        int totalQuestions = match.getQuestionOrder().isEmpty()
+                ? KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH
+                : match.getQuestionOrder().size();
+        int questionSlotSeconds = KoZnaZnaMatchDataSource.QUESTION_MS / 1000;
         int questionLeft = waitingForStart
-                ? KoZnaZnaMatchDataSource.QUESTION_MS / 1000
+                ? questionSlotSeconds
                 : (int) Math.max(0, Math.ceil((match.getQuestionEndsAtMs() - now) / 1000.0));
+        int remainingQuestionSlots = Math.max(0, totalQuestions - match.getCurrentQuestionIndex() - 1);
+        int roundLeft = waitingForStart
+                ? totalQuestions * questionSlotSeconds
+                : remainingQuestionSlots * questionSlotSeconds + questionLeft;
+
+        if (iHaveAnswered && !waitingForStart) {
+            if (frozenRoundLeft < 0) {
+                frozenRoundLeft = roundLeft;
+                frozenQuestionLeft = questionLeft;
+            }
+            roundLeft = frozenRoundLeft;
+            questionLeft = frozenQuestionLeft;
+        }
 
         KoZnaZnaQuestion question = currentQuestion(match);
         List<String> options = question != null
                 ? question.getOptions()
                 : KoZnaZnaQuestion.defaultQuestions().get(0).getOptions();
-        int totalQuestions = match.getQuestionOrder().isEmpty()
-                ? KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH
-                : match.getQuestionOrder().size();
 
         boolean finished = KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus());
         boolean canAnswer = canAnswerLocally() && !finished;
-
-        int opponentAnswerIndex = isHost ? match.getGuestAnswerIndex() : match.getHostAnswerIndex();
-        boolean waitingOpponent = iHaveAnswered
-                && opponentAnswerIndex == KoZnaZnaScoring.ANSWER_PENDING
-                && !match.isQuestionResolved();
 
         String status = !match.getStatusMessage().isEmpty()
                 ? match.getStatusMessage()
                 : localStatusMessage;
         if (waitingForStart && !finished && !canAnswer) {
             status = getApplication().getString(R.string.kzz_waiting_sync);
-        } else if (waitingOpponent) {
-            status = getApplication().getString(R.string.kzz_waiting_opponent);
         }
 
         if (finished && status.isEmpty()) {
@@ -444,7 +465,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 canAnswer,
                 finished,
                 status,
-                waitingOpponent
+                false
         ));
     }
 

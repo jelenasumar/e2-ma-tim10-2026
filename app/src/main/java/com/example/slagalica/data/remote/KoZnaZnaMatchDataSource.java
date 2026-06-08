@@ -29,9 +29,8 @@ public final class KoZnaZnaMatchDataSource {
     public static final int QUESTION_MS = 5_000;
     public static final int QUESTIONS_PER_MATCH = 5;
     public static final int ROUND_MS = QUESTIONS_PER_MATCH * QUESTION_MS;
-    public static final long ADVANCE_DELAY_MS = 600L;
     public static final long MATCH_START_BUFFER_MS = 3_000L;
-    public static final long RESOLVE_GRACE_MS = 2_500L;
+    public static final long RESOLVE_GRACE_MS = 0L;
     private static final int DEFAULT_QUESTIONS_PER_MATCH = QUESTIONS_PER_MATCH;
 
     private final FirebaseFirestore db;
@@ -360,19 +359,11 @@ public final class KoZnaZnaMatchDataSource {
             }
             boolean hostPending = match.getHostAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
             boolean guestPending = match.getGuestAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
+            boolean bothAnswered = !hostPending && !guestPending;
             boolean timeUp = now >= match.getQuestionEndsAtMs() + RESOLVE_GRACE_MS;
 
-            if (hostPending && guestPending && !timeUp) {
+            if (!bothAnswered && !timeUp) {
                 return match;
-            }
-            if (!hostPending && guestPending && !timeUp) {
-                return match;
-            }
-            if (hostPending && !guestPending && !timeUp) {
-                return match;
-            }
-            if (!hostPending && !guestPending) {
-                // both answered – resolve immediately
             }
 
             int hostIndex = hostPending ? KoZnaZnaScoring.ANSWER_SKIP : match.getHostAnswerIndex();
@@ -463,11 +454,9 @@ public final class KoZnaZnaMatchDataSource {
             return updates;
         }
 
-        int remainingQuestions = totalQuestions - nextIndex;
         updates.put("currentQuestionIndex", nextIndex);
         updates.put("questionStartedAtMs", now);
         updates.put("questionEndsAtMs", now + QUESTION_MS);
-        updates.put("roundEndsAtMs", now + (long) remainingQuestions * QUESTION_MS);
         updates.put("questionResolved", false);
         updates.put("statusMessage", "");
         updates.put("hostAnswerIndex", KoZnaZnaScoring.ANSWER_PENDING);
