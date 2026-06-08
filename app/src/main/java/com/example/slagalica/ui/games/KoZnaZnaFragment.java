@@ -147,8 +147,6 @@ public class KoZnaZnaFragment extends Fragment {
             if (answersGroup.getCheckedRadioButtonId() != checkedId) {
                 answersGroup.check(checkedId);
             }
-        } else if (!state.isAnswersEnabled()) {
-            answersGroup.clearCheck();
         }
 
         boolean enabled = state.isAnswersEnabled();

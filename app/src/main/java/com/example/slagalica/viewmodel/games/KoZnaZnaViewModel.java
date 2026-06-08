@@ -46,7 +46,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private boolean roomMatchCreationStarted;
     private boolean myAvatarPublished;
     private boolean resolveInFlight;
-    private boolean presenceMarked;
+    private boolean presenceMarkInFlight;
     private int selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
     private int myHits;
     private int myMisses;
@@ -80,7 +80,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         this.statsRecorded = false;
         this.myAvatarPublished = false;
         this.resolveInFlight = false;
-        this.presenceMarked = false;
+        this.presenceMarkInFlight = false;
         this.selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
         this.myHits = 0;
         this.myMisses = 0;
@@ -210,7 +210,9 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
 
-        long answeredAtMs = System.currentTimeMillis() - latestMatch.getQuestionStartedAtMs();
+        long answeredAtMs = latestMatch.getQuestionStartedAtMs() > 0L
+                ? Math.max(0L, System.currentTimeMillis() - latestMatch.getQuestionStartedAtMs())
+                : 0L;
         KoZnaZnaQuestion question = currentQuestion(latestMatch);
         if (question != null && question.isCorrect(selectedAnswerIndex)) {
             myHits++;
@@ -235,7 +237,9 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
         iHaveAnswered = true;
-        long answeredAtMs = System.currentTimeMillis() - latestMatch.getQuestionStartedAtMs();
+        long answeredAtMs = latestMatch.getQuestionStartedAtMs() > 0L
+                ? Math.max(0L, System.currentTimeMillis() - latestMatch.getQuestionStartedAtMs())
+                : 0L;
         matchRepository.submitAnswer(
                 matchId,
                 myUid,
@@ -282,7 +286,15 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             if (latestMatch != null) {
                 localStatusMessage = buildResolutionMessage(latestMatch);
             }
-        } else if (latestMatch != null
+        } else {
+            int myAnswerIndex = myUid.equals(match.getHostUid())
+                    ? match.getHostAnswerIndex()
+                    : match.getGuestAnswerIndex();
+            if (myAnswerIndex != KoZnaZnaScoring.ANSWER_PENDING) {
+                iHaveAnswered = true;
+            }
+        }
+        if (latestMatch != null
                 && KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())
                 && !KoZnaZnaMatch.STATUS_FINISHED.equals(latestMatch.getStatus())) {
             localStatusMessage = buildResolutionMessage(latestMatch);
@@ -296,11 +308,13 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
 
-        maybeResolveQuestion(match);
+        if (isHost) {
+            maybeResolveQuestion(match);
+        }
     }
 
     private void maybeResolveQuestion(@NonNull KoZnaZnaMatch match) {
-        if (resolveInFlight || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
+        if (!isHost || resolveInFlight || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
             return;
         }
 
@@ -326,7 +340,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
         boolean hostPending = match.getHostAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
         boolean guestPending = match.getGuestAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
-        boolean timeUp = now >= match.getQuestionEndsAtMs();
+        boolean timeUp = now >= match.getQuestionEndsAtMs() + KoZnaZnaMatchDataSource.RESOLVE_GRACE_MS;
 
         if (hostPending && guestPending && !timeUp) {
             return;
@@ -357,8 +371,9 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
 
     private void onTimerTick() {
         if (latestMatch != null) {
+            markPlayerPresentIfNeeded(latestMatch);
             publishFromMatch(latestMatch);
-            if (KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())) {
+            if (isHost && KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())) {
                 maybeResolveQuestion(latestMatch);
             }
         }
@@ -388,7 +403,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 : match.getQuestionOrder().size();
 
         boolean finished = KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus());
-        boolean canAnswer = canAnswerLocally() && !match.isQuestionResolved() && !finished;
+        boolean canAnswer = canAnswerLocally() && !finished;
 
         int opponentAnswerIndex = isHost ? match.getGuestAnswerIndex() : match.getHostAnswerIndex();
         boolean waitingOpponent = iHaveAnswered
@@ -398,7 +413,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         String status = !match.getStatusMessage().isEmpty()
                 ? match.getStatusMessage()
                 : localStatusMessage;
-        if (waitingForStart && !finished) {
+        if (waitingForStart && !finished && !canAnswer) {
             status = getApplication().getString(R.string.kzz_waiting_sync);
         } else if (waitingOpponent) {
             status = getApplication().getString(R.string.kzz_waiting_opponent);
@@ -545,16 +560,20 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     private void markPlayerPresentIfNeeded(@NonNull KoZnaZnaMatch match) {
-        if (presenceMarked || matchId == null || matchId.isEmpty() || myUid.isEmpty()) {
+        if (match.getQuestionStartedAtMs() > 0L
+                || presenceMarkInFlight
+                || matchId == null
+                || matchId.isEmpty()
+                || myUid.isEmpty()) {
             return;
         }
-        presenceMarked = true;
+        presenceMarkInFlight = true;
         matchRepository.markPlayerPresent(
                 matchId,
                 myUid,
                 match.getHostUid(),
-                () -> { },
-                error -> presenceMarked = false
+                () -> presenceMarkInFlight = false,
+                error -> presenceMarkInFlight = false
         );
     }
 
@@ -566,8 +585,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         if (latestMatch == null
                 || !KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())
                 || iHaveAnswered
-                || latestMatch.isQuestionResolved()
-                || !isQuestionTimerActive(latestMatch, System.currentTimeMillis())) {
+                || myUid.isEmpty()) {
             return false;
         }
         int myAnswerIndex = myUid.equals(latestMatch.getHostUid())
