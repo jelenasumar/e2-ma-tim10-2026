@@ -355,7 +355,7 @@ public final class UserProfileRepository {
         }
     }
 
-    public void recordAsocijacijeGame(int gameScore) {
+    public void recordAsocijacijeGame(int gameScore, int solvedRounds, int unsolvedRounds) {
         if (!isRegisteredPlayer()) {
             return;
         }
@@ -378,8 +378,8 @@ public final class UserProfileRepository {
                 stats.getKoZnaZnaMisses(),
                 stats.getMojBrojCorrectPercent(),
                 stats.getKorakPoKorakStepPercents(),
-                stats.getAsocijacijeSolved(),
-                stats.getAsocijacijeUnsolved(),
+                stats.getAsocijacijeSolved() + solvedRounds,
+                stats.getAsocijacijeUnsolved() + unsolvedRounds,
                 stats.getSkockoComboPercent(),
                 stats.getSpojniceLinkedPercent(),
                 stats.getTotalMatches(),
@@ -393,7 +393,7 @@ public final class UserProfileRepository {
         saveRemoteProfile(updatedProfile);
     }
 
-    public void recordSkockoGame(int gameScore) {
+    public void recordSkockoGame(int gameScore, float comboPercent) {
         if (!isRegisteredPlayer()) {
             return;
         }
@@ -404,6 +404,9 @@ public final class UserProfileRepository {
         float newAvg = gamesPlayed == 0
                 ? gameScore
                 : ((stats.getAvgScoreSkocko() * gamesPlayed) + gameScore) / (gamesPlayed + 1f);
+        float newComboPercent = gamesPlayed == 0
+                ? comboPercent
+                : ((stats.getSkockoComboPercent() * gamesPlayed) + comboPercent) / (gamesPlayed + 1f);
 
         PlayerStatistics updatedStats = new PlayerStatistics(
                 stats.getAvgScoreKoZnaZna(),
@@ -418,7 +421,7 @@ public final class UserProfileRepository {
                 stats.getKorakPoKorakStepPercents(),
                 stats.getAsocijacijeSolved(),
                 stats.getAsocijacijeUnsolved(),
-                stats.getSkockoComboPercent(),
+                newComboPercent,
                 stats.getSpojniceLinkedPercent(),
                 stats.getTotalMatches(),
                 stats.getMatchesWinPercent(),

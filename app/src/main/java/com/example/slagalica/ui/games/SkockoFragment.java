@@ -148,7 +148,10 @@ public class SkockoFragment extends Fragment {
             return;
         }
         statsRecorded = true;
-        new UserProfileRepository(requireContext()).recordSkockoGame(viewModel.getCurrentUserScore());
+        new UserProfileRepository(requireContext()).recordSkockoGame(
+                viewModel.getCurrentUserScore(),
+                viewModel.getStatsComboPercent()
+        );
     }
 
     private void renderSubmittedAttempts(@NonNull List<SkockoAttempt> attempts) {

@@ -185,7 +185,11 @@ public class AssociationsFragment extends Fragment {
             return;
         }
         statsRecorded = true;
-        new UserProfileRepository(requireContext()).recordAsocijacijeGame(viewModel.getCurrentUserScore());
+        new UserProfileRepository(requireContext()).recordAsocijacijeGame(
+                viewModel.getCurrentUserScore(),
+                viewModel.getStatsSolvedRounds(),
+                viewModel.getStatsUnsolvedRounds()
+        );
     }
 
     private void renderColumn(

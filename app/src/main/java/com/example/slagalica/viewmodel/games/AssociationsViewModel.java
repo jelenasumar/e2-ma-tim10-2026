@@ -72,6 +72,9 @@ public class AssociationsViewModel extends GameViewModel {
     private boolean gameOver = false;
     private boolean roomMode = false;
     private boolean roomInitializationRequested = false;
+    private int statsSolvedRounds = 0;
+    private int statsUnsolvedRounds = 0;
+    private int statsLastRecordedRound = 0;
 
     public AssociationsViewModel(@NonNull Application application) {
         super(application);
@@ -266,6 +269,14 @@ public class AssociationsViewModel extends GameViewModel {
         return 0;
     }
 
+    public int getStatsSolvedRounds() {
+        return statsSolvedRounds;
+    }
+
+    public int getStatsUnsolvedRounds() {
+        return statsUnsolvedRounds;
+    }
+
     @Override
     protected void onCleared() {
         super.onCleared();
@@ -335,6 +346,7 @@ public class AssociationsViewModel extends GameViewModel {
         roundOver = AssociationsRoomRepository.PHASE_ROUND_OVER.equals(phase)
                 || AssociationsRoomRepository.PHASE_GAME_OVER.equals(phase);
         gameOver = AssociationsRoomRepository.PHASE_GAME_OVER.equals(phase);
+        recordRoundStatsIfNeeded();
 
         applyRoomPlayersFromState(snapshot);
         initializeHeader(
@@ -456,6 +468,7 @@ public class AssociationsViewModel extends GameViewModel {
 
         stopRoundTimer();
         roundOver = true;
+        recordRoundStatsIfNeeded();
         updateTime(formatTimeText(0));
         updateActivePlayer(0);
         updateScores(playerOneScore, playerTwoScore);
@@ -510,6 +523,18 @@ public class AssociationsViewModel extends GameViewModel {
         if (roundTimer != null) {
             roundTimer.cancel();
             roundTimer = null;
+        }
+    }
+
+    private void recordRoundStatsIfNeeded() {
+        if (!roundOver || currentRound <= statsLastRecordedRound) {
+            return;
+        }
+        statsLastRecordedRound = currentRound;
+        if (finalAnswerSolved) {
+            statsSolvedRounds++;
+        } else {
+            statsUnsolvedRounds++;
         }
     }
 

@@ -69,6 +69,9 @@ public class SkockoViewModel extends GameViewModel {
     private boolean roundOver = false;
     private boolean gameOver = false;
     private boolean roomMode = false;
+    private int statsExactMatches = 0;
+    private int statsTotalSlots = 0;
+    private int statsLastRecordedRound = 0;
 
     public SkockoViewModel(@NonNull Application application) {
         super(application);
@@ -211,6 +214,13 @@ public class SkockoViewModel extends GameViewModel {
         return 0;
     }
 
+    public float getStatsComboPercent() {
+        if (statsTotalSlots == 0) {
+            return 0f;
+        }
+        return (statsExactMatches * 100f) / statsTotalSlots;
+    }
+
     @Override
     protected void onCleared() {
         super.onCleared();
@@ -271,6 +281,7 @@ public class SkockoViewModel extends GameViewModel {
         if (roundOver) {
             bonusInput = parseSymbols(snapshot.get("bonusAttempt"));
         }
+        recordRoundStatsIfNeeded();
 
         applyRoomPlayersFromState(snapshot);
         initializeHeader(
@@ -436,6 +447,7 @@ public class SkockoViewModel extends GameViewModel {
         stopRoundTimer();
         bonusPhase = false;
         roundOver = true;
+        recordRoundStatsIfNeeded();
         updateTime(formatTimeText(0));
         updateActivePlayer(0);
         updateScores(playerOneScore, playerTwoScore);
@@ -508,6 +520,40 @@ public class SkockoViewModel extends GameViewModel {
             roundTimer.cancel();
             roundTimer = null;
         }
+    }
+
+    private void recordRoundStatsIfNeeded() {
+        if (!roundOver || currentRound <= statsLastRecordedRound) {
+            return;
+        }
+        statsLastRecordedRound = currentRound;
+
+        if (isCurrentUserActiveRoundPlayer()) {
+            for (SkockoAttempt attempt : attempts) {
+                statsExactMatches += attempt.getResult().getExactMatches();
+                statsTotalSlots += COMBINATION_SIZE;
+            }
+        }
+
+        if (bonusInput.size() == COMBINATION_SIZE && isCurrentUserBonusPlayer()) {
+            SkockoAttemptResult result = evaluateAttempt(bonusInput, secretCombination);
+            statsExactMatches += result.getExactMatches();
+            statsTotalSlots += COMBINATION_SIZE;
+        }
+    }
+
+    private boolean isCurrentUserActiveRoundPlayer() {
+        if (!roomMode) {
+            return activePlayerNumber == 1;
+        }
+        return !myUid.isEmpty() && myUid.equals(activePlayerUid);
+    }
+
+    private boolean isCurrentUserBonusPlayer() {
+        if (!roomMode) {
+            return getBonusPlayerNumber() == 1;
+        }
+        return !myUid.isEmpty() && myUid.equals(bonusPlayerUid);
     }
 
     private static long remainingPhaseMillis(long phaseEndsAtMillis) {
