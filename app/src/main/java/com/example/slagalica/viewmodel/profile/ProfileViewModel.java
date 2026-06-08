@@ -24,6 +24,7 @@ public class ProfileViewModel extends AndroidViewModel {
 
     private final MutableLiveData<UserProfile> profile = new MutableLiveData<>();
     private final MutableLiveData<String> statsText = new MutableLiveData<>();
+    private final MutableLiveData<String> matchSummaryText = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
     private final SingleLiveEvent<Boolean> logoutCompleted = new SingleLiveEvent<>();
@@ -42,6 +43,11 @@ public class ProfileViewModel extends AndroidViewModel {
     @NonNull
     public LiveData<String> getStatsText() {
         return statsText;
+    }
+
+    @NonNull
+    public LiveData<String> getMatchSummaryText() {
+        return matchSummaryText;
     }
 
     @NonNull
@@ -73,6 +79,7 @@ public class ProfileViewModel extends AndroidViewModel {
                     isLoading.setValue(false);
                     profile.setValue(loadedProfile);
                     statsText.setValue(buildStatsText(loadedProfile));
+                    matchSummaryText.setValue(buildMatchSummaryText(loadedProfile));
                 },
                 error -> {
                     isLoading.setValue(false);
@@ -80,6 +87,7 @@ public class ProfileViewModel extends AndroidViewModel {
                     UserProfile cached = repository.loadProfile();
                     profile.setValue(cached);
                     statsText.setValue(buildStatsText(cached));
+                    matchSummaryText.setValue(buildMatchSummaryText(cached));
                 }
         );
     }
@@ -161,11 +169,19 @@ public class ProfileViewModel extends AndroidViewModel {
 
         sb.append(getApplication().getString(R.string.profile_stat_asoc, s.getAsocijacijeSolved(), s.getAsocijacijeUnsolved())).append("\n\n");
         sb.append(getApplication().getString(R.string.profile_stat_skocko, s.getSkockoComboPercent())).append("\n\n");
-        sb.append(getApplication().getString(R.string.profile_stat_spojnice, s.getSpojniceLinkedPercent())).append("\n\n");
-
-        sb.append(getApplication().getString(R.string.profile_stat_matches_total, s.getTotalMatches())).append("\n\n");
-        sb.append(getApplication().getString(R.string.profile_stat_win_loss, s.getMatchesWinPercent(), s.getMatchesLossPercent()));
+        sb.append(getApplication().getString(R.string.profile_stat_spojnice, s.getSpojniceLinkedPercent()));
 
         return sb.toString();
+    }
+
+    @NonNull
+    private String buildMatchSummaryText(@NonNull UserProfile profile) {
+        PlayerStatistics s = profile.getStatistics();
+        return getApplication().getString(
+                R.string.profile_match_summary,
+                s.getTotalMatches(),
+                s.getMatchesWon(),
+                s.getMatchesLost()
+        );
     }
 }

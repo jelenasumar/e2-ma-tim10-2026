@@ -165,6 +165,7 @@
     <string name="profile_stat_spojnice">Spojnice — procenat uspešno povezanih pojmova: %.1f%%</string>
     <string name="profile_stat_matches_total">Ukupno odigranih partija: %d</string>
     <string name="profile_stat_win_loss">Partije — pobede: %1$.1f%% / porazi: %2$.1f%%</string>
+    <string name="profile_match_summary">Ukupno odigranih partija: %1$d\nPobede: %2$d\nPorazi: %3$d</string>
     <string name="profile_qr_error">QR nije mogao da se generiše.</string>
 
     <string name="game_ko_zna_zna">Ko zna zna</string>

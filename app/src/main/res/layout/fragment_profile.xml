@@ -205,6 +205,15 @@
             android:textAppearance="?attr/textAppearanceBodyMedium"
             tools:text="Statistika…" />
 
+        <TextView
+            android:id="@+id/profile_match_summary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:lineSpacingExtra="4dp"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            tools:text="Ukupno odigranih partija: 0" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/profile_logout"
             style="@style/Widget.Material3.Button.OutlinedButton"

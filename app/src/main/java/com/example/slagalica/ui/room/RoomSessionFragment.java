@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment;
 
 import com.example.slagalica.R;
 import com.example.slagalica.data.repository.RoomSessionRepository;
+import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.RoomGameKeys;
 import com.example.slagalica.model.RoomSession;
 import com.example.slagalica.viewmodel.room.RoomSessionViewModel;
@@ -31,6 +32,7 @@ public class RoomSessionFragment extends Fragment {
     private TextView breakStatusView;
     private CountDownTimer breakTimer;
     private boolean navigatedToCurrentGame = false;
+    private boolean roomMatchStatsRecorded = false;
     private String lastHandledGame = "";
     private final Handler handler = new Handler(Looper.getMainLooper());
 
@@ -88,6 +90,7 @@ public class RoomSessionFragment extends Fragment {
         if (RoomGameKeys.STATUS_FINISHED.equals(room.getStatus())) {
             stopBreakTimer();
             navigatedToCurrentGame = false;
+            recordRoomMatchStatsIfNeeded(room);
             currentGameView.setVisibility(View.VISIBLE);
             currentGameView.setText(getString(
                     R.string.room_session_finished,
@@ -187,5 +190,24 @@ public class RoomSessionFragment extends Fragment {
             breakTimer.cancel();
             breakTimer = null;
         }
+    }
+
+    private void recordRoomMatchStatsIfNeeded(@NonNull RoomSession room) {
+        if (roomMatchStatsRecorded || myUid.isEmpty()) {
+            return;
+        }
+        roomMatchStatsRecorded = true;
+        int myScore;
+        int opponentScore;
+        if (myUid.equals(room.getHostUid())) {
+            myScore = room.getHostTotalScore();
+            opponentScore = room.getGuestTotalScore();
+        } else if (myUid.equals(room.getGuestUid())) {
+            myScore = room.getGuestTotalScore();
+            opponentScore = room.getHostTotalScore();
+        } else {
+            return;
+        }
+        new UserProfileRepository(requireContext()).recordRoomMatchResult(myScore, opponentScore);
     }
 }

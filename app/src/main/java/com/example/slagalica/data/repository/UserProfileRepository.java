@@ -267,7 +267,9 @@ public final class UserProfileRepository {
                 stats.getSpojniceLinkedPercent(),
                 stats.getTotalMatches(),
                 stats.getMatchesWinPercent(),
-                stats.getMatchesLossPercent()
+                stats.getMatchesLossPercent(),
+                stats.getMatchesWon(),
+                stats.getMatchesLost()
         );
 
         UserProfile updatedProfile = new UserProfile(
@@ -328,7 +330,9 @@ public final class UserProfileRepository {
                 newPercent,
                 stats.getTotalMatches(),
                 stats.getMatchesWinPercent(),
-                stats.getMatchesLossPercent()
+                stats.getMatchesLossPercent(),
+                stats.getMatchesWon(),
+                stats.getMatchesLost()
         );
 
         UserProfile updatedProfile = new UserProfile(
@@ -384,11 +388,58 @@ public final class UserProfileRepository {
                 stats.getSpojniceLinkedPercent(),
                 stats.getTotalMatches(),
                 stats.getMatchesWinPercent(),
-                stats.getMatchesLossPercent()
+                stats.getMatchesLossPercent(),
+                stats.getMatchesWon(),
+                stats.getMatchesLost()
         );
 
         UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);
         preferences.setAsocijacijeGamesPlayed(gamesPlayed + 1);
+        preferences.saveProfile(updatedProfile);
+        saveRemoteProfile(updatedProfile);
+    }
+
+    public void recordRoomMatchResult(int myTotalScore, int opponentTotalScore) {
+        if (!isRegisteredPlayer()) {
+            return;
+        }
+        UserProfile profile = preferences.loadProfile();
+        PlayerStatistics stats = profile.getStatistics();
+
+        int totalMatches = stats.getTotalMatches() + 1;
+        int matchesWon = stats.getMatchesWon();
+        int matchesLost = stats.getMatchesLost();
+        if (myTotalScore > opponentTotalScore) {
+            matchesWon++;
+        } else if (myTotalScore < opponentTotalScore) {
+            matchesLost++;
+        }
+        float winPercent = totalMatches > 0 ? (matchesWon * 100f) / totalMatches : 0f;
+        float lossPercent = totalMatches > 0 ? (matchesLost * 100f) / totalMatches : 0f;
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                stats.getAvgScoreKoZnaZna(),
+                stats.getAvgScoreSpojnice(),
+                stats.getAvgScoreMojBroj(),
+                stats.getAvgScoreKorakPoKorak(),
+                stats.getAvgScoreAsocijacije(),
+                stats.getAvgScoreSkocko(),
+                stats.getKoZnaZnaHits(),
+                stats.getKoZnaZnaMisses(),
+                stats.getMojBrojCorrectPercent(),
+                stats.getKorakPoKorakStepPercents(),
+                stats.getAsocijacijeSolved(),
+                stats.getAsocijacijeUnsolved(),
+                stats.getSkockoComboPercent(),
+                stats.getSpojniceLinkedPercent(),
+                totalMatches,
+                winPercent,
+                lossPercent,
+                matchesWon,
+                matchesLost
+        );
+
+        UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);
         preferences.saveProfile(updatedProfile);
         saveRemoteProfile(updatedProfile);
     }
@@ -425,7 +476,9 @@ public final class UserProfileRepository {
                 stats.getSpojniceLinkedPercent(),
                 stats.getTotalMatches(),
                 stats.getMatchesWinPercent(),
-                stats.getMatchesLossPercent()
+                stats.getMatchesLossPercent(),
+                stats.getMatchesWon(),
+                stats.getMatchesLost()
         );
 
         UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);

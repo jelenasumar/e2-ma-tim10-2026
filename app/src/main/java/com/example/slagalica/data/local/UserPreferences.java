@@ -48,6 +48,8 @@ public final class UserPreferences {
     private static final String KEY_TOTAL_MATCHES = "total_matches";
     private static final String KEY_WIN_PCT = "matches_win_pct";
     private static final String KEY_LOSS_PCT = "matches_loss_pct";
+    private static final String KEY_MATCHES_WON = "matches_won";
+    private static final String KEY_MATCHES_LOST = "matches_lost";
 
     private final SharedPreferences prefs;
 
@@ -75,7 +77,9 @@ public final class UserPreferences {
                 prefs.getFloat(KEY_SPOJNICE_LINKED_PCT, 0f),
                 prefs.getInt(KEY_TOTAL_MATCHES, 0),
                 prefs.getFloat(KEY_WIN_PCT, 0f),
-                prefs.getFloat(KEY_LOSS_PCT, 0f)
+                prefs.getFloat(KEY_LOSS_PCT, 0f),
+                prefs.getInt(KEY_MATCHES_WON, 0),
+                prefs.getInt(KEY_MATCHES_LOST, 0)
         );
 
         String invitePayload = prefs.getString(KEY_INVITE_PAYLOAD, "");
@@ -152,6 +156,8 @@ public final class UserPreferences {
                 .putInt(KEY_TOTAL_MATCHES, stats.getTotalMatches())
                 .putFloat(KEY_WIN_PCT, stats.getMatchesWinPercent())
                 .putFloat(KEY_LOSS_PCT, stats.getMatchesLossPercent())
+                .putInt(KEY_MATCHES_WON, stats.getMatchesWon())
+                .putInt(KEY_MATCHES_LOST, stats.getMatchesLost())
                 .apply();
 
         syncInviteCodeFromPayload(profile.getInvitePayload());

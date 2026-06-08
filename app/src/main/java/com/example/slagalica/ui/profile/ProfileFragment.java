@@ -74,6 +74,11 @@ public class ProfileFragment extends Fragment {
         );
 
         observeViewModel(view);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
         viewModel.loadProfile();
     }
 
@@ -88,6 +93,13 @@ public class ProfileFragment extends Fragment {
             TextView statsBody = root.findViewById(R.id.profile_stats_body);
             if (stats != null) {
                 statsBody.setText(stats);
+            }
+        });
+
+        viewModel.getMatchSummaryText().observe(getViewLifecycleOwner(), summary -> {
+            TextView matchSummary = root.findViewById(R.id.profile_match_summary);
+            if (summary != null) {
+                matchSummary.setText(summary);
             }
         });
 
