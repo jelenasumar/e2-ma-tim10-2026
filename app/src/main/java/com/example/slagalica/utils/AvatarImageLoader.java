@@ -9,6 +9,8 @@ import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.example.slagalica.R;
+
 import java.io.File;
 import java.net.URL;
 import java.util.concurrent.Executor;
@@ -28,6 +30,12 @@ public final class AvatarImageLoader {
     ) {
         if (avatarUri == null || avatarUri.isEmpty()) {
             imageView.setImageResource(placeholderRes);
+            return;
+        }
+
+        int presetRes = presetDrawableRes(avatarUri);
+        if (presetRes != 0) {
+            imageView.setImageResource(presetRes);
             return;
         }
 
@@ -56,6 +64,33 @@ public final class AvatarImageLoader {
             }
         } catch (Throwable ignored) {
             imageView.setImageResource(placeholderRes);
+        }
+    }
+
+    public static boolean isSharedAvatarUri(@Nullable String avatarUri) {
+        return avatarUri != null
+                && (avatarUri.startsWith("preset:")
+                || avatarUri.startsWith("http://")
+                || avatarUri.startsWith("https://"));
+    }
+
+    @DrawableRes
+    private static int presetDrawableRes(@NonNull String avatarUri) {
+        switch (avatarUri) {
+            case "preset:avatar_preset_1":
+                return R.drawable.avatar_preset_1;
+            case "preset:avatar_preset_2":
+                return R.drawable.avatar_preset_2;
+            case "preset:avatar_preset_3":
+                return R.drawable.avatar_preset_3;
+            case "preset:avatar_preset_4":
+                return R.drawable.avatar_preset_4;
+            case "preset:avatar_preset_5":
+                return R.drawable.avatar_preset_5;
+            case "preset:avatar_preset_6":
+                return R.drawable.avatar_preset_6;
+            default:
+                return 0;
         }
     }
 

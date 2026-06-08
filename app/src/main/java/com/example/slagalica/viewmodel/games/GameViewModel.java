@@ -10,6 +10,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.GameHeaderPlayerState;
 import com.example.slagalica.model.GameHeaderState;
+import com.example.slagalica.utils.AvatarImageLoader;
 import com.google.firebase.firestore.ListenerRegistration;
 
 public class GameViewModel extends AndroidViewModel {
@@ -171,7 +172,7 @@ public class GameViewModel extends AndroidViewModel {
         if (avatarUri == null || avatarUri.isEmpty()) {
             return "";
         }
-        if (isCurrentUser || avatarUri.startsWith("http://") || avatarUri.startsWith("https://")) {
+        if (isCurrentUser || AvatarImageLoader.isSharedAvatarUri(avatarUri)) {
             return avatarUri;
         }
         return "";

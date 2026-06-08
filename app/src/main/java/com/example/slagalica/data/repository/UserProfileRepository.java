@@ -12,6 +12,7 @@ import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.R;
 import com.example.slagalica.utils.AvatarFileStorage;
+import com.example.slagalica.utils.AvatarImageLoader;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.io.File;
@@ -117,7 +118,7 @@ public final class UserProfileRepository {
         UserProfile profile = loadProfile();
         String avatarUri = profile.getAvatarUri();
         if (avatarUri != null
-                && (avatarUri.startsWith("http://") || avatarUri.startsWith("https://"))) {
+                && AvatarImageLoader.isSharedAvatarUri(avatarUri)) {
             onReady.accept(avatarUri);
             return;
         }
@@ -237,6 +238,34 @@ public final class UserProfileRepository {
         } catch (Exception e) {
             onError.accept(e.getMessage() != null ? e.getMessage() : "Avatar save failed.");
         }
+    }
+
+    public void saveAvatarPreset(
+            @NonNull String presetAvatarUri,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (!remote.isLoggedIn()) {
+            onError.accept("NOT_LOGGED_IN");
+            return;
+        }
+
+        String uid = remote.getCurrentUid();
+        if (uid == null) {
+            onError.accept("NOT_LOGGED_IN");
+            return;
+        }
+        if (!presetAvatarUri.startsWith("preset:")) {
+            onError.accept("INVALID_AVATAR");
+            return;
+        }
+
+        remote.saveAvatarUriToFirestore(
+                uid,
+                presetAvatarUri,
+                savedUri -> persistAvatar(savedUri, onSuccess),
+                onError
+        );
     }
 
     private void persistAvatar(

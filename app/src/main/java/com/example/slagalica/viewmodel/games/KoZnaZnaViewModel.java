@@ -20,6 +20,7 @@ import com.example.slagalica.model.KoZnaZnaQuestion;
 import com.example.slagalica.model.KoZnaZnaScoring;
 import com.example.slagalica.model.KoZnaZnaUiState;
 import com.example.slagalica.model.RoomSession;
+import com.example.slagalica.utils.AvatarImageLoader;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.Collections;
@@ -578,7 +579,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 || matchId.isEmpty()
                 || myUid.isEmpty()
                 || avatarUri.isEmpty()
-                || !isRemoteAvatarUri(avatarUri)) {
+                || !AvatarImageLoader.isSharedAvatarUri(avatarUri)) {
             return;
         }
         boolean isMine = hostSlot
@@ -607,14 +608,10 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         if (avatarUri == null || avatarUri.isEmpty()) {
             return "";
         }
-        if (isCurrentUser || isRemoteAvatarUri(avatarUri)) {
+        if (isCurrentUser || AvatarImageLoader.isSharedAvatarUri(avatarUri)) {
             return avatarUri;
         }
         return "";
-    }
-
-    private static boolean isRemoteAvatarUri(@NonNull String avatarUri) {
-        return avatarUri.startsWith("http://") || avatarUri.startsWith("https://");
     }
 
     @NonNull

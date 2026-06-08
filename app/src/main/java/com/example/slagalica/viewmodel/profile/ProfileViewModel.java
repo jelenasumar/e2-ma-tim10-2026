@@ -124,6 +124,18 @@ public class ProfileViewModel extends AndroidViewModel {
         );
     }
 
+    public void updateAvatarPreset(@NonNull String presetAvatarUri) {
+        isLoading.setValue(true);
+        repository.saveAvatarPreset(
+                presetAvatarUri,
+                () -> loadProfile(),
+                error -> {
+                    isLoading.setValue(false);
+                    errorMessage.setValue(mapAvatarError(error));
+                }
+        );
+    }
+
     public void logout() {
         if (profileListener != null) {
             profileListener.remove();
