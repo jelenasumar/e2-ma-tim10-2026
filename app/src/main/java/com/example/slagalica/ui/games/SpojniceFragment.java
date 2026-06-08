@@ -48,6 +48,7 @@ public class SpojniceFragment extends Fragment {
     private final List<String>[] cachedRightItems = new List[ROW_COUNT];
     private boolean suppressSpinnerCallbacks;
     private String lastRenderedPhase = "";
+    private String lastRenderedBoardKey = "";
     private boolean gameOverHandled;
 
     public SpojniceFragment() {
@@ -170,6 +171,11 @@ public class SpojniceFragment extends Fragment {
         List<String> leftTerms = state.getLeftTerms();
         List<String> spinnerOptions = buildSpinnerOptions(state);
         boolean followupPhase = SpojniceRoomRepository.PHASE_FOLLOWUP.equals(state.getPhase());
+        String boardKey = boardRenderKey(state, leftTerms, spinnerOptions, followupPhase);
+        if (boardKey.equals(lastRenderedBoardKey)) {
+            return;
+        }
+        lastRenderedBoardKey = boardKey;
 
         suppressSpinnerCallbacks = true;
         try {
@@ -196,13 +202,29 @@ public class SpojniceFragment extends Fragment {
                 rowContainers[i].setBackgroundColor(resolveRowColor(state, i, followupPhase));
             }
         } finally {
-            View root = getView();
-            if (root != null) {
-                root.post(() -> suppressSpinnerCallbacks = false);
-            } else {
-                suppressSpinnerCallbacks = false;
-            }
+            suppressSpinnerCallbacks = false;
         }
+    }
+
+    @NonNull
+    private String boardRenderKey(
+            @NonNull SpojniceUiState state,
+            @NonNull List<String> leftTerms,
+            @NonNull List<String> spinnerOptions,
+            boolean followupPhase
+    ) {
+        return state.getPhase()
+                + "|" + followupPhase
+                + "|" + state.isMyTurn()
+                + "|" + state.isInputsEnabled()
+                + "|" + state.getCurrentLeftIndex()
+                + "|" + state.getSelectedRow()
+                + "|" + state.getSelectedRightIndex()
+                + "|" + leftTerms
+                + "|" + spinnerOptions
+                + "|" + state.getConnectedLeftIndices()
+                + "|" + state.getUsedRightIndices()
+                + "|" + state.getFollowupLockedLeftIndices();
     }
 
     @NonNull
