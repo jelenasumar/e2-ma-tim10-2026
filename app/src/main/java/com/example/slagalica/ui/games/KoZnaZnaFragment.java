@@ -191,7 +191,8 @@ public class KoZnaZnaFragment extends Fragment {
                     getString(R.string.game_header_round_default),
                     getString(R.string.game_header_time_default),
                     new GameHeaderPlayerState(username, 0, profile.getAvatarUri()),
-                    new GameHeaderPlayerState(getString(R.string.opponent_player), 0, null)
+                    new GameHeaderPlayerState(getString(R.string.opponent_player), 0, null),
+                    0
             ));
         }
     }
@@ -218,7 +219,8 @@ public class KoZnaZnaFragment extends Fragment {
                         state.getPlayerTwoLabel(),
                         state.getPlayerTwoScore(),
                         state.getPlayerTwoAvatarUri()
-                )
+                ),
+                0
         ));
     }
 

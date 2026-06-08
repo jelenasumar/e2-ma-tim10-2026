@@ -92,12 +92,11 @@ public final class KoZnaZnaMatch {
             }
         }
         if (order.isEmpty()) {
-            order.add(0);
-            order.add(1);
-            order.add(2);
-            order.add(3);
-            order.add(4);
+            for (int i = 0; i < 5; i++) {
+                order.add(i);
+            }
         }
+        order = normalizeQuestionOrder(order);
 
         return new KoZnaZnaMatch(
                 matchId,
@@ -237,5 +236,20 @@ public final class KoZnaZnaMatch {
     @NonNull
     public String getGuestAvatarUri() {
         return guestAvatarUri;
+    }
+
+    @NonNull
+    public static List<Integer> normalizeQuestionOrder(@NonNull List<Integer> order) {
+        int poolSize = 5;
+        int count = Math.min(poolSize, Math.max(1, order.size()));
+        List<Integer> normalized = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            int questionIndex = order.get(i);
+            if (questionIndex < 0 || questionIndex >= poolSize) {
+                questionIndex = i % poolSize;
+            }
+            normalized.add(questionIndex);
+        }
+        return normalized;
     }
 }

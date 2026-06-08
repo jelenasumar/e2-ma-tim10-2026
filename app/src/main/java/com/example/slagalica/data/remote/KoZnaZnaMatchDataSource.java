@@ -276,7 +276,16 @@ public final class KoZnaZnaMatchDataSource {
                 throw new IllegalStateException("MATCH_NOT_FOUND");
             }
             KoZnaZnaMatch match = KoZnaZnaMatch.fromMap(matchId, snapshot.getData());
-            if (match.isQuestionResolved() || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
+            if (KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
+                return match;
+            }
+
+            if (match.isQuestionResolved()) {
+                Map<String, Object> recoveryUpdates = buildAdvanceUpdates(match, System.currentTimeMillis());
+                if (!recoveryUpdates.isEmpty()) {
+                    transaction.update(ref, recoveryUpdates);
+                    return KoZnaZnaMatch.fromMap(matchId, applyUpdates(snapshot.getData(), recoveryUpdates));
+                }
                 return match;
             }
 
@@ -311,37 +320,36 @@ public final class KoZnaZnaMatchDataSource {
             Map<String, Object> updates = new HashMap<>();
             updates.put("hostScore", scores[0]);
             updates.put("guestScore", scores[1]);
-            updates.put("questionResolved", true);
-            if (hostPending) {
-                updates.put("hostAnswerIndex", KoZnaZnaScoring.ANSWER_SKIP);
-            }
-            if (guestPending) {
-                updates.put("guestAnswerIndex", KoZnaZnaScoring.ANSWER_SKIP);
-            }
+            updates.put("statusMessage", "");
+            updates.put("questionResolved", false);
+            updates.putAll(buildAdvanceUpdates(
+                    new KoZnaZnaMatch(
+                            match.getMatchId(),
+                            match.getHostUid(),
+                            match.getGuestUid(),
+                            match.getHostUsername(),
+                            match.getGuestUsername(),
+                            scores[0],
+                            scores[1],
+                            match.getCurrentQuestionIndex(),
+                            match.getStatus(),
+                            match.getRoundEndsAtMs(),
+                            match.getQuestionStartedAtMs(),
+                            match.getQuestionEndsAtMs(),
+                            false,
+                            "",
+                            hostPending ? KoZnaZnaScoring.ANSWER_SKIP : match.getHostAnswerIndex(),
+                            guestPending ? KoZnaZnaScoring.ANSWER_SKIP : match.getGuestAnswerIndex(),
+                            match.getHostAnsweredAtMs(),
+                            match.getGuestAnsweredAtMs(),
+                            match.getQuestionOrder(),
+                            match.getHostAvatarUri(),
+                            match.getGuestAvatarUri()
+                    ),
+                    now
+            ));
             transaction.update(ref, updates);
-            return new KoZnaZnaMatch(
-                    match.getMatchId(),
-                    match.getHostUid(),
-                    match.getGuestUid(),
-                    match.getHostUsername(),
-                    match.getGuestUsername(),
-                    scores[0],
-                    scores[1],
-                    match.getCurrentQuestionIndex(),
-                    match.getStatus(),
-                    match.getRoundEndsAtMs(),
-                    match.getQuestionStartedAtMs(),
-                    match.getQuestionEndsAtMs(),
-                    true,
-                    "",
-                    hostPending ? KoZnaZnaScoring.ANSWER_SKIP : match.getHostAnswerIndex(),
-                    guestPending ? KoZnaZnaScoring.ANSWER_SKIP : match.getGuestAnswerIndex(),
-                    match.getHostAnsweredAtMs(),
-                    match.getGuestAnsweredAtMs(),
-                    match.getQuestionOrder(),
-                    match.getHostAvatarUri(),
-                    match.getGuestAvatarUri()
-            );
+            return KoZnaZnaMatch.fromMap(matchId, applyUpdates(snapshot.getData(), updates));
         }).addOnSuccessListener(result -> onResolved.accept((KoZnaZnaMatch) result))
                 .addOnFailureListener(e -> onError.accept(errorMessage(e)));
     }
@@ -358,40 +366,51 @@ public final class KoZnaZnaMatchDataSource {
                 throw new IllegalStateException("MATCH_NOT_FOUND");
             }
             KoZnaZnaMatch match = KoZnaZnaMatch.fromMap(matchId, snapshot.getData());
-            if (!match.isQuestionResolved()) {
+            if (KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
                 return match;
             }
-
-            long now = System.currentTimeMillis();
-            int nextIndex = match.getCurrentQuestionIndex() + 1;
-            int totalQuestions = Math.max(1, match.getQuestionOrder().size());
-            Map<String, Object> updates = new HashMap<>();
-
-            if (nextIndex >= totalQuestions) {
-                updates.put("status", KoZnaZnaMatch.STATUS_FINISHED);
-                updates.put("currentQuestionIndex", Math.min(nextIndex, totalQuestions - 1));
-                updates.put("questionResolved", false);
-                updates.put("statusMessage", "");
-            } else {
-                int remainingQuestions = totalQuestions - nextIndex;
-                updates.put("currentQuestionIndex", nextIndex);
-                updates.put("questionStartedAtMs", now);
-                updates.put("questionEndsAtMs", now + QUESTION_MS);
-                updates.put(
-                        "roundEndsAtMs",
-                        now + (long) remainingQuestions * QUESTION_MS
-                );
-                updates.put("questionResolved", false);
-                updates.put("statusMessage", "");
-                updates.put("hostAnswerIndex", KoZnaZnaScoring.ANSWER_PENDING);
-                updates.put("guestAnswerIndex", KoZnaZnaScoring.ANSWER_PENDING);
-                updates.put("hostAnsweredAtMs", 0L);
-                updates.put("guestAnsweredAtMs", 0L);
+            Map<String, Object> updates = buildAdvanceUpdates(match, System.currentTimeMillis());
+            if (updates.isEmpty()) {
+                return match;
             }
             transaction.update(ref, updates);
             return KoZnaZnaMatch.fromMap(matchId, applyUpdates(snapshot.getData(), updates));
         }).addOnSuccessListener(result -> onAdvanced.accept((KoZnaZnaMatch) result))
                 .addOnFailureListener(e -> onError.accept(errorMessage(e)));
+    }
+
+    @NonNull
+    private static Map<String, Object> buildAdvanceUpdates(@NonNull KoZnaZnaMatch match, long now) {
+        int totalQuestions = questionCount(match.getQuestionOrder());
+        int nextIndex = match.getCurrentQuestionIndex() + 1;
+        Map<String, Object> updates = new HashMap<>();
+
+        if (nextIndex >= totalQuestions) {
+            updates.put("status", KoZnaZnaMatch.STATUS_FINISHED);
+            updates.put("questionResolved", false);
+            updates.put("statusMessage", "");
+            return updates;
+        }
+
+        int remainingQuestions = totalQuestions - nextIndex;
+        updates.put("currentQuestionIndex", nextIndex);
+        updates.put("questionStartedAtMs", now);
+        updates.put("questionEndsAtMs", now + QUESTION_MS);
+        updates.put("roundEndsAtMs", now + (long) remainingQuestions * QUESTION_MS);
+        updates.put("questionResolved", false);
+        updates.put("statusMessage", "");
+        updates.put("hostAnswerIndex", KoZnaZnaScoring.ANSWER_PENDING);
+        updates.put("guestAnswerIndex", KoZnaZnaScoring.ANSWER_PENDING);
+        updates.put("hostAnsweredAtMs", 0L);
+        updates.put("guestAnsweredAtMs", 0L);
+        return updates;
+    }
+
+    private static int questionCount(@NonNull List<Integer> questionOrder) {
+        if (questionOrder.isEmpty()) {
+            return QUESTIONS_PER_MATCH;
+        }
+        return Math.min(QUESTIONS_PER_MATCH, questionOrder.size());
     }
 
     public void updateStatusMessage(
@@ -449,9 +468,11 @@ public final class KoZnaZnaMatchDataSource {
             long now,
             @NonNull List<Integer> questionOrder
     ) {
-        List<Integer> order = questionOrder.isEmpty()
-                ? shuffledQuestionOrderStatic(DEFAULT_QUESTIONS_PER_MATCH)
-                : new ArrayList<>(questionOrder);
+        List<Integer> order = KoZnaZnaMatch.normalizeQuestionOrder(
+                questionOrder.isEmpty()
+                        ? shuffledQuestionOrderStatic(DEFAULT_QUESTIONS_PER_MATCH)
+                        : new ArrayList<>(questionOrder)
+        );
         int totalQuestions = order.size();
         long roundMs = (long) totalQuestions * QUESTION_MS;
         Map<String, Object> match = new HashMap<>();

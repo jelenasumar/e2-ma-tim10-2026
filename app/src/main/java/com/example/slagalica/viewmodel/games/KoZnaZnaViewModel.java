@@ -43,10 +43,9 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private boolean isHost;
     private boolean iHaveAnswered;
     private boolean statsRecorded;
-    private boolean advancingQuestion;
     private boolean roomMatchCreationStarted;
     private boolean myAvatarPublished;
-    private int lastScheduledAdvanceIndex = -1;
+    private boolean resolveInFlight;
     private int selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
     private int myHits;
     private int myMisses;
@@ -78,9 +77,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         this.isHost = false;
         this.iHaveAnswered = false;
         this.statsRecorded = false;
-        this.advancingQuestion = false;
         this.myAvatarPublished = false;
-        this.lastScheduledAdvanceIndex = -1;
+        this.resolveInFlight = false;
         this.selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
         this.myHits = 0;
         this.myMisses = 0;
@@ -275,15 +273,16 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
 
         int previousQuestionIndex = latestMatch != null ? latestMatch.getCurrentQuestionIndex() : -1;
         if (match.getCurrentQuestionIndex() != previousQuestionIndex) {
-            lastScheduledAdvanceIndex = -1;
-            advancingQuestion = false;
-        }
-
-        if (match.getCurrentQuestionIndex() != previousQuestionIndex
-                || (latestMatch != null && latestMatch.isQuestionResolved() && !match.isQuestionResolved())) {
+            resolveInFlight = false;
             iHaveAnswered = false;
             selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
-            localStatusMessage = "";
+            if (latestMatch != null) {
+                localStatusMessage = buildResolutionMessage(latestMatch);
+            }
+        } else if (latestMatch != null
+                && KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())
+                && !KoZnaZnaMatch.STATUS_FINISHED.equals(latestMatch.getStatus())) {
+            localStatusMessage = buildResolutionMessage(latestMatch);
         }
 
         latestMatch = match;
@@ -294,16 +293,24 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
 
-        if (isHost) {
-            maybeResolveQuestion(match);
-        }
+        maybeResolveQuestion(match);
     }
 
     private void maybeResolveQuestion(@NonNull KoZnaZnaMatch match) {
-        if (match.isQuestionResolved() || advancingQuestion) {
-            if (match.isQuestionResolved() && !advancingQuestion && !KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
-                scheduleAdvanceIfHost(match);
-            }
+        if (resolveInFlight || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
+            return;
+        }
+
+        if (match.isQuestionResolved()) {
+            resolveInFlight = true;
+            matchRepository.advanceQuestion(
+                    matchId,
+                    unused -> resolveInFlight = false,
+                    error -> {
+                        resolveInFlight = false;
+                        errorMessage.setValue(error);
+                    }
+            );
             return;
         }
 
@@ -327,46 +334,22 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
 
+        resolveInFlight = true;
         matchRepository.tryResolveQuestion(
                 matchId,
                 question.getCorrectIndex(),
-                resolved -> {
-                    localStatusMessage = buildResolutionMessage(resolved);
-                    matchRepository.updateStatusMessage(matchId, localStatusMessage, () -> { }, error -> { });
-                    scheduleAdvanceIfHost(resolved);
-                },
-                error -> errorMessage.setValue(error)
-        );
-    }
-
-    private void scheduleAdvanceIfHost(@NonNull KoZnaZnaMatch match) {
-        if (!isHost || advancingQuestion || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
-            return;
-        }
-        if (lastScheduledAdvanceIndex == match.getCurrentQuestionIndex()) {
-            return;
-        }
-        lastScheduledAdvanceIndex = match.getCurrentQuestionIndex();
-        advancingQuestion = true;
-        mainHandler.postDelayed(() -> matchRepository.advanceQuestion(
-                matchId,
-                advanced -> {
-                    advancingQuestion = false;
-                    localStatusMessage = "";
-                },
+                unused -> resolveInFlight = false,
                 error -> {
-                    advancingQuestion = false;
-                    lastScheduledAdvanceIndex = -1;
+                    resolveInFlight = false;
                     errorMessage.setValue(error);
                 }
-        ), KoZnaZnaMatchDataSource.ADVANCE_DELAY_MS);
+        );
     }
 
     private void onTimerTick() {
         if (latestMatch != null) {
             publishFromMatch(latestMatch);
-            if (isHost && !latestMatch.isQuestionResolved()
-                    && KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())) {
+            if (KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())) {
                 maybeResolveQuestion(latestMatch);
             }
         }
@@ -560,17 +543,13 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
 
     @Nullable
     private KoZnaZnaQuestion currentQuestion(@NonNull KoZnaZnaMatch match) {
-        List<Integer> order = match.getQuestionOrder();
+        List<Integer> order = KoZnaZnaMatch.normalizeQuestionOrder(match.getQuestionOrder());
         int index = match.getCurrentQuestionIndex();
         if (index < 0 || index >= order.size()) {
             return null;
         }
         List<KoZnaZnaQuestion> questions = KoZnaZnaQuestion.defaultQuestions();
-        int questionIndex = order.get(index);
-        if (questionIndex < 0 || questionIndex >= questions.size()) {
-            return null;
-        }
-        return questions.get(questionIndex);
+        return questions.get(order.get(index));
     }
 
     @NonNull
