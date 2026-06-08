@@ -66,12 +66,12 @@ public class ProfileFragment extends Fragment {
 
     private void showAvatarPicker() {
         String[] labels = {
-                "Plavi avatar",
-                "Zeleni avatar",
-                "Crveni avatar",
-                "Ljubicasti avatar",
-                "Narandzasti avatar",
-                "Tirkizni avatar"
+                "Crveni pas",
+                "Ljubicasta macka",
+                "Plavi zec",
+                "Zeleni medved",
+                "Narandzasta lisica",
+                "Tirkizna sova"
         };
         String[] values = {
                 "preset:avatar_preset_1",
