@@ -219,6 +219,11 @@ public final class SpojniceRoomRepository {
                 return null;
             }
 
+            long phaseEndsAt = longOrZero(snapshot.get("phaseEndsAtMillis"));
+            if (phaseEndsAt > System.currentTimeMillis()) {
+                return null;
+            }
+
             Map<String, Object> updates = new HashMap<>();
             if (PHASE_ACTIVE.equals(phase)) {
                 applyExpectedStarter(snapshot, updates);

@@ -49,6 +49,7 @@ public class SpojniceFragment extends Fragment {
     private boolean suppressSpinnerCallbacks;
     private String lastRenderedPhase = "";
     private String lastRenderedBoardKey = "";
+    private int lastRenderedRound = 0;
     private boolean gameOverHandled;
 
     public SpojniceFragment() {
@@ -140,6 +141,11 @@ public class SpojniceFragment extends Fragment {
         if (!state.getPhase().equals(lastRenderedPhase)) {
             clearRightSpinnerCache();
             lastRenderedPhase = state.getPhase();
+        }
+        if (state.getCurrentRound() != lastRenderedRound) {
+            clearRightSpinnerCache();
+            lastRenderedBoardKey = "";
+            lastRenderedRound = state.getCurrentRound();
         }
 
         updateGameHeader(state);

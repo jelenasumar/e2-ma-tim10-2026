@@ -55,6 +55,8 @@ public class SpojniceViewModel extends AndroidViewModel {
     private String phase = SpojniceRoomRepository.PHASE_ACTIVE;
     private String activePlayerUid = "";
     private String followupPlayerUid = "";
+    private String playerOneUid = "";
+    private String playerTwoUid = "";
     private int currentRound = 1;
     private int activePlayerNumber = 1;
     private int playerOneScore = 0;
@@ -303,13 +305,11 @@ public class SpojniceViewModel extends AndroidViewModel {
         activePlayerNumber = intOrDefault(snapshot.get("activePlayerNumber"), currentRound);
         playerOneScore = intOrDefault(snapshot.get("playerOneScore"), 0);
         playerTwoScore = intOrDefault(snapshot.get("playerTwoScore"), 0);
+        playerOneUid = stringOrEmpty(snapshot.getString("playerOneUid"));
+        playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
         activePlayerUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
         followupPlayerUid = stringOrEmpty(snapshot.getString("followupPlayerUid"));
         phase = newPhase;
-        if (SpojniceRoomRepository.PHASE_ACTIVE.equals(phase)) {
-            activePlayerNumber = startingPlayerNumber(currentRound);
-            activePlayerUid = startingPlayerUid(currentRound);
-        }
         currentLeftIndex = newLeftIndex;
         criterion = stringOrDefault(snapshot.getString("criterion"), "");
         leftTerms = stringList(snapshot.get("leftTerms"));
@@ -325,6 +325,9 @@ public class SpojniceViewModel extends AndroidViewModel {
         playerOneLabel = stringOrDefault(snapshot.getString("playerOneUsername"), playerOneLabel);
         playerTwoLabel = stringOrDefault(snapshot.getString("playerTwoUsername"), playerTwoLabel);
 
+        if (roundChanged) {
+            selectedRow = SpojniceUiState.NO_ROW;
+        }
         if (phaseChanged || leftAdvanced || roundChanged || connectionMade || usedRightChanged
                 || followupLockedChanged) {
             selectedRightIndex = SpojniceUiState.NO_SELECTION;
@@ -534,10 +537,16 @@ public class SpojniceViewModel extends AndroidViewModel {
         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
             return playerNumberForUid(followupPlayerUid);
         }
+        if (SpojniceRoomRepository.PHASE_ACTIVE.equals(phase)) {
+            return startingPlayerNumber(currentRound);
+        }
         return activePlayerNumber;
     }
 
     private int playerNumberForUid(@NonNull String uid) {
+        if (!uid.isEmpty() && uid.equals(playerOneUid)) {
+            return 1;
+        }
         if (roomSession != null && uid.equals(roomSession.getHostUid())) {
             return 1;
         }
@@ -546,12 +555,15 @@ public class SpojniceViewModel extends AndroidViewModel {
 
     @NonNull
     private String startingPlayerUid(int round) {
-        if (roomSession == null) {
-            return activePlayerUid;
+        if (!playerOneUid.isEmpty() || !playerTwoUid.isEmpty()) {
+            return startingPlayerNumber(round) == 1 ? playerOneUid : playerTwoUid;
         }
-        return startingPlayerNumber(round) == 1
-                ? roomSession.getHostUid()
-                : roomSession.getGuestUid();
+        if (roomSession != null) {
+            return startingPlayerNumber(round) == 1
+                    ? roomSession.getHostUid()
+                    : roomSession.getGuestUid();
+        }
+        return activePlayerUid;
     }
 
     private static int startingPlayerNumber(int round) {
@@ -563,7 +575,10 @@ public class SpojniceViewModel extends AndroidViewModel {
             return false;
         }
         if (SpojniceRoomRepository.PHASE_ACTIVE.equals(phase)) {
-            return myUid.equals(activePlayerUid);
+            if (currentLeftIndex >= PAIRS_PER_ROUND) {
+                return false;
+            }
+            return myUid.equals(startingPlayerUid(currentRound));
         }
         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
             return myUid.equals(followupPlayerUid);
