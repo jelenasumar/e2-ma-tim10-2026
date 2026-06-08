@@ -314,7 +314,7 @@ public class SkockoViewModel extends GameViewModel {
         applyRoomPlayersFromState(snapshot);
         initializeHeader(
                 formatRoundText(currentRound, TOTAL_ROUNDS),
-                formatTimeText(remainingPhaseMillis(longOrZero(snapshot.get("phaseEndsAtMillis")))),
+                formatTimeText(cappedRemainingPhaseMillis(longOrZero(snapshot.get("phaseEndsAtMillis")))),
                 playerOne.withScore(playerOneScore),
                 playerTwo.withScore(playerTwoScore)
         );
@@ -390,7 +390,7 @@ public class SkockoViewModel extends GameViewModel {
             return;
         }
 
-        long remaining = remainingPhaseMillis(phaseEndsAtMillis);
+        long remaining = cappedRemainingPhaseMillis(phaseEndsAtMillis);
         if (remaining == 0L) {
             expireRemotePhase();
             return;
@@ -588,6 +588,25 @@ public class SkockoViewModel extends GameViewModel {
         return Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis());
     }
 
+    private long cappedRemainingPhaseMillis(long phaseEndsAtMillis) {
+        long remaining = remainingPhaseMillis(phaseEndsAtMillis);
+        long maxDuration = currentPhaseDurationMillis();
+        return maxDuration > 0L ? Math.min(remaining, maxDuration) : remaining;
+    }
+
+    private long currentPhaseDurationMillis() {
+        if (SkockoRoomRepository.PHASE_ROUND.equals(phase)) {
+            return ROUND_DURATION_MILLIS;
+        }
+        if (SkockoRoomRepository.PHASE_BONUS.equals(phase)) {
+            return BONUS_DURATION_MILLIS;
+        }
+        if (SkockoRoomRepository.PHASE_ROUND_OVER.equals(phase)) {
+            return ROUND_RESULT_VISIBLE_MILLIS;
+        }
+        return 0L;
+    }
+
     private void addScoreForActivePlayer(int score) {
         if (activePlayerNumber == 1) {
             playerOneScore += score;
@@ -700,7 +719,7 @@ public class SkockoViewModel extends GameViewModel {
 
     @NonNull
     private static String formatTimeText(long millis) {
-        long totalSeconds = Math.max(0, (long) Math.ceil(millis / 1000.0));
+        long totalSeconds = Math.max(0, millis / 1000L);
         return String.format(Locale.getDefault(), "Preostalo vreme: 00:%02d", totalSeconds);
     }
 

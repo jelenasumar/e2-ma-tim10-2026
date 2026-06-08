@@ -693,7 +693,7 @@ public class AssociationsViewModel extends GameViewModel {
 
     @NonNull
     private static String formatTimeText(long millis) {
-        long totalSeconds = Math.max(0, (long) Math.ceil(millis / 1000.0));
+        long totalSeconds = Math.max(0, millis / 1000L);
         long minutes = totalSeconds / 60;
         long seconds = totalSeconds % 60;
         return String.format(Locale.getDefault(), "Preostalo vreme: %02d:%02d", minutes, seconds);
