@@ -30,6 +30,7 @@ public final class KoZnaZnaMatchDataSource {
     public static final int QUESTIONS_PER_MATCH = 5;
     public static final int ROUND_MS = QUESTIONS_PER_MATCH * QUESTION_MS;
     public static final long ADVANCE_DELAY_MS = 600L;
+    public static final long MATCH_START_BUFFER_MS = 2_500L;
     private static final int DEFAULT_QUESTIONS_PER_MATCH = QUESTIONS_PER_MATCH;
 
     private final FirebaseFirestore db;
@@ -144,7 +145,12 @@ public final class KoZnaZnaMatchDataSource {
             }
             String existingMatchId = roomSnap.getString("koZnaZnaMatchId");
             if (existingMatchId != null && !existingMatchId.isEmpty()) {
-                return existingMatchId;
+                DocumentSnapshot existingMatch = transaction.get(
+                        db.collection(MATCHES).document(existingMatchId)
+                );
+                if (existingMatch.exists() && isReusableMatch(existingMatch)) {
+                    return existingMatchId;
+                }
             }
             transaction.set(matchRef, match);
             Map<String, Object> roomUpdates = new HashMap<>();
@@ -240,6 +246,43 @@ public final class KoZnaZnaMatchDataSource {
                 .addOnFailureListener(e -> onError.accept(errorMessage(e)));
     }
 
+    public void markPlayerPresent(
+            @NonNull String matchId,
+            @NonNull String playerUid,
+            @NonNull String hostUid,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        DocumentReference ref = db.collection(MATCHES).document(matchId);
+        db.runTransaction((Transaction transaction) -> {
+            DocumentSnapshot snapshot = transaction.get(ref);
+            if (!snapshot.exists()) {
+                throw new IllegalStateException("MATCH_NOT_FOUND");
+            }
+            boolean isHost = playerUid.equals(hostUid);
+            boolean hostPresent = Boolean.TRUE.equals(snapshot.getBoolean("hostPresent")) || isHost;
+            boolean guestPresent = Boolean.TRUE.equals(snapshot.getBoolean("guestPresent")) || !isHost;
+
+            Map<String, Object> updates = new HashMap<>();
+            updates.put(isHost ? "hostPresent" : "guestPresent", true);
+
+            KoZnaZnaMatch match = KoZnaZnaMatch.fromMap(matchId, snapshot.getData());
+            if (match.getCurrentQuestionIndex() == 0
+                    && match.getQuestionStartedAtMs() == 0L
+                    && hostPresent
+                    && guestPresent) {
+                long startAt = System.currentTimeMillis() + MATCH_START_BUFFER_MS;
+                int totalQuestions = questionCount(match.getQuestionOrder());
+                updates.put("questionStartedAtMs", startAt);
+                updates.put("questionEndsAtMs", startAt + QUESTION_MS);
+                updates.put("roundEndsAtMs", startAt + (long) totalQuestions * QUESTION_MS);
+            }
+            transaction.update(ref, updates);
+            return null;
+        }).addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> onError.accept(errorMessage(e)));
+    }
+
     public void updatePlayerAvatar(
             @NonNull String matchId,
             @NonNull String playerUid,
@@ -290,6 +333,9 @@ public final class KoZnaZnaMatchDataSource {
             }
 
             long now = System.currentTimeMillis();
+            if (!isQuestionTimerActive(match, now)) {
+                return match;
+            }
             boolean hostPending = match.getHostAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
             boolean guestPending = match.getGuestAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
             boolean timeUp = now >= match.getQuestionEndsAtMs();
@@ -413,6 +459,33 @@ public final class KoZnaZnaMatchDataSource {
         return Math.min(QUESTIONS_PER_MATCH, questionOrder.size());
     }
 
+    private static boolean isQuestionTimerActive(@NonNull KoZnaZnaMatch match, long now) {
+        return match.getQuestionStartedAtMs() > 0L && now >= match.getQuestionStartedAtMs();
+    }
+
+    private static boolean isReusableMatch(@NonNull DocumentSnapshot snapshot) {
+        if (!snapshot.exists()) {
+            return false;
+        }
+        KoZnaZnaMatch match = KoZnaZnaMatch.fromMap(snapshot.getId(), snapshot.getData());
+        if (!KoZnaZnaMatch.STATUS_PLAYING.equals(match.getStatus())) {
+            return false;
+        }
+        if (match.getCurrentQuestionIndex() != 0) {
+            return false;
+        }
+        if (match.getHostAnswerIndex() != KoZnaZnaScoring.ANSWER_PENDING
+                || match.getGuestAnswerIndex() != KoZnaZnaScoring.ANSWER_PENDING) {
+            return false;
+        }
+        if (match.isQuestionResolved()) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        return match.getQuestionStartedAtMs() == 0L
+                || now < match.getQuestionEndsAtMs();
+    }
+
     public void updateStatusMessage(
             @NonNull String matchId,
             @NonNull String message,
@@ -474,7 +547,6 @@ public final class KoZnaZnaMatchDataSource {
                         : new ArrayList<>(questionOrder)
         );
         int totalQuestions = order.size();
-        long roundMs = (long) totalQuestions * QUESTION_MS;
         Map<String, Object> match = new HashMap<>();
         match.put("hostUid", hostUid);
         match.put("guestUid", guestUid);
@@ -484,9 +556,11 @@ public final class KoZnaZnaMatchDataSource {
         match.put("guestScore", 0);
         match.put("currentQuestionIndex", 0);
         match.put("status", KoZnaZnaMatch.STATUS_PLAYING);
-        match.put("roundEndsAtMs", now + roundMs);
-        match.put("questionStartedAtMs", now);
-        match.put("questionEndsAtMs", now + QUESTION_MS);
+        match.put("roundEndsAtMs", 0L);
+        match.put("questionStartedAtMs", 0L);
+        match.put("questionEndsAtMs", 0L);
+        match.put("hostPresent", false);
+        match.put("guestPresent", false);
         match.put("questionResolved", false);
         match.put("statusMessage", "");
         match.put("hostAnswerIndex", KoZnaZnaScoring.ANSWER_PENDING);

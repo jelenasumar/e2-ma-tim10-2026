@@ -46,6 +46,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private boolean roomMatchCreationStarted;
     private boolean myAvatarPublished;
     private boolean resolveInFlight;
+    private boolean presenceMarked;
     private int selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
     private int myHits;
     private int myMisses;
@@ -79,6 +80,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         this.statsRecorded = false;
         this.myAvatarPublished = false;
         this.resolveInFlight = false;
+        this.presenceMarked = false;
         this.selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
         this.myHits = 0;
         this.myMisses = 0;
@@ -270,6 +272,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         isHost = myUid.equals(match.getHostUid());
         syncAvatarsFromMatch(match, match.getHostUid(), match.getGuestUid());
         publishMyAvatarToMatch(match);
+        markPlayerPresentIfNeeded(match);
 
         int previousQuestionIndex = latestMatch != null ? latestMatch.getCurrentQuestionIndex() : -1;
         if (match.getCurrentQuestionIndex() != previousQuestionIndex) {
@@ -302,6 +305,9 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
 
         if (match.isQuestionResolved()) {
+            if (match.getQuestionStartedAtMs() == 0L) {
+                return;
+            }
             resolveInFlight = true;
             matchRepository.advanceQuestion(
                     matchId,
@@ -315,6 +321,9 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
 
         long now = System.currentTimeMillis();
+        if (!isQuestionTimerActive(match, now)) {
+            return;
+        }
         boolean hostPending = match.getHostAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
         boolean guestPending = match.getGuestAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
         boolean timeUp = now >= match.getQuestionEndsAtMs();
@@ -362,8 +371,13 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
 
         long now = System.currentTimeMillis();
-        int roundLeft = (int) Math.max(0, Math.ceil((match.getRoundEndsAtMs() - now) / 1000.0));
-        int questionLeft = (int) Math.max(0, Math.ceil((match.getQuestionEndsAtMs() - now) / 1000.0));
+        boolean waitingForStart = !isQuestionTimerActive(match, now);
+        int roundLeft = waitingForStart
+                ? KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH * 5
+                : (int) Math.max(0, Math.ceil((match.getRoundEndsAtMs() - now) / 1000.0));
+        int questionLeft = waitingForStart
+                ? KoZnaZnaMatchDataSource.QUESTION_MS / 1000
+                : (int) Math.max(0, Math.ceil((match.getQuestionEndsAtMs() - now) / 1000.0));
 
         KoZnaZnaQuestion question = currentQuestion(match);
         List<String> options = question != null
@@ -384,7 +398,9 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         String status = !match.getStatusMessage().isEmpty()
                 ? match.getStatusMessage()
                 : localStatusMessage;
-        if (waitingOpponent) {
+        if (waitingForStart && !finished) {
+            status = getApplication().getString(R.string.kzz_waiting_sync);
+        } else if (waitingOpponent) {
             status = getApplication().getString(R.string.kzz_waiting_opponent);
         }
 
@@ -528,11 +544,30 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         return avatarUri != null ? avatarUri : "";
     }
 
+    private void markPlayerPresentIfNeeded(@NonNull KoZnaZnaMatch match) {
+        if (presenceMarked || matchId == null || matchId.isEmpty() || myUid.isEmpty()) {
+            return;
+        }
+        presenceMarked = true;
+        matchRepository.markPlayerPresent(
+                matchId,
+                myUid,
+                match.getHostUid(),
+                () -> { },
+                error -> presenceMarked = false
+        );
+    }
+
+    private static boolean isQuestionTimerActive(@NonNull KoZnaZnaMatch match, long now) {
+        return match.getQuestionStartedAtMs() > 0L && now >= match.getQuestionStartedAtMs();
+    }
+
     private boolean canAnswerLocally() {
         if (latestMatch == null
                 || !KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())
                 || iHaveAnswered
-                || latestMatch.isQuestionResolved()) {
+                || latestMatch.isQuestionResolved()
+                || !isQuestionTimerActive(latestMatch, System.currentTimeMillis())) {
             return false;
         }
         int myAnswerIndex = myUid.equals(latestMatch.getHostUid())
