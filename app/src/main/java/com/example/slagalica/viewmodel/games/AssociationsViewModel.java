@@ -339,7 +339,7 @@ public class AssociationsViewModel extends GameViewModel {
         applyRoomPlayersFromState(snapshot);
         initializeHeader(
                 formatRoundText(currentRound, TOTAL_ROUNDS),
-                formatTimeText(Math.max(0L, longOrZero(snapshot.get("phaseEndsAtMillis")) - System.currentTimeMillis())),
+                formatTimeText(remainingPhaseMillis(longOrZero(snapshot.get("phaseEndsAtMillis")))),
                 playerOne.withScore(playerOneScore),
                 playerTwo.withScore(playerTwoScore)
         );
@@ -394,12 +394,13 @@ public class AssociationsViewModel extends GameViewModel {
             return;
         }
 
-        long remaining = Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis());
+        long remaining = remainingPhaseMillis(phaseEndsAtMillis);
         if (remaining == 0L) {
             expireRemotePhase();
             return;
         }
 
+        updateTime(formatTimeText(remaining));
         roundTimer = new CountDownTimer(remaining, TIMER_INTERVAL_MILLIS) {
             @Override
             public void onTick(long millisUntilFinished) {
@@ -460,19 +461,37 @@ public class AssociationsViewModel extends GameViewModel {
         updateScores(playerOneScore, playerTwoScore);
         publishGameState();
 
-        if (currentRound < TOTAL_ROUNDS) {
-            handler.postDelayed(
-                    () -> startRound(currentRound + 1),
-                    ROUND_RESULT_VISIBLE_MILLIS
-            );
-        } else {
-            gameOver = true;
-            publishGameState();
-        }
+        startResultTimer(() -> {
+            if (currentRound < TOTAL_ROUNDS) {
+                startRound(currentRound + 1);
+            } else {
+                gameOver = true;
+                publishGameState();
+            }
+        });
+    }
+
+    private void startResultTimer(@NonNull Runnable onFinish) {
+        stopRoundTimer();
+        updateTime(formatTimeText(ROUND_RESULT_VISIBLE_MILLIS));
+        roundTimer = new CountDownTimer(ROUND_RESULT_VISIBLE_MILLIS, TIMER_INTERVAL_MILLIS) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                updateTime(formatTimeText(millisUntilFinished));
+            }
+
+            @Override
+            public void onFinish() {
+                updateTime(formatTimeText(0));
+                onFinish.run();
+            }
+        };
+        roundTimer.start();
     }
 
     private void startRoundTimer() {
         stopRoundTimer();
+        updateTime(formatTimeText(ROUND_DURATION_MILLIS));
         roundTimer = new CountDownTimer(ROUND_DURATION_MILLIS, TIMER_INTERVAL_MILLIS) {
             @Override
             public void onTick(long millisUntilFinished) {
@@ -492,6 +511,10 @@ public class AssociationsViewModel extends GameViewModel {
             roundTimer.cancel();
             roundTimer = null;
         }
+    }
+
+    private static long remainingPhaseMillis(long phaseEndsAtMillis) {
+        return Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis());
     }
 
     private void switchActivePlayer() {
@@ -625,7 +648,7 @@ public class AssociationsViewModel extends GameViewModel {
 
     @NonNull
     private static String formatTimeText(long millis) {
-        long totalSeconds = Math.max(0, millis / 1000);
+        long totalSeconds = Math.max(0, (long) Math.ceil(millis / 1000.0));
         long minutes = totalSeconds / 60;
         long seconds = totalSeconds % 60;
         return String.format(Locale.getDefault(), "Preostalo vreme: %02d:%02d", minutes, seconds);
