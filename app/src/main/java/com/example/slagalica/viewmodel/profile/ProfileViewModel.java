@@ -14,6 +14,7 @@ import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.utils.SingleLiveEvent;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.List;
 import java.util.Locale;
@@ -29,6 +30,7 @@ public class ProfileViewModel extends AndroidViewModel {
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
     private final SingleLiveEvent<Boolean> logoutCompleted = new SingleLiveEvent<>();
     private final SingleLiveEvent<Boolean> qrGenerationFailed = new SingleLiveEvent<>();
+    private ListenerRegistration profileListener;
 
     public ProfileViewModel(@NonNull Application application) {
         super(application);
@@ -92,6 +94,24 @@ public class ProfileViewModel extends AndroidViewModel {
         );
     }
 
+    public void startProfileListener() {
+        if (profileListener != null) {
+            return;
+        }
+        profileListener = repository.listenCurrentProfile(
+                loadedProfile -> {
+                    isLoading.setValue(false);
+                    profile.setValue(loadedProfile);
+                    statsText.setValue(buildStatsText(loadedProfile));
+                    matchSummaryText.setValue(buildMatchSummaryText(loadedProfile));
+                },
+                error -> {
+                    errorMessage.setValue(error);
+                    loadProfile();
+                }
+        );
+    }
+
     public void updateAvatar(@NonNull Uri imageUri) {
         isLoading.setValue(true);
         repository.saveAvatarUri(
@@ -105,8 +125,21 @@ public class ProfileViewModel extends AndroidViewModel {
     }
 
     public void logout() {
+        if (profileListener != null) {
+            profileListener.remove();
+            profileListener = null;
+        }
         repository.clearSession();
         logoutCompleted.setValue(true);
+    }
+
+    @Override
+    protected void onCleared() {
+        if (profileListener != null) {
+            profileListener.remove();
+            profileListener = null;
+        }
+        super.onCleared();
     }
 
     public void notifyQrGenerationFailed() {

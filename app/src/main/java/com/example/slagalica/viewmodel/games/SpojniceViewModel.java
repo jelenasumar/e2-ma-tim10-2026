@@ -72,6 +72,10 @@ public class SpojniceViewModel extends AndroidViewModel {
     private String hostAvatarUri = "";
     private String guestAvatarUri = "";
     private boolean avatarsLoadRequested;
+    private String observedHostUid = "";
+    private String observedGuestUid = "";
+    private ListenerRegistration hostAvatarListener;
+    private ListenerRegistration guestAvatarListener;
     private String playerOneLabel = "Igrač 1";
     private String playerTwoLabel = "Igrač 2";
     private boolean roundOver = false;
@@ -216,6 +220,7 @@ public class SpojniceViewModel extends AndroidViewModel {
         if (spojniceListener != null) {
             spojniceListener.remove();
         }
+        removeAvatarListeners();
     }
 
     private void onRoomChanged(@NonNull RoomSession room) {
@@ -344,36 +349,50 @@ public class SpojniceViewModel extends AndroidViewModel {
     }
 
     private void ensurePlayerAvatars(@NonNull String hostUid, @NonNull String guestUid) {
-        if (avatarsLoadRequested) {
+        if (avatarsLoadRequested && hostUid.equals(observedHostUid) && guestUid.equals(observedGuestUid)) {
             applyLocalAvatarOverride(hostUid, guestUid);
             return;
         }
         avatarsLoadRequested = true;
+        observedHostUid = hostUid;
+        observedGuestUid = guestUid;
         profileRepository.ensurePublicAvatarUri(
-                unused -> fetchRemoteAvatars(hostUid, guestUid),
-                error -> fetchRemoteAvatars(hostUid, guestUid)
+                unused -> listenRemoteAvatars(hostUid, guestUid),
+                error -> listenRemoteAvatars(hostUid, guestUid)
         );
     }
 
-    private void fetchRemoteAvatars(@NonNull String hostUid, @NonNull String guestUid) {
-        profileRepository.fetchAvatarUriForUser(
+    private void listenRemoteAvatars(@NonNull String hostUid, @NonNull String guestUid) {
+        removeAvatarListeners();
+        hostAvatarListener = profileRepository.listenAvatarUriForUser(
                 hostUid,
                 uri -> {
-                    hostAvatarUri = uri != null ? uri : "";
+                    hostAvatarUri = displayAvatarUri(uri, myUid.equals(hostUid));
                     applyLocalAvatarOverride(hostUid, guestUid);
                     publishUiState(uiState.getValue() != null ? uiState.getValue().getSecondsLeft() : 0);
                 },
                 error -> { }
         );
-        profileRepository.fetchAvatarUriForUser(
+        guestAvatarListener = profileRepository.listenAvatarUriForUser(
                 guestUid,
                 uri -> {
-                    guestAvatarUri = uri != null ? uri : "";
+                    guestAvatarUri = displayAvatarUri(uri, myUid.equals(guestUid));
                     applyLocalAvatarOverride(hostUid, guestUid);
                     publishUiState(uiState.getValue() != null ? uiState.getValue().getSecondsLeft() : 0);
                 },
                 error -> { }
         );
+    }
+
+    private void removeAvatarListeners() {
+        if (hostAvatarListener != null) {
+            hostAvatarListener.remove();
+            hostAvatarListener = null;
+        }
+        if (guestAvatarListener != null) {
+            guestAvatarListener.remove();
+            guestAvatarListener = null;
+        }
     }
 
     private void applyLocalAvatarOverride(@NonNull String hostUid, @NonNull String guestUid) {
@@ -386,6 +405,17 @@ public class SpojniceViewModel extends AndroidViewModel {
         } else if (myUid.equals(guestUid)) {
             guestAvatarUri = localAvatar;
         }
+    }
+
+    @NonNull
+    private static String displayAvatarUri(@Nullable String avatarUri, boolean isCurrentUser) {
+        if (avatarUri == null || avatarUri.isEmpty()) {
+            return "";
+        }
+        if (isCurrentUser || avatarUri.startsWith("http://") || avatarUri.startsWith("https://")) {
+            return avatarUri;
+        }
+        return "";
     }
 
     private void recordStatsIfNeeded() {

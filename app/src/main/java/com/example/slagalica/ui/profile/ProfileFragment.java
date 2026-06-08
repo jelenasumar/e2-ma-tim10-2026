@@ -74,6 +74,7 @@ public class ProfileFragment extends Fragment {
         );
 
         observeViewModel(view);
+        viewModel.startProfileListener();
     }
 
     @Override

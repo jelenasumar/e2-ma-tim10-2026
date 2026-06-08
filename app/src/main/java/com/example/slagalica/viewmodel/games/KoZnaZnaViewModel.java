@@ -45,7 +45,6 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private boolean iHaveAnswered;
     private boolean statsRecorded;
     private boolean roomMatchCreationStarted;
-    private boolean myAvatarPublished;
     private boolean resolveInFlight;
     private boolean presenceMarkInFlight;
     private int selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
@@ -56,6 +55,11 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private String localStatusMessage = "";
     private String hostAvatarUri = "";
     private String guestAvatarUri = "";
+    private String observedHostUid = "";
+    private String observedGuestUid = "";
+    private String lastPublishedAvatarUri = "";
+    private ListenerRegistration hostAvatarListener;
+    private ListenerRegistration guestAvatarListener;
     @Nullable
     private KoZnaZnaMatch latestMatch;
 
@@ -81,7 +85,6 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         this.isHost = false;
         this.iHaveAnswered = false;
         this.statsRecorded = false;
-        this.myAvatarPublished = false;
         this.resolveInFlight = false;
         this.presenceMarkInFlight = false;
         this.selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
@@ -93,6 +96,9 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
         this.hostAvatarUri = "";
         this.guestAvatarUri = "";
+        this.observedHostUid = "";
+        this.observedGuestUid = "";
+        this.lastPublishedAvatarUri = "";
         this.localStatusMessage = getApplication().getString(R.string.kzz_waiting_sync);
 
         if (matchListener != null) {
@@ -284,6 +290,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             roomListener.remove();
             roomListener = null;
         }
+        removeAvatarListeners();
         mainHandler.removeCallbacks(timerTickRunnable);
     }
 
@@ -473,72 +480,114 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     ) {
         if (match != null) {
             if (!match.getHostAvatarUri().isEmpty()) {
-                hostAvatarUri = match.getHostAvatarUri();
+                hostAvatarUri = displayAvatarUri(match.getHostAvatarUri(), myUid.equals(hostUid));
             }
             if (!match.getGuestAvatarUri().isEmpty()) {
-                guestAvatarUri = match.getGuestAvatarUri();
+                guestAvatarUri = displayAvatarUri(match.getGuestAvatarUri(), myUid.equals(guestUid));
             }
         }
         applyLocalAvatarOverride(hostUid, guestUid);
-        fetchMissingAvatar(hostUid, true);
-        fetchMissingAvatar(guestUid, false);
+        listenPlayerAvatars(hostUid, guestUid);
     }
 
-    private void fetchMissingAvatar(@NonNull String uid, boolean hostSlot) {
-        String current = hostSlot ? hostAvatarUri : guestAvatarUri;
-        if (!current.isEmpty() || uid.isEmpty()) {
+    private void listenPlayerAvatars(@NonNull String hostUid, @NonNull String guestUid) {
+        if (hostUid.equals(observedHostUid) && guestUid.equals(observedGuestUid)) {
             return;
         }
-        profileRepository.fetchAvatarUriForUser(
-                uid,
-                uri -> {
-                    String resolved = resolveRemoteAvatarUri(uri);
-                    if (resolved.isEmpty()) {
-                        return;
-                    }
-                    if (hostSlot) {
-                        hostAvatarUri = resolved;
-                    } else {
-                        guestAvatarUri = resolved;
-                    }
-                    if (latestMatch != null) {
-                        publishFromMatch(latestMatch);
-                    }
-                },
+        observedHostUid = hostUid;
+        observedGuestUid = guestUid;
+        removeAvatarListeners();
+        hostAvatarListener = profileRepository.listenAvatarUriForUser(
+                hostUid,
+                uri -> onProfileAvatarChanged(true, hostUid, guestUid, uri),
                 error -> { }
         );
+        guestAvatarListener = profileRepository.listenAvatarUriForUser(
+                guestUid,
+                uri -> onProfileAvatarChanged(false, hostUid, guestUid, uri),
+                error -> { }
+        );
+    }
+
+    private void onProfileAvatarChanged(
+            boolean hostSlot,
+            @NonNull String hostUid,
+            @NonNull String guestUid,
+            @Nullable String avatarUri
+    ) {
+        boolean isCurrentUser = hostSlot ? myUid.equals(hostUid) : myUid.equals(guestUid);
+        String resolved = displayAvatarUri(avatarUri, isCurrentUser);
+        if (hostSlot) {
+            hostAvatarUri = resolved;
+        } else {
+            guestAvatarUri = resolved;
+        }
+        applyLocalAvatarOverride(hostUid, guestUid);
+        publishCurrentAvatarToMatchIfNeeded(hostSlot, avatarUri != null ? avatarUri : "");
+        if (latestMatch != null) {
+            publishFromMatch(latestMatch);
+        }
+    }
+
+    private void removeAvatarListeners() {
+        if (hostAvatarListener != null) {
+            hostAvatarListener.remove();
+            hostAvatarListener = null;
+        }
+        if (guestAvatarListener != null) {
+            guestAvatarListener.remove();
+            guestAvatarListener = null;
+        }
     }
 
     private void publishMyAvatarToMatch(@NonNull KoZnaZnaMatch match) {
-        if (myAvatarPublished || matchId == null || matchId.isEmpty() || myUid.isEmpty()) {
+        if (matchId == null || matchId.isEmpty() || myUid.isEmpty()) {
             return;
         }
         profileRepository.ensurePublicAvatarUri(
-                avatarUri -> uploadAvatarIfNeeded(match, avatarUri),
+                avatarUri -> publishAvatarToMatchIfNeeded(match, avatarUri),
                 error -> { }
         );
     }
 
-    private void uploadAvatarIfNeeded(@NonNull KoZnaZnaMatch match, @NonNull String avatarUri) {
+    private void publishAvatarToMatchIfNeeded(@NonNull KoZnaZnaMatch match, @NonNull String avatarUri) {
         if (avatarUri.isEmpty()) {
             return;
         }
         String existing = myUid.equals(match.getHostUid())
                 ? match.getHostAvatarUri()
                 : match.getGuestAvatarUri();
-        if (avatarUri.equals(existing)) {
-            myAvatarPublished = true;
+        if (avatarUri.equals(existing) || avatarUri.equals(lastPublishedAvatarUri)) {
+            lastPublishedAvatarUri = avatarUri;
             return;
         }
-        myAvatarPublished = true;
+        lastPublishedAvatarUri = avatarUri;
         matchRepository.updatePlayerAvatar(
                 matchId,
                 myUid,
                 match.getHostUid(),
                 avatarUri,
                 () -> { },
-                error -> myAvatarPublished = false
+                error -> lastPublishedAvatarUri = ""
         );
+    }
+
+    private void publishCurrentAvatarToMatchIfNeeded(boolean hostSlot, @NonNull String avatarUri) {
+        if (latestMatch == null
+                || matchId == null
+                || matchId.isEmpty()
+                || myUid.isEmpty()
+                || avatarUri.isEmpty()
+                || !isRemoteAvatarUri(avatarUri)) {
+            return;
+        }
+        boolean isMine = hostSlot
+                ? myUid.equals(latestMatch.getHostUid())
+                : myUid.equals(latestMatch.getGuestUid());
+        if (!isMine) {
+            return;
+        }
+        publishAvatarToMatchIfNeeded(latestMatch, avatarUri);
     }
 
     private void applyLocalAvatarOverride(@NonNull String hostUid, @NonNull String guestUid) {
@@ -554,14 +603,18 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     @NonNull
-    private static String resolveRemoteAvatarUri(@Nullable String avatarUri) {
+    private static String displayAvatarUri(@Nullable String avatarUri, boolean isCurrentUser) {
         if (avatarUri == null || avatarUri.isEmpty()) {
             return "";
         }
-        if (avatarUri.startsWith("http://") || avatarUri.startsWith("https://")) {
+        if (isCurrentUser || isRemoteAvatarUri(avatarUri)) {
             return avatarUri;
         }
         return "";
+    }
+
+    private static boolean isRemoteAvatarUri(@NonNull String avatarUri) {
+        return avatarUri.startsWith("http://") || avatarUri.startsWith("https://");
     }
 
     @NonNull

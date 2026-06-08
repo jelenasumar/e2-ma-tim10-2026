@@ -12,6 +12,7 @@ import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.R;
 import com.example.slagalica.utils.AvatarFileStorage;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.io.File;
 import java.io.IOException;
@@ -93,6 +94,22 @@ public final class UserProfileRepository {
         }, onError);
     }
 
+    @Nullable
+    public ListenerRegistration listenCurrentProfile(
+            @NonNull Consumer<UserProfile> onChanged,
+            @NonNull Consumer<String> onError
+    ) {
+        String uid = remote.getCurrentUid();
+        if (!remote.isLoggedIn() || uid == null) {
+            onChanged.accept(preferences.loadProfile());
+            return null;
+        }
+        return remote.listenUserProfile(uid, profile -> {
+            preferences.saveProfile(profile);
+            onChanged.accept(profile);
+        }, onError);
+    }
+
     public void ensurePublicAvatarUri(
             @NonNull Consumer<String> onReady,
             @NonNull Consumer<String> onError
@@ -170,6 +187,30 @@ public final class UserProfileRepository {
         );
     }
 
+    @Nullable
+    public ListenerRegistration listenAvatarUriForUser(
+            @NonNull String uid,
+            @NonNull Consumer<String> onChanged,
+            @NonNull Consumer<String> onError
+    ) {
+        if (uid.isEmpty()) {
+            onChanged.accept("");
+            return null;
+        }
+        String currentUid = remote.getCurrentUid();
+        if (currentUid == null || !remote.isLoggedIn()) {
+            fetchAvatarUriForUser(uid, onChanged, onError);
+            return null;
+        }
+        return remote.listenUserProfile(uid, profile -> {
+            if (currentUid.equals(uid)) {
+                preferences.saveProfile(profile);
+            }
+            String avatarUri = profile.getAvatarUri();
+            onChanged.accept(avatarUri != null ? avatarUri : "");
+        }, onError);
+    }
+
     public void saveAvatarUri(
             @NonNull Uri pickedImageUri,
             @NonNull Runnable onSuccess,
@@ -189,19 +230,10 @@ public final class UserProfileRepository {
         try {
             java.io.File localFile = AvatarFileStorage.copyToInternalStorage(appContext, uid, pickedImageUri);
             byte[] imageBytes = AvatarFileStorage.readBytes(localFile);
-            String localPath = localFile.getAbsolutePath();
 
             remote.uploadAvatar(uid, imageBytes, downloadUrl -> {
                 persistAvatar(downloadUrl, onSuccess);
-            }, error -> {
-                if ("STORAGE_NOT_AVAILABLE".equals(error) || "STORAGE_PERMISSION_DENIED".equals(error)) {
-                    remote.saveAvatarUriToFirestore(uid, localPath, savedUri -> {
-                        persistAvatar(savedUri, onSuccess);
-                    }, onError);
-                    return;
-                }
-                onError.accept(error);
-            });
+            }, onError);
         } catch (Exception e) {
             onError.accept(e.getMessage() != null ? e.getMessage() : "Avatar save failed.");
         }

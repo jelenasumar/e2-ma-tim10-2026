@@ -10,6 +10,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.GameHeaderPlayerState;
 import com.example.slagalica.model.GameHeaderState;
+import com.google.firebase.firestore.ListenerRegistration;
 
 public class GameViewModel extends AndroidViewModel {
 
@@ -19,6 +20,10 @@ public class GameViewModel extends AndroidViewModel {
     private String hostAvatarUri = "";
     private String guestAvatarUri = "";
     private boolean avatarsLoadRequested;
+    private String observedHostUid = "";
+    private String observedGuestUid = "";
+    private ListenerRegistration hostAvatarListener;
+    private ListenerRegistration guestAvatarListener;
 
     public GameViewModel(@NonNull Application application) {
         super(application);
@@ -77,42 +82,56 @@ public class GameViewModel extends AndroidViewModel {
             @NonNull String guestUid,
             @NonNull Runnable onUpdated
     ) {
-        if (avatarsLoadRequested) {
+        if (avatarsLoadRequested && hostUid.equals(observedHostUid) && guestUid.equals(observedGuestUid)) {
             applyLocalAvatarOverride(myUid, hostUid, guestUid);
             onUpdated.run();
             return;
         }
         avatarsLoadRequested = true;
+        observedHostUid = hostUid;
+        observedGuestUid = guestUid;
         profileRepository.ensurePublicAvatarUri(
-                unused -> loadRemotePlayerAvatars(myUid, hostUid, guestUid, onUpdated),
-                error -> loadRemotePlayerAvatars(myUid, hostUid, guestUid, onUpdated)
+                unused -> listenPlayerAvatars(myUid, hostUid, guestUid, onUpdated),
+                error -> listenPlayerAvatars(myUid, hostUid, guestUid, onUpdated)
         );
     }
 
-    private void loadRemotePlayerAvatars(
+    private void listenPlayerAvatars(
             @NonNull String myUid,
             @NonNull String hostUid,
             @NonNull String guestUid,
             @NonNull Runnable onUpdated
     ) {
-        profileRepository.fetchAvatarUriForUser(
+        removeAvatarListeners();
+        hostAvatarListener = profileRepository.listenAvatarUriForUser(
                 hostUid,
                 uri -> {
-                    hostAvatarUri = uri != null ? uri : "";
+                    hostAvatarUri = displayAvatarUri(uri, myUid.equals(hostUid));
                     applyLocalAvatarOverride(myUid, hostUid, guestUid);
                     onUpdated.run();
                 },
                 error -> { }
         );
-        profileRepository.fetchAvatarUriForUser(
+        guestAvatarListener = profileRepository.listenAvatarUriForUser(
                 guestUid,
                 uri -> {
-                    guestAvatarUri = uri != null ? uri : "";
+                    guestAvatarUri = displayAvatarUri(uri, myUid.equals(guestUid));
                     applyLocalAvatarOverride(myUid, hostUid, guestUid);
                     onUpdated.run();
                 },
                 error -> { }
         );
+    }
+
+    private void removeAvatarListeners() {
+        if (hostAvatarListener != null) {
+            hostAvatarListener.remove();
+            hostAvatarListener = null;
+        }
+        if (guestAvatarListener != null) {
+            guestAvatarListener.remove();
+            guestAvatarListener = null;
+        }
     }
 
     @NonNull
@@ -145,5 +164,22 @@ public class GameViewModel extends AndroidViewModel {
         } else if (myUid.equals(guestUid)) {
             guestAvatarUri = localAvatar;
         }
+    }
+
+    @NonNull
+    private static String displayAvatarUri(String avatarUri, boolean isCurrentUser) {
+        if (avatarUri == null || avatarUri.isEmpty()) {
+            return "";
+        }
+        if (isCurrentUser || avatarUri.startsWith("http://") || avatarUri.startsWith("https://")) {
+            return avatarUri;
+        }
+        return "";
+    }
+
+    @Override
+    protected void onCleared() {
+        removeAvatarListeners();
+        super.onCleared();
     }
 }

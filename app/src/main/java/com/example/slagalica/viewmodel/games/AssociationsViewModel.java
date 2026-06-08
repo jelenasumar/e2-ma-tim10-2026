@@ -371,7 +371,7 @@ public class AssociationsViewModel extends GameViewModel {
         applyRoomPlayersFromState(snapshot);
         initializeHeader(
                 formatRoundText(currentRound, TOTAL_ROUNDS),
-                formatTimeText(remainingPhaseMillis(longOrZero(snapshot.get("phaseEndsAtMillis")))),
+                formatTimeText(cappedRemainingPhaseMillis(longOrZero(snapshot.get("phaseEndsAtMillis")))),
                 playerOne.withScore(playerOneScore),
                 playerTwo.withScore(playerTwoScore)
         );
@@ -426,7 +426,7 @@ public class AssociationsViewModel extends GameViewModel {
             return;
         }
 
-        long remaining = remainingPhaseMillis(phaseEndsAtMillis);
+        long remaining = cappedRemainingPhaseMillis(phaseEndsAtMillis);
         if (remaining == 0L) {
             expireRemotePhase();
             return;
@@ -560,6 +560,22 @@ public class AssociationsViewModel extends GameViewModel {
 
     private static long remainingPhaseMillis(long phaseEndsAtMillis) {
         return Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis());
+    }
+
+    private long cappedRemainingPhaseMillis(long phaseEndsAtMillis) {
+        long remaining = remainingPhaseMillis(phaseEndsAtMillis);
+        long maxDuration = currentPhaseDurationMillis();
+        return maxDuration > 0L ? Math.min(remaining, maxDuration) : remaining;
+    }
+
+    private long currentPhaseDurationMillis() {
+        if (AssociationsRoomRepository.PHASE_ACTIVE.equals(phase)) {
+            return ROUND_DURATION_MILLIS;
+        }
+        if (AssociationsRoomRepository.PHASE_ROUND_OVER.equals(phase)) {
+            return ROUND_RESULT_VISIBLE_MILLIS;
+        }
+        return 0L;
     }
 
     private void switchActivePlayer() {
