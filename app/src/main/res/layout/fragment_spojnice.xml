@@ -19,47 +19,12 @@
             android:text="@string/spojnice_title"
             android:textAppearance="?attr/textAppearanceHeadlineSmall" />
 
-        <LinearLayout
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/spojniceGameHeader"
+            android:name="com.example.slagalica.ui.games.GameHeaderFragment"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/spojniceRound"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/spojnice_round_label" />
-
-            <TextView
-                android:id="@+id/spojniceTime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/spojnice_time_label" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/spojniceScoreP1"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/spojnice_score_p1"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/spojniceScoreP2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/spojnice_score_p2"
-                android:textStyle="bold" />
-        </LinearLayout>
+            android:layout_marginTop="8dp" />
 
         <TextView
             android:id="@+id/spojniceCriterion"

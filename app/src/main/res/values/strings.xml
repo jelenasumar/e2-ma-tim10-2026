@@ -142,6 +142,11 @@
     <string name="room_session_game_order">Redosled: %1$s</string>
     <string name="room_session_games_title">Igre u partiji:</string>
     <string name="room_session_kzz_pending">Ko zna zna će biti povezan sa sobom u sledećem koraku.</string>
+    <string name="room_session_starting">Partija počinje…</string>
+    <string name="room_session_break_countdown">Pauza — sledeća igra za %1$d s</string>
+    <string name="room_session_break_final">Pauza — završetak partije za %1$d s</string>
+    <string name="room_session_break_starting">Sledeća igra počinje…</string>
+    <string name="room_session_finished">Partija završena! %1$s: %2$d — %3$s: %4$d</string>
     <string name="profile_back">Nazad</string>
     <string name="profile_tokens">Tokeni</string>
     <string name="profile_stars">Ukupno zvezda</string>

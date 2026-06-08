@@ -40,28 +40,12 @@
             app:layout_constraintTop_toBottomOf="@id/roomSessionTitle" />
 
         <TextView
-            android:id="@+id/roomSessionStatus"
-            style="@style/RoomSessionText"
-            android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/roomSessionId" />
-
-        <TextView
             android:id="@+id/roomSessionPlayers"
             style="@style/RoomSessionText"
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/roomSessionStatus" />
-
-        <TextView
-            android:id="@+id/roomSessionScore"
-            style="@style/RoomSessionText"
-            android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/roomSessionPlayers" />
+            app:layout_constraintTop_toBottomOf="@id/roomSessionId" />
 
         <TextView
             android:id="@+id/roomSessionCurrentGame"
@@ -70,11 +54,14 @@
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/roomSessionScore" />
+            app:layout_constraintTop_toBottomOf="@id/roomSessionPlayers" />
 
         <TextView
-            android:id="@+id/roomSessionGameOrder"
+            android:id="@+id/roomSessionBreakStatus"
             style="@style/RoomSessionText"
+            android:gravity="center_horizontal"
+            android:textSize="18sp"
+            android:textStyle="bold"
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -88,9 +75,10 @@
             android:text="@string/room_session_games_title"
             android:textSize="18sp"
             android:textStyle="bold"
+            android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/roomSessionId" />
+            app:layout_constraintTop_toBottomOf="@id/roomSessionBreakStatus" />
 
         <LinearLayout
             android:id="@+id/roomSessionGamesContainer"
@@ -99,6 +87,7 @@
             android:layout_marginTop="12dp"
             android:gravity="center_horizontal"
             android:orientation="vertical"
+            android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/roomSessionGamesTitle">

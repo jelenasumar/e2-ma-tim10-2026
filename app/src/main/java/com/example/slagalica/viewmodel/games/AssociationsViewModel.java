@@ -91,8 +91,16 @@ public class AssociationsViewModel extends GameViewModel {
 
         this.playerOne = playerOne;
         this.playerTwo = playerTwo;
-        roundPuzzles = shuffledPuzzles();
-        startRound(1);
+        puzzleRepository.loadPuzzles(
+                puzzles -> {
+                    roundPuzzles = puzzles.isEmpty() ? shuffledLocalPuzzles() : shuffledRemotePuzzles(puzzles);
+                    startRound(1);
+                },
+                error -> {
+                    roundPuzzles = shuffledLocalPuzzles();
+                    startRound(1);
+                }
+        );
     }
 
     public void startRoomGame(@NonNull String roomId) {
@@ -102,7 +110,6 @@ public class AssociationsViewModel extends GameViewModel {
 
         roomMode = true;
         this.roomId = roomId;
-        roundPuzzles = shuffledPuzzles();
         String uid = associationsRoomRepository.getCurrentUid();
         myUid = uid != null ? uid : "";
         roomListener = roomRepository.listenRoom(
@@ -516,16 +523,23 @@ public class AssociationsViewModel extends GameViewModel {
     }
 
     @NonNull
-    private List<AssociationPuzzle> shuffledPuzzles() {
+    private List<AssociationPuzzle> shuffledLocalPuzzles() {
         List<AssociationPuzzle> puzzles = new ArrayList<>(AssociationPuzzle.defaultPuzzles());
         Collections.shuffle(puzzles, random);
         return puzzles;
     }
 
     @NonNull
+    private List<AssociationPuzzle> shuffledRemotePuzzles(@NonNull List<AssociationPuzzle> puzzles) {
+        List<AssociationPuzzle> copy = new ArrayList<>(puzzles);
+        Collections.shuffle(copy, random);
+        return copy;
+    }
+
+    @NonNull
     private AssociationPuzzle puzzleForRound(int roundNumber) {
         if (roundPuzzles.isEmpty()) {
-            roundPuzzles = shuffledPuzzles();
+            roundPuzzles = shuffledLocalPuzzles();
         }
         int index = Math.max(0, (roundNumber - 1) % roundPuzzles.size());
         return roundPuzzles.get(index);

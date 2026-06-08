@@ -12,6 +12,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.slagalica.data.repository.RoomSessionRepository;
+import com.example.slagalica.data.repository.SpojnicePuzzlesRepository;
 import com.example.slagalica.data.repository.SpojniceRoomRepository;
 import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.RoomSession;
@@ -21,6 +22,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -37,6 +39,7 @@ public class SpojniceViewModel extends AndroidViewModel {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Random random = new Random();
     private final RoomSessionRepository roomRepository = new RoomSessionRepository();
+    private final SpojnicePuzzlesRepository puzzlesRepository = new SpojnicePuzzlesRepository();
     private final SpojniceRoomRepository spojniceRepository = new SpojniceRoomRepository();
     private final UserProfileRepository profileRepository;
 
@@ -69,6 +72,8 @@ public class SpojniceViewModel extends AndroidViewModel {
     private boolean roundOver = false;
     private boolean gameOver = false;
     private boolean statsRecorded = false;
+    private List<SpojnicePuzzle> roundPuzzles = new ArrayList<>();
+    private boolean roomInitializationRequested = false;
 
     public SpojniceViewModel(@NonNull Application application) {
         super(application);
@@ -219,15 +224,39 @@ public class SpojniceViewModel extends AndroidViewModel {
             );
         }
         if (myUid.equals(room.getHostUid())) {
-            SpojnicePuzzle puzzle = puzzleForRound(1);
-            SpojnicePuzzle.ShuffledRound shuffled = puzzle.shuffled(random);
-            spojniceRepository.initializeIfNeeded(
-                    room,
-                    shuffled,
-                    puzzle.getCriterion(),
-                    errorMessage::setValue
-            );
+            initializeRoomGameIfNeeded(room);
         }
+    }
+
+    private void initializeRoomGameIfNeeded(@NonNull RoomSession room) {
+        if (roomInitializationRequested) {
+            return;
+        }
+        roomInitializationRequested = true;
+        puzzlesRepository.loadPuzzles(
+                puzzles -> {
+                    if (!puzzles.isEmpty()) {
+                        roundPuzzles = new ArrayList<>(puzzles);
+                        Collections.shuffle(roundPuzzles, random);
+                    }
+                    startSpojniceRound(room, 1);
+                },
+                error -> {
+                    errorMessage.setValue(error);
+                    startSpojniceRound(room, 1);
+                }
+        );
+    }
+
+    private void startSpojniceRound(@NonNull RoomSession room, int round) {
+        SpojnicePuzzle puzzle = puzzleForRound(round);
+        SpojnicePuzzle.ShuffledRound shuffled = puzzle.shuffled(random);
+        spojniceRepository.initializeIfNeeded(
+                room,
+                shuffled,
+                puzzle.getCriterion(),
+                errorMessage::setValue
+        );
     }
 
     private void onRemoteStateChanged(@NonNull DocumentSnapshot snapshot) {
@@ -497,9 +526,12 @@ public class SpojniceViewModel extends AndroidViewModel {
 
     @NonNull
     private SpojnicePuzzle puzzleForRound(int round) {
-        List<SpojnicePuzzle> puzzles = SpojnicePuzzle.defaultPuzzles();
-        int index = Math.max(0, Math.min(round - 1, puzzles.size() - 1));
-        return puzzles.get(index);
+        if (roundPuzzles.isEmpty()) {
+            roundPuzzles = new ArrayList<>(SpojnicePuzzle.defaultPuzzles());
+            Collections.shuffle(roundPuzzles, random);
+        }
+        int index = Math.max(0, Math.min(round - 1, roundPuzzles.size() - 1));
+        return roundPuzzles.get(index);
     }
 
     private void stopPhaseTimer() {

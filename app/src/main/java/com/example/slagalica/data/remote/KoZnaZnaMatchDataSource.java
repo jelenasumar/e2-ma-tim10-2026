@@ -27,11 +27,8 @@ public final class KoZnaZnaMatchDataSource {
     private static final String ROOMS = "rooms";
 
     private static final int QUESTION_MS = 5_000;
-    private static final int TOTAL_QUESTIONS = 5;
+    private static final int DEFAULT_QUESTIONS_PER_MATCH = 5;
     private static final int ADVANCE_DELAY_MS = 1_200;
-    private static final int ROUND_MS = TOTAL_QUESTIONS * QUESTION_MS
-            + (TOTAL_QUESTIONS - 1) * ADVANCE_DELAY_MS
-            + 5_000;
 
     private final FirebaseFirestore db;
     private final FirebaseAuth auth;
@@ -120,6 +117,7 @@ public final class KoZnaZnaMatchDataSource {
             @NonNull String hostUsername,
             @NonNull String guestUid,
             @NonNull String guestUsername,
+            @NonNull List<Integer> questionOrder,
             @NonNull Consumer<String> onSuccess,
             @NonNull Consumer<String> onError
     ) {
@@ -128,7 +126,14 @@ public final class KoZnaZnaMatchDataSource {
         String matchId = matchRef.getId();
         long now = System.currentTimeMillis();
 
-        Map<String, Object> match = newMatchPayload(hostUid, hostUsername, guestUid, guestUsername, now);
+        Map<String, Object> match = newMatchPayload(
+                hostUid,
+                hostUsername,
+                guestUid,
+                guestUsername,
+                now,
+                questionOrder
+        );
 
         db.runTransaction((Transaction transaction) -> {
             DocumentSnapshot roomSnap = transaction.get(roomRef);
@@ -155,12 +160,20 @@ public final class KoZnaZnaMatchDataSource {
             @NonNull String hostUsername,
             @NonNull String guestUid,
             @NonNull String guestUsername,
+            @NonNull List<Integer> questionOrder,
             @NonNull Consumer<String> onSuccess,
             @NonNull Consumer<String> onError
     ) {
         String matchId = db.collection(MATCHES).document().getId();
         long now = System.currentTimeMillis();
-        Map<String, Object> match = newMatchPayload(hostUid, hostUsername, guestUid, guestUsername, now);
+        Map<String, Object> match = newMatchPayload(
+                hostUid,
+                hostUsername,
+                guestUid,
+                guestUsername,
+                now,
+                questionOrder
+        );
 
         DocumentReference lobbyRef = db.collection(LOBBIES).document(lobbyCode);
         DocumentReference matchRef = db.collection(MATCHES).document(matchId);
@@ -327,11 +340,12 @@ public final class KoZnaZnaMatchDataSource {
 
             long now = System.currentTimeMillis();
             int nextIndex = match.getCurrentQuestionIndex() + 1;
+            int totalQuestions = Math.max(1, match.getQuestionOrder().size());
             Map<String, Object> updates = new HashMap<>();
 
-            if (nextIndex >= TOTAL_QUESTIONS) {
+            if (nextIndex >= totalQuestions) {
                 updates.put("status", KoZnaZnaMatch.STATUS_FINISHED);
-                updates.put("currentQuestionIndex", Math.min(nextIndex, TOTAL_QUESTIONS - 1));
+                updates.put("currentQuestionIndex", Math.min(nextIndex, totalQuestions - 1));
                 updates.put("questionResolved", false);
                 updates.put("statusMessage", "");
             } else if (now >= match.getRoundEndsAtMs()) {
@@ -408,8 +422,16 @@ public final class KoZnaZnaMatchDataSource {
             @NonNull String hostUsername,
             @NonNull String guestUid,
             @NonNull String guestUsername,
-            long now
+            long now,
+            @NonNull List<Integer> questionOrder
     ) {
+        List<Integer> order = questionOrder.isEmpty()
+                ? shuffledQuestionOrderStatic(DEFAULT_QUESTIONS_PER_MATCH)
+                : new ArrayList<>(questionOrder);
+        int totalQuestions = order.size();
+        long roundMs = totalQuestions * QUESTION_MS
+                + Math.max(0, totalQuestions - 1) * ADVANCE_DELAY_MS
+                + 5_000L;
         Map<String, Object> match = new HashMap<>();
         match.put("hostUid", hostUid);
         match.put("guestUid", guestUid);
@@ -419,7 +441,7 @@ public final class KoZnaZnaMatchDataSource {
         match.put("guestScore", 0);
         match.put("currentQuestionIndex", 0);
         match.put("status", KoZnaZnaMatch.STATUS_PLAYING);
-        match.put("roundEndsAtMs", now + ROUND_MS);
+        match.put("roundEndsAtMs", now + roundMs);
         match.put("questionStartedAtMs", now);
         match.put("questionEndsAtMs", now + QUESTION_MS);
         match.put("questionResolved", false);
@@ -428,19 +450,15 @@ public final class KoZnaZnaMatchDataSource {
         match.put("guestAnswerIndex", KoZnaZnaScoring.ANSWER_PENDING);
         match.put("hostAnsweredAtMs", 0L);
         match.put("guestAnsweredAtMs", 0L);
-        match.put("questionOrder", shuffledQuestionOrderStatic());
+        match.put("questionOrder", order);
         return match;
     }
 
     @NonNull
-    private List<Integer> shuffledQuestionOrder() {
-        return shuffledQuestionOrderStatic();
-    }
-
-    @NonNull
-    private static List<Integer> shuffledQuestionOrderStatic() {
+    public static List<Integer> shuffledQuestionOrderStatic(int questionCount) {
+        int count = Math.max(1, questionCount);
         List<Integer> order = new ArrayList<>();
-        for (int i = 0; i < TOTAL_QUESTIONS; i++) {
+        for (int i = 0; i < count; i++) {
             order.add(i);
         }
         Collections.shuffle(order, new Random());

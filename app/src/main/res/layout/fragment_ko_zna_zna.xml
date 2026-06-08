@@ -18,13 +18,23 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/kzzGameHeader"
+        android:name="com.example.slagalica.ui.games.GameHeaderFragment"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/kzzTitle" />
+
     <TextView
         android:id="@+id/kzzRoundTime"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:text="@string/kzz_round_time"
-        app:layout_constraintTop_toBottomOf="@id/kzzTitle"
+        app:layout_constraintTop_toBottomOf="@id/kzzGameHeader"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -46,34 +56,6 @@
         app:layout_constraintBottom_toBottomOf="@id/kzzQuestionCounter"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <LinearLayout
-        android:id="@+id/kzzScoreRow"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:orientation="horizontal"
-        app:layout_constraintTop_toBottomOf="@id/kzzQuestionCounter"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <TextView
-            android:id="@+id/kzzPlayerOneScore"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/kzz_player_one_score"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/kzzPlayerTwoScore"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="end"
-            android:text="@string/kzz_player_two_score"
-            android:textStyle="bold" />
-    </LinearLayout>
-
     <TextView
         android:id="@+id/kzzHint"
         android:layout_width="0dp"
@@ -81,7 +63,7 @@
         android:layout_marginTop="10dp"
         android:text="@string/kzz_points_hint"
         android:textSize="12sp"
-        app:layout_constraintTop_toBottomOf="@id/kzzScoreRow"
+        app:layout_constraintTop_toBottomOf="@id/kzzQuestionCounter"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 

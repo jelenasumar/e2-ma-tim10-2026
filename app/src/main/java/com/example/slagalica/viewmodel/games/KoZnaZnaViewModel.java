@@ -12,6 +12,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.example.slagalica.R;
 import com.example.slagalica.data.repository.KoZnaZnaMatchRepository;
+import com.example.slagalica.data.repository.KzzQuestionsRepository;
 import com.example.slagalica.data.repository.RoomSessionRepository;
 import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.KoZnaZnaMatch;
@@ -21,13 +22,13 @@ import com.example.slagalica.model.KoZnaZnaUiState;
 import com.example.slagalica.model.RoomSession;
 import com.google.firebase.firestore.ListenerRegistration;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class KoZnaZnaViewModel extends AndroidViewModel {
 
-    private static final int TOTAL_QUESTIONS = 5;
-
     private final KoZnaZnaMatchRepository matchRepository;
+    private final KzzQuestionsRepository questionsRepository = new KzzQuestionsRepository();
     private final UserProfileRepository profileRepository;
     private final RoomSessionRepository roomRepository = new RoomSessionRepository();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -53,6 +54,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private String localStatusMessage = "";
     @Nullable
     private KoZnaZnaMatch latestMatch;
+    private List<KoZnaZnaQuestion> cachedQuestions = new ArrayList<>();
+    private boolean questionsLoaded;
 
     public KoZnaZnaViewModel(@NonNull Application application) {
         super(application);
@@ -87,12 +90,14 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             matchListener.remove();
         }
 
-        matchListener = matchRepository.listenMatch(
-                matchId,
-                this::onMatchUpdated,
-                error -> errorMessage.setValue(error)
-        );
-        mainHandler.post(timerTickRunnable);
+        ensureQuestionsLoaded(() -> {
+            matchListener = matchRepository.listenMatch(
+                    matchId,
+                    this::onMatchUpdated,
+                    error -> errorMessage.setValue(error)
+            );
+            mainHandler.post(timerTickRunnable);
+        });
     }
 
     public void startRoomGame(@NonNull String roomId) {
@@ -146,24 +151,29 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
 
         roomMatchCreationStarted = true;
-        matchRepository.createMatchFromRoom(
-                room.getRoomId(),
-                room.getHostUid(),
-                room.getHostUsername(),
-                room.getGuestUid(),
-                room.getGuestUsername(),
-                createdMatchId -> { },
-                error -> {
-                    roomMatchCreationStarted = false;
-                    errorMessage.setValue(error);
-                }
-        );
+        ensureQuestionsLoaded(() -> {
+            List<Integer> questionOrder = KzzQuestionsRepository.shuffledIndices(activeQuestions().size());
+            matchRepository.createMatchFromRoom(
+                    room.getRoomId(),
+                    room.getHostUid(),
+                    room.getHostUsername(),
+                    room.getGuestUid(),
+                    room.getGuestUsername(),
+                    questionOrder,
+                    createdMatchId -> { },
+                    error -> {
+                        roomMatchCreationStarted = false;
+                        errorMessage.setValue(error);
+                    }
+            );
+        });
     }
 
     private void publishWaitingState(@NonNull RoomSession room) {
+        List<KoZnaZnaQuestion> questions = activeQuestions();
         uiState.setValue(new KoZnaZnaUiState(
                 1,
-                TOTAL_QUESTIONS,
+                questions.size(),
                 0,
                 0,
                 0,
@@ -171,7 +181,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 room.getHostUsername(),
                 room.getGuestUsername(),
                 "",
-                KoZnaZnaQuestion.defaultQuestions().get(0).getOptions(),
+                questions.get(0).getOptions(),
                 KoZnaZnaUiState.NO_SELECTION,
                 false,
                 false,
@@ -367,9 +377,13 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         int questionLeft = (int) Math.max(0, Math.ceil((match.getQuestionEndsAtMs() - now) / 1000.0));
 
         KoZnaZnaQuestion question = currentQuestion(match);
+        List<KoZnaZnaQuestion> questions = activeQuestions();
         List<String> options = question != null
                 ? question.getOptions()
-                : KoZnaZnaQuestion.defaultQuestions().get(0).getOptions();
+                : questions.get(0).getOptions();
+        int totalQuestions = match.getQuestionOrder().isEmpty()
+                ? questions.size()
+                : match.getQuestionOrder().size();
 
         boolean finished = KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus());
         boolean canAnswer = canAnswerLocally() && !match.isQuestionResolved() && questionLeft > 0 && !finished;
@@ -396,8 +410,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
 
         uiState.setValue(new KoZnaZnaUiState(
-                Math.min(match.getCurrentQuestionIndex() + 1, TOTAL_QUESTIONS),
-                TOTAL_QUESTIONS,
+                Math.min(match.getCurrentQuestionIndex() + 1, totalQuestions),
+                totalQuestions,
                 roundLeft,
                 questionLeft,
                 match.getHostScore(),
@@ -428,12 +442,43 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         if (index < 0 || index >= order.size()) {
             return null;
         }
-        List<KoZnaZnaQuestion> questions = KoZnaZnaQuestion.defaultQuestions();
+        List<KoZnaZnaQuestion> questions = activeQuestions();
         int questionIndex = order.get(index);
         if (questionIndex < 0 || questionIndex >= questions.size()) {
             return null;
         }
         return questions.get(questionIndex);
+    }
+
+    private void ensureQuestionsLoaded(@NonNull Runnable onReady) {
+        if (questionsLoaded) {
+            onReady.run();
+            return;
+        }
+        questionsRepository.loadQuestions(
+                questions -> {
+                    if (!questions.isEmpty()) {
+                        cachedQuestions = new ArrayList<>(questions);
+                    } else {
+                        cachedQuestions = new ArrayList<>(KoZnaZnaQuestion.defaultQuestions());
+                    }
+                    questionsLoaded = true;
+                    onReady.run();
+                },
+                error -> {
+                    cachedQuestions = new ArrayList<>(KoZnaZnaQuestion.defaultQuestions());
+                    questionsLoaded = true;
+                    onReady.run();
+                }
+        );
+    }
+
+    @NonNull
+    private List<KoZnaZnaQuestion> activeQuestions() {
+        if (cachedQuestions.isEmpty()) {
+            return KoZnaZnaQuestion.defaultQuestions();
+        }
+        return cachedQuestions;
     }
 
     @NonNull

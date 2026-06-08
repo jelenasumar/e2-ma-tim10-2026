@@ -23,6 +23,7 @@ public final class RoomSession {
     private final String status;
     private final String matchType;
     private final String koZnaZnaMatchId;
+    private final long breakEndsAtMillis;
 
     public RoomSession(
             @NonNull String roomId,
@@ -37,7 +38,8 @@ public final class RoomSession {
             @NonNull List<String> gameOrder,
             @NonNull String status,
             @NonNull String matchType,
-            @NonNull String koZnaZnaMatchId
+            @NonNull String koZnaZnaMatchId,
+            long breakEndsAtMillis
     ) {
         this.roomId = roomId;
         this.hostUid = hostUid;
@@ -52,6 +54,7 @@ public final class RoomSession {
         this.status = status;
         this.matchType = matchType;
         this.koZnaZnaMatchId = koZnaZnaMatchId;
+        this.breakEndsAtMillis = breakEndsAtMillis;
     }
 
     @NonNull
@@ -69,7 +72,8 @@ public final class RoomSession {
                 stringList(document.get("gameOrder")),
                 stringOrDefault(document.getString("status"), "READY"),
                 stringOrDefault(document.getString("matchType"), "FRIENDLY"),
-                stringOrEmpty(document.getString("koZnaZnaMatchId"))
+                stringOrEmpty(document.getString("koZnaZnaMatchId")),
+                longOrZero(document.get("breakEndsAtMillis"))
         );
     }
 
@@ -135,6 +139,14 @@ public final class RoomSession {
         return koZnaZnaMatchId;
     }
 
+    public long getBreakEndsAtMillis() {
+        return breakEndsAtMillis;
+    }
+
+    public boolean hasBothPlayers() {
+        return !hostUid.isEmpty() && !guestUid.isEmpty();
+    }
+
     @NonNull
     public String currentGameLabel() {
         return gameLabel(currentGame);
@@ -183,14 +195,16 @@ public final class RoomSession {
             }
         }
         if (values.isEmpty()) {
-            values.add("KO_ZNA_ZNA");
-            values.add("SPOJNICE");
-            values.add("ASOCIJACIJE");
-            values.add("SKOCKO");
-            values.add("KORAK_PO_KORAK");
-            values.add("MOJ_BROJ");
+            values.addAll(RoomGameKeys.DEFAULT_GAME_ORDER);
         }
         return values;
+    }
+
+    private static long longOrZero(@Nullable Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return 0L;
     }
 
     @NonNull

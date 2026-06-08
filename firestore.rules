@@ -55,6 +55,18 @@ service cloud.firestore {
       allow read: if isSignedIn();
     }
 
+    match /kzz_questions/{questionId} {
+      allow read: if isSignedIn();
+    }
+
+    match /spojnice_puzzles/{puzzleId} {
+      allow read: if isSignedIn();
+    }
+
+    match /korak_po_korak_puzzles/{puzzleId} {
+      allow read: if isSignedIn();
+    }
+
     match /rooms/{roomId} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn();
