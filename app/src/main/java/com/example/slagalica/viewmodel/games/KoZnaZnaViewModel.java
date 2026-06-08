@@ -420,7 +420,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         int questionSlotSeconds = KoZnaZnaMatchDataSource.QUESTION_MS / 1000;
         int questionLeft = waitingForStart
                 ? questionSlotSeconds
-                : (int) Math.max(0, Math.ceil((match.getQuestionEndsAtMs() - now) / 1000.0));
+                : secondsFromMillis(cappedQuestionRemainingMillis(match, now));
         int remainingQuestionSlots = Math.max(0, totalQuestions - match.getCurrentQuestionIndex() - 1);
         int roundLeft = waitingForStart
                 ? totalQuestions * questionSlotSeconds
@@ -639,6 +639,15 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
 
     private static boolean isQuestionTimerActive(@NonNull KoZnaZnaMatch match, long now) {
         return match.getQuestionStartedAtMs() > 0L && now >= match.getQuestionStartedAtMs();
+    }
+
+    private static long cappedQuestionRemainingMillis(@NonNull KoZnaZnaMatch match, long now) {
+        long remaining = Math.max(0L, match.getQuestionEndsAtMs() - now);
+        return Math.min(remaining, KoZnaZnaMatchDataSource.QUESTION_MS);
+    }
+
+    private static int secondsFromMillis(long millis) {
+        return (int) Math.max(0, Math.ceil(millis / 1000.0));
     }
 
     private boolean canAnswerLocally() {

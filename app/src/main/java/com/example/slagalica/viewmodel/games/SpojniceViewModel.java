@@ -34,6 +34,8 @@ public class SpojniceViewModel extends AndroidViewModel {
     private static final int PAIRS_PER_ROUND = 5;
     private static final int TOTAL_PAIRS_PER_GAME = TOTAL_ROUNDS * PAIRS_PER_ROUND;
     private static final long TIMER_INTERVAL_MS = 1_000L;
+    private static final long ROUND_DURATION_MS = 30_000L;
+    private static final long RESULT_VISIBLE_MS = 2_500L;
 
     private final MutableLiveData<SpojniceUiState> uiState = new MutableLiveData<>();
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
@@ -345,7 +347,7 @@ public class SpojniceViewModel extends AndroidViewModel {
         }
 
         long phaseEndsAt = longOrZero(snapshot.get("phaseEndsAtMillis"));
-        publishUiState(Math.max(0, (int) Math.ceil((phaseEndsAt - System.currentTimeMillis()) / 1000.0)));
+        publishUiState(secondsFromMillis(cappedRemainingPhaseMillis(phaseEndsAt)));
         startRemotePhaseTimer(phaseEndsAt);
     }
 
@@ -577,16 +579,17 @@ public class SpojniceViewModel extends AndroidViewModel {
             return;
         }
 
-        long remaining = Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis());
+        long remaining = cappedRemainingPhaseMillis(phaseEndsAtMillis);
         if (remaining == 0L) {
             expireRemotePhase();
             return;
         }
 
+        publishUiState(secondsFromMillis(remaining));
         phaseTimer = new CountDownTimer(remaining, TIMER_INTERVAL_MS) {
             @Override
             public void onTick(long millisUntilFinished) {
-                publishUiState((int) Math.ceil(millisUntilFinished / 1000.0));
+                publishUiState(secondsFromMillis(millisUntilFinished));
             }
 
             @Override
@@ -603,9 +606,6 @@ public class SpojniceViewModel extends AndroidViewModel {
             return;
         }
         if (SpojniceRoomRepository.PHASE_ROUND_OVER.equals(phase)) {
-            if (roomSession == null || !myUid.equals(roomSession.getHostUid())) {
-                return;
-            }
             int nextRoundNumber = currentRound + 1;
             if (nextRoundNumber > TOTAL_ROUNDS) {
                 spojniceRepository.handleExpiredPhase(
@@ -636,6 +636,27 @@ public class SpojniceViewModel extends AndroidViewModel {
     private int remainingSeconds() {
         SpojniceUiState state = uiState.getValue();
         return state != null ? state.getSecondsLeft() : 0;
+    }
+
+    private long cappedRemainingPhaseMillis(long phaseEndsAtMillis) {
+        long remaining = Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis());
+        long maxDuration = currentPhaseDurationMillis();
+        return maxDuration > 0L ? Math.min(remaining, maxDuration) : remaining;
+    }
+
+    private long currentPhaseDurationMillis() {
+        if (SpojniceRoomRepository.PHASE_ACTIVE.equals(phase)
+                || SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
+            return ROUND_DURATION_MS;
+        }
+        if (SpojniceRoomRepository.PHASE_ROUND_OVER.equals(phase)) {
+            return RESULT_VISIBLE_MS;
+        }
+        return 0L;
+    }
+
+    private static int secondsFromMillis(long millis) {
+        return (int) Math.max(0, Math.ceil(millis / 1000.0));
     }
 
     @NonNull

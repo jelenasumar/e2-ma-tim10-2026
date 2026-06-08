@@ -25,10 +25,12 @@ import com.google.firebase.firestore.ListenerRegistration;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 public class AssociationsViewModel extends GameViewModel {
 
@@ -104,11 +106,11 @@ public class AssociationsViewModel extends GameViewModel {
         this.playerTwo = playerTwo;
         puzzleRepository.loadPuzzles(
                 puzzles -> {
-                    roundPuzzles = puzzles.isEmpty() ? shuffledLocalPuzzles() : shuffledRemotePuzzles(puzzles);
+                    roundPuzzles = buildRoundPuzzlePool(puzzles);
                     startRound(1);
                 },
                 error -> {
-                    roundPuzzles = shuffledLocalPuzzles();
+                    roundPuzzles = buildRoundPuzzlePool(List.of());
                     startRound(1);
                 }
         );
@@ -330,10 +332,7 @@ public class AssociationsViewModel extends GameViewModel {
         roomInitializationRequested = true;
         puzzleRepository.loadPuzzles(
                 puzzles -> {
-                    if (!puzzles.isEmpty()) {
-                        roundPuzzles = new ArrayList<>(puzzles);
-                        Collections.shuffle(roundPuzzles, random);
-                    }
+                    roundPuzzles = buildRoundPuzzlePool(puzzles);
                     associationsRoomRepository.initializeIfNeeded(
                             room,
                             puzzleForRound(1),
@@ -342,6 +341,7 @@ public class AssociationsViewModel extends GameViewModel {
                 },
                 error -> {
                     errorMessage.setValue(error);
+                    roundPuzzles = buildRoundPuzzlePool(List.of());
                     associationsRoomRepository.initializeIfNeeded(
                             room,
                             puzzleForRound(1),
@@ -656,26 +656,66 @@ public class AssociationsViewModel extends GameViewModel {
     }
 
     @NonNull
-    private List<AssociationPuzzle> shuffledLocalPuzzles() {
-        List<AssociationPuzzle> puzzles = new ArrayList<>(AssociationPuzzle.defaultPuzzles());
-        Collections.shuffle(puzzles, random);
-        return puzzles;
-    }
-
-    @NonNull
-    private List<AssociationPuzzle> shuffledRemotePuzzles(@NonNull List<AssociationPuzzle> puzzles) {
-        List<AssociationPuzzle> copy = new ArrayList<>(puzzles);
-        Collections.shuffle(copy, random);
-        return copy;
+    private List<AssociationPuzzle> buildRoundPuzzlePool(@NonNull List<AssociationPuzzle> remotePuzzles) {
+        List<AssociationPuzzle> pool = uniquePuzzles(remotePuzzles);
+        Collections.shuffle(pool, random);
+        if (pool.size() < TOTAL_ROUNDS) {
+            List<AssociationPuzzle> localPuzzles = uniquePuzzles(AssociationPuzzle.defaultPuzzles());
+            Collections.shuffle(localPuzzles, random);
+            Set<String> usedKeys = puzzleKeys(pool);
+            for (AssociationPuzzle puzzle : localPuzzles) {
+                String key = puzzleKey(puzzle);
+                if (usedKeys.add(key)) {
+                    pool.add(puzzle);
+                }
+                if (pool.size() >= TOTAL_ROUNDS) {
+                    break;
+                }
+            }
+        }
+        return pool;
     }
 
     @NonNull
     private AssociationPuzzle puzzleForRound(int roundNumber) {
         if (roundPuzzles.isEmpty()) {
-            roundPuzzles = shuffledLocalPuzzles();
+            roundPuzzles = buildRoundPuzzlePool(List.of());
         }
-        int index = Math.max(0, (roundNumber - 1) % roundPuzzles.size());
+        int index = Math.min(Math.max(0, roundNumber - 1), roundPuzzles.size() - 1);
         return roundPuzzles.get(index);
+    }
+
+    @NonNull
+    private static List<AssociationPuzzle> uniquePuzzles(@NonNull List<AssociationPuzzle> puzzles) {
+        List<AssociationPuzzle> unique = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (AssociationPuzzle puzzle : puzzles) {
+            if (seen.add(puzzleKey(puzzle))) {
+                unique.add(puzzle);
+            }
+        }
+        return unique;
+    }
+
+    @NonNull
+    private static Set<String> puzzleKeys(@NonNull List<AssociationPuzzle> puzzles) {
+        Set<String> keys = new HashSet<>();
+        for (AssociationPuzzle puzzle : puzzles) {
+            keys.add(puzzleKey(puzzle));
+        }
+        return keys;
+    }
+
+    @NonNull
+    private static String puzzleKey(@NonNull AssociationPuzzle puzzle) {
+        StringBuilder builder = new StringBuilder(normalizeAnswer(puzzle.getFinalAnswer()));
+        for (AssociationColumn column : puzzle.getColumns()) {
+            builder.append('|').append(normalizeAnswer(column.getAnswer()));
+            for (String clue : column.getClues()) {
+                builder.append(':').append(normalizeAnswer(clue));
+            }
+        }
+        return builder.toString();
     }
 
     private static boolean isValidField(int columnIndex, int clueIndex) {
