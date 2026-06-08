@@ -16,7 +16,12 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
+import com.example.slagalica.data.repository.UserProfileRepository;
+import com.example.slagalica.model.GameHeaderPlayerState;
+import com.example.slagalica.model.GameHeaderState;
 import com.example.slagalica.model.KoZnaZnaUiState;
+import com.example.slagalica.model.UserProfile;
+import com.example.slagalica.ui.room.RoomGameFlow;
 import com.example.slagalica.viewmodel.games.KoZnaZnaViewModel;
 
 import java.util.List;
@@ -28,9 +33,8 @@ public class KoZnaZnaFragment extends Fragment {
     private TextView roundTimeView;
     private TextView questionCounterView;
     private TextView questionTimeView;
-    private TextView playerOneScoreView;
-    private TextView playerTwoScoreView;
     private TextView questionView;
+    private String roomId = "";
     private TextView statusView;
     private RadioGroup answersGroup;
     private RadioButton answerA;
@@ -54,6 +58,7 @@ public class KoZnaZnaFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         bindViews(view);
+        setupGameHeader();
         viewModel = new ViewModelProvider(this).get(KoZnaZnaViewModel.class);
 
         answersGroup.setOnCheckedChangeListener((group, checkedId) -> {
@@ -81,7 +86,7 @@ public class KoZnaZnaFragment extends Fragment {
         });
 
         Bundle args = getArguments();
-        String roomId = args != null ? args.getString("roomId", "") : "";
+        roomId = args != null ? args.getString("roomId", "") : "";
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
             return;
@@ -107,8 +112,6 @@ public class KoZnaZnaFragment extends Fragment {
         roundTimeView = view.findViewById(R.id.kzzRoundTime);
         questionCounterView = view.findViewById(R.id.kzzQuestionCounter);
         questionTimeView = view.findViewById(R.id.kzzQuestionTime);
-        playerOneScoreView = view.findViewById(R.id.kzzPlayerOneScore);
-        playerTwoScoreView = view.findViewById(R.id.kzzPlayerTwoScore);
         questionView = view.findViewById(R.id.kzzQuestion);
         statusView = view.findViewById(R.id.kzzStatus);
         answersGroup = view.findViewById(R.id.kzzAnswersGroup);
@@ -128,20 +131,15 @@ public class KoZnaZnaFragment extends Fragment {
                 state.getTotalQuestions()
         ));
         questionTimeView.setText(getString(R.string.kzz_question_time_value, state.getQuestionSecondsLeft()));
-        playerOneScoreView.setText(getString(
-                R.string.kzz_player_score_named,
-                state.getPlayerOneLabel(),
-                state.getPlayerOneScore()
-        ));
-        playerTwoScoreView.setText(getString(
-                R.string.kzz_player_score_named,
-                state.getPlayerTwoLabel(),
-                state.getPlayerTwoScore()
-        ));
+        updateGameHeader(state);
+
+        boolean showQuestion = !state.getQuestionText().isEmpty();
+        questionView.setVisibility(showQuestion ? View.VISIBLE : View.GONE);
+        answersGroup.setVisibility(showQuestion ? View.VISIBLE : View.GONE);
         questionView.setText(state.getQuestionText());
 
         List<String> options = state.getOptions();
-        if (options.size() >= 4) {
+        if (showQuestion && options.size() >= 4) {
             answerA.setText(options.get(0));
             answerB.setText(options.get(1));
             answerC.setText(options.get(2));
@@ -153,8 +151,6 @@ public class KoZnaZnaFragment extends Fragment {
             if (answersGroup.getCheckedRadioButtonId() != checkedId) {
                 answersGroup.check(checkedId);
             }
-        } else if (!state.isAnswersEnabled()) {
-            answersGroup.clearCheck();
         }
 
         boolean enabled = state.isAnswersEnabled();
@@ -175,8 +171,64 @@ public class KoZnaZnaFragment extends Fragment {
 
         if (state.isGameFinished() && !finishUiApplied) {
             finishUiApplied = true;
-            confirmBtn.setText(R.string.kzz_back_home);
+            if (!roomId.isEmpty()) {
+                confirmBtn.setVisibility(View.GONE);
+                RoomGameFlow.onGameFinished(
+                        this,
+                        roomId,
+                        state.getPlayerOneScore(),
+                        state.getPlayerTwoScore()
+                );
+            } else {
+                confirmBtn.setText(R.string.kzz_back_home);
+            }
         }
+    }
+
+    private void setupGameHeader() {
+        Fragment fragment = getChildFragmentManager().findFragmentById(R.id.kzzGameHeader);
+        if (fragment instanceof GameHeaderFragment) {
+            GameHeaderFragment gameHeader = (GameHeaderFragment) fragment;
+            UserProfile profile = new UserProfileRepository(requireContext()).loadProfile();
+            String username = profile.getUsername();
+            if (username.trim().isEmpty()) {
+                username = getString(R.string.guest_player);
+            }
+            gameHeader.setHeaderState(new GameHeaderState(
+                    getString(R.string.game_header_round_default),
+                    getString(R.string.game_header_time_default),
+                    new GameHeaderPlayerState(username, 0, profile.getAvatarUri()),
+                    new GameHeaderPlayerState(getString(R.string.opponent_player), 0, null),
+                    0
+            ));
+        }
+    }
+
+    private void updateGameHeader(@NonNull KoZnaZnaUiState state) {
+        Fragment fragment = getChildFragmentManager().findFragmentById(R.id.kzzGameHeader);
+        if (!(fragment instanceof GameHeaderFragment)) {
+            return;
+        }
+        GameHeaderFragment gameHeader = (GameHeaderFragment) fragment;
+        gameHeader.setHeaderState(new GameHeaderState(
+                getString(
+                        R.string.kzz_question_counter_value,
+                        state.getQuestionNumber(),
+                        state.getTotalQuestions()
+                ),
+                getString(R.string.kzz_round_time_value, state.getRoundSecondsLeft()),
+                new GameHeaderPlayerState(
+                        state.getPlayerOneLabel(),
+                        state.getPlayerOneScore(),
+                        state.getPlayerOneAvatarUri()
+                ),
+                new GameHeaderPlayerState(
+                        state.getPlayerTwoLabel(),
+                        state.getPlayerTwoScore(),
+                        state.getPlayerTwoAvatarUri()
+                ),
+                0
+        ));
     }
 
     private int indexForCheckedId(int checkedId) {

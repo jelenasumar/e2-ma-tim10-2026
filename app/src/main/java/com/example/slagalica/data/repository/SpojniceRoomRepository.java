@@ -72,7 +72,16 @@ public final class SpojniceRoomRepository {
             if (snapshot.exists()) {
                 return null;
             }
-            transaction.set(ref, baseRoundState(room, 1, room.getHostUid(), 1, round, criterion, 0, 0));
+            transaction.set(ref, baseRoundState(
+                    room,
+                    1,
+                    room.getHostUid(),
+                    1,
+                    round,
+                    criterion,
+                    room.getHostTotalScore(),
+                    room.getGuestTotalScore()
+            ));
             return null;
         }).addOnFailureListener(error ->
                 onError.accept(error.getMessage() != null ? error.getMessage() : "Spojnice ne mogu da se pokrenu.")
@@ -99,9 +108,12 @@ public final class SpojniceRoomRepository {
                 return null;
             }
 
-            String activeUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
             String followupUid = stringOrEmpty(snapshot.getString("followupPlayerUid"));
-            if (PHASE_ACTIVE.equals(phase) && !myUid.equals(activeUid)) {
+            int currentRound = intOrZero(snapshot.get("currentRound"));
+            if (followupUid.isEmpty() && PHASE_FOLLOWUP.equals(phase)) {
+                followupUid = followupPlayerUid(snapshot);
+            }
+            if (PHASE_ACTIVE.equals(phase) && !myUid.equals(startingPlayerUid(snapshot, currentRound))) {
                 return null;
             }
             if (PHASE_FOLLOWUP.equals(phase) && !myUid.equals(followupUid)) {
@@ -165,6 +177,9 @@ public final class SpojniceRoomRepository {
             updates.put("playerOneScore", playerOneScore);
             updates.put("playerTwoScore", playerTwoScore);
             updates.put("lastSubmitMillis", System.currentTimeMillis());
+            if (PHASE_ACTIVE.equals(phase)) {
+                applyExpectedStarter(snapshot, updates);
+            }
 
             if (PHASE_ACTIVE.equals(phase)) {
                 int nextLeftIndex = currentLeftIndex + 1;
@@ -203,13 +218,18 @@ public final class SpojniceRoomRepository {
             }
 
             String phase = stringOrDefault(snapshot.getString("phase"), PHASE_ACTIVE);
-            long endsAt = longOrZero(snapshot.get("phaseEndsAtMillis"));
-            if (PHASE_GAME_OVER.equals(phase) || endsAt > System.currentTimeMillis()) {
+            if (PHASE_GAME_OVER.equals(phase)) {
+                return null;
+            }
+
+            long phaseEndsAt = longOrZero(snapshot.get("phaseEndsAtMillis"));
+            if (phaseEndsAt > System.currentTimeMillis()) {
                 return null;
             }
 
             Map<String, Object> updates = new HashMap<>();
             if (PHASE_ACTIVE.equals(phase)) {
+                applyExpectedStarter(snapshot, updates);
                 List<Integer> connected = intList(snapshot.get("connectedLeft"));
                 List<Integer> attempted = intList(snapshot.get("attemptedLeft"));
                 applyFollowupOrRoundOver(snapshot, updates, connected, attempted);
@@ -221,8 +241,15 @@ public final class SpojniceRoomRepository {
                     updates.put("phase", PHASE_GAME_OVER);
                     updates.put("phaseEndsAtMillis", 0L);
                 } else {
-                    String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
-                    updates.putAll(nextRoundState(snapshot, currentRound + 1, playerTwoUid, 2, nextRound, nextCriterion));
+                    int nextRoundNumber = currentRound + 1;
+                    updates.putAll(nextRoundState(
+                            snapshot,
+                            nextRoundNumber,
+                            startingPlayerUid(snapshot, nextRoundNumber),
+                            startingPlayerNumber(nextRoundNumber),
+                            nextRound,
+                            nextCriterion
+                    ));
                 }
             }
 
@@ -273,10 +300,10 @@ public final class SpojniceRoomRepository {
 
     @NonNull
     private static String followupPlayerUid(@NonNull DocumentSnapshot snapshot) {
-        String activeUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
-        String playerOneUid = stringOrEmpty(snapshot.getString("playerOneUid"));
-        String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
-        return activeUid.equals(playerOneUid) ? playerTwoUid : playerOneUid;
+        int round = intOrZero(snapshot.get("currentRound"));
+        return startingPlayerNumber(round) == 1
+                ? stringOrEmpty(snapshot.getString("playerTwoUid"))
+                : stringOrEmpty(snapshot.getString("playerOneUid"));
     }
 
     private static boolean allRemainingConnected(@NonNull List<Integer> connected) {
@@ -293,6 +320,32 @@ public final class SpojniceRoomRepository {
             }
         }
         return true;
+    }
+
+    private static void applyExpectedStarter(
+            @NonNull DocumentSnapshot snapshot,
+            @NonNull Map<String, Object> updates
+    ) {
+        int round = intOrZero(snapshot.get("currentRound"));
+        String expectedUid = startingPlayerUid(snapshot, round);
+        int expectedNumber = startingPlayerNumber(round);
+        if (!expectedUid.equals(stringOrEmpty(snapshot.getString("activePlayerUid")))) {
+            updates.put("activePlayerUid", expectedUid);
+        }
+        if (expectedNumber != intOrZero(snapshot.get("activePlayerNumber"))) {
+            updates.put("activePlayerNumber", expectedNumber);
+        }
+    }
+
+    @NonNull
+    private static String startingPlayerUid(@NonNull DocumentSnapshot snapshot, int round) {
+        return startingPlayerNumber(round) == 1
+                ? stringOrEmpty(snapshot.getString("playerOneUid"))
+                : stringOrEmpty(snapshot.getString("playerTwoUid"));
+    }
+
+    private static int startingPlayerNumber(int round) {
+        return round % 2 == 0 ? 2 : 1;
     }
 
     @NonNull

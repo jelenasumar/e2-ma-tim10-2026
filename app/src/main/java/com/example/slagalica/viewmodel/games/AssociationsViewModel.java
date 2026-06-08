@@ -1,5 +1,6 @@
 package com.example.slagalica.viewmodel.games;
 
+import android.app.Application;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
@@ -13,6 +14,7 @@ import com.example.slagalica.data.repository.AssociationPuzzlesRepository;
 import com.example.slagalica.data.repository.AssociationsRoomRepository;
 import com.example.slagalica.data.repository.RoomSessionRepository;
 import com.example.slagalica.model.GameHeaderPlayerState;
+import com.example.slagalica.model.GameHeaderState;
 import com.example.slagalica.model.RoomSession;
 import com.example.slagalica.model.associations.AssociationColumn;
 import com.example.slagalica.model.associations.AssociationPuzzle;
@@ -23,17 +25,19 @@ import com.google.firebase.firestore.ListenerRegistration;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 public class AssociationsViewModel extends GameViewModel {
 
     private static final int TOTAL_ROUNDS = 2;
     private static final long ROUND_DURATION_MILLIS = 120_000L;
     private static final long TIMER_INTERVAL_MILLIS = 1_000L;
-    private static final long ROUND_RESULT_VISIBLE_MILLIS = 2_500L;
+    private static final long ROUND_RESULT_VISIBLE_MILLIS = 5_000L;
     private static final int COLUMN_BASE_SCORE = 2;
     private static final int FINAL_BASE_SCORE = 7;
     private static final int UNOPENED_COLUMN_SCORE = 6;
@@ -64,12 +68,21 @@ public class AssociationsViewModel extends GameViewModel {
     private int activePlayerNumber = 1;
     private int playerOneScore = 0;
     private int playerTwoScore = 0;
+    private int basePlayerOneScore = 0;
+    private int basePlayerTwoScore = 0;
     private boolean fieldOpenedThisTurn = false;
     private boolean finalAnswerSolved = false;
     private boolean roundOver = false;
     private boolean gameOver = false;
     private boolean roomMode = false;
     private boolean roomInitializationRequested = false;
+    private int statsSolvedRounds = 0;
+    private int statsUnsolvedRounds = 0;
+    private int statsLastRecordedRound = 0;
+
+    public AssociationsViewModel(@NonNull Application application) {
+        super(application);
+    }
 
     @NonNull
     public LiveData<AssociationsGameState> getGameState() {
@@ -91,8 +104,16 @@ public class AssociationsViewModel extends GameViewModel {
 
         this.playerOne = playerOne;
         this.playerTwo = playerTwo;
-        roundPuzzles = shuffledPuzzles();
-        startRound(1);
+        puzzleRepository.loadPuzzles(
+                puzzles -> {
+                    roundPuzzles = buildRoundPuzzlePool(puzzles);
+                    startRound(1);
+                },
+                error -> {
+                    roundPuzzles = buildRoundPuzzlePool(List.of());
+                    startRound(1);
+                }
+        );
     }
 
     public void startRoomGame(@NonNull String roomId) {
@@ -102,7 +123,6 @@ public class AssociationsViewModel extends GameViewModel {
 
         roomMode = true;
         this.roomId = roomId;
-        roundPuzzles = shuffledPuzzles();
         String uid = associationsRoomRepository.getCurrentUid();
         myUid = uid != null ? uid : "";
         roomListener = roomRepository.listenRoom(
@@ -237,6 +257,46 @@ public class AssociationsViewModel extends GameViewModel {
         switchActivePlayer();
     }
 
+    public int getCurrentUserScore() {
+        if (!roomMode) {
+            return playerOneScore;
+        }
+        if (roomSession == null || myUid.isEmpty()) {
+            return 0;
+        }
+        if (myUid.equals(roomSession.getHostUid())) {
+            return playerOneScore;
+        }
+        if (myUid.equals(roomSession.getGuestUid())) {
+            return playerTwoScore;
+        }
+        return 0;
+    }
+
+    public int getCurrentUserGameScore() {
+        if (!roomMode) {
+            return playerOneScore;
+        }
+        if (roomSession == null || myUid.isEmpty()) {
+            return 0;
+        }
+        if (myUid.equals(roomSession.getHostUid())) {
+            return playerOneScore - basePlayerOneScore;
+        }
+        if (myUid.equals(roomSession.getGuestUid())) {
+            return playerTwoScore - basePlayerTwoScore;
+        }
+        return 0;
+    }
+
+    public int getStatsSolvedRounds() {
+        return statsSolvedRounds;
+    }
+
+    public int getStatsUnsolvedRounds() {
+        return statsUnsolvedRounds;
+    }
+
     @Override
     protected void onCleared() {
         super.onCleared();
@@ -252,6 +312,8 @@ public class AssociationsViewModel extends GameViewModel {
 
     private void onRoomChanged(@NonNull RoomSession room) {
         roomSession = room;
+        basePlayerOneScore = room.getHostTotalScore();
+        basePlayerTwoScore = room.getGuestTotalScore();
         applyRoomPlayers(room, playerOneScore, playerTwoScore);
         if (associationsListener == null) {
             associationsListener = associationsRoomRepository.listenState(
@@ -270,10 +332,7 @@ public class AssociationsViewModel extends GameViewModel {
         roomInitializationRequested = true;
         puzzleRepository.loadPuzzles(
                 puzzles -> {
-                    if (!puzzles.isEmpty()) {
-                        roundPuzzles = new ArrayList<>(puzzles);
-                        Collections.shuffle(roundPuzzles, random);
-                    }
+                    roundPuzzles = buildRoundPuzzlePool(puzzles);
                     associationsRoomRepository.initializeIfNeeded(
                             room,
                             puzzleForRound(1),
@@ -282,6 +341,7 @@ public class AssociationsViewModel extends GameViewModel {
                 },
                 error -> {
                     errorMessage.setValue(error);
+                    roundPuzzles = buildRoundPuzzlePool(List.of());
                     associationsRoomRepository.initializeIfNeeded(
                             room,
                             puzzleForRound(1),
@@ -306,11 +366,12 @@ public class AssociationsViewModel extends GameViewModel {
         roundOver = AssociationsRoomRepository.PHASE_ROUND_OVER.equals(phase)
                 || AssociationsRoomRepository.PHASE_GAME_OVER.equals(phase);
         gameOver = AssociationsRoomRepository.PHASE_GAME_OVER.equals(phase);
+        recordRoundStatsIfNeeded();
 
         applyRoomPlayersFromState(snapshot);
         initializeHeader(
                 formatRoundText(currentRound, TOTAL_ROUNDS),
-                formatTimeText(Math.max(0L, longOrZero(snapshot.get("phaseEndsAtMillis")) - System.currentTimeMillis())),
+                formatTimeText(cappedRemainingPhaseMillis(longOrZero(snapshot.get("phaseEndsAtMillis")))),
                 playerOne.withScore(playerOneScore),
                 playerTwo.withScore(playerTwoScore)
         );
@@ -320,15 +381,42 @@ public class AssociationsViewModel extends GameViewModel {
     }
 
     private void applyRoomPlayers(@NonNull RoomSession room, int firstScore, int secondScore) {
-        playerOne = new GameHeaderPlayerState(room.getHostUsername(), firstScore, null);
-        playerTwo = new GameHeaderPlayerState(room.getGuestUsername(), secondScore, null);
+        playerOne = playerOneWithAvatars(room.getHostUsername(), firstScore);
+        playerTwo = playerTwoWithAvatars(room.getGuestUsername(), secondScore);
+        ensurePlayerAvatars(myUid, room.getHostUid(), room.getGuestUid(), this::refreshHeaderAvatars);
     }
 
     private void applyRoomPlayersFromState(@NonNull DocumentSnapshot snapshot) {
         String firstName = stringOrDefault(snapshot.getString("playerOneUsername"), "Igrac 1");
         String secondName = stringOrDefault(snapshot.getString("playerTwoUsername"), "Igrac 2");
-        playerOne = new GameHeaderPlayerState(firstName, playerOneScore, null);
-        playerTwo = new GameHeaderPlayerState(secondName, playerTwoScore, null);
+        playerOne = playerOneWithAvatars(firstName, playerOneScore);
+        playerTwo = playerTwoWithAvatars(secondName, playerTwoScore);
+        if (roomSession != null) {
+            ensurePlayerAvatars(
+                    myUid,
+                    roomSession.getHostUid(),
+                    roomSession.getGuestUid(),
+                    this::refreshHeaderAvatars
+            );
+        }
+    }
+
+    private void refreshHeaderAvatars() {
+        if (playerOne == null || playerTwo == null) {
+            return;
+        }
+        playerOne = playerOneWithAvatars(playerOne.getUsername(), playerOne.getScore());
+        playerTwo = playerTwoWithAvatars(playerTwo.getUsername(), playerTwo.getScore());
+        GameHeaderState currentState = getHeaderState().getValue();
+        if (currentState != null) {
+            setHeaderState(new GameHeaderState(
+                    currentState.getRoundText(),
+                    currentState.getTimeText(),
+                    playerOne,
+                    playerTwo,
+                    currentState.getActivePlayerNumber()
+            ));
+        }
     }
 
     private void startRemotePhaseTimer(long phaseEndsAtMillis) {
@@ -338,12 +426,13 @@ public class AssociationsViewModel extends GameViewModel {
             return;
         }
 
-        long remaining = Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis());
+        long remaining = cappedRemainingPhaseMillis(phaseEndsAtMillis);
         if (remaining == 0L) {
             expireRemotePhase();
             return;
         }
 
+        updateTime(formatTimeText(remaining));
         roundTimer = new CountDownTimer(remaining, TIMER_INTERVAL_MILLIS) {
             @Override
             public void onTick(long millisUntilFinished) {
@@ -399,24 +488,43 @@ public class AssociationsViewModel extends GameViewModel {
 
         stopRoundTimer();
         roundOver = true;
+        recordRoundStatsIfNeeded();
         updateTime(formatTimeText(0));
         updateActivePlayer(0);
         updateScores(playerOneScore, playerTwoScore);
         publishGameState();
 
-        if (currentRound < TOTAL_ROUNDS) {
-            handler.postDelayed(
-                    () -> startRound(currentRound + 1),
-                    ROUND_RESULT_VISIBLE_MILLIS
-            );
-        } else {
-            gameOver = true;
-            publishGameState();
-        }
+        startResultTimer(() -> {
+            if (currentRound < TOTAL_ROUNDS) {
+                startRound(currentRound + 1);
+            } else {
+                gameOver = true;
+                publishGameState();
+            }
+        });
+    }
+
+    private void startResultTimer(@NonNull Runnable onFinish) {
+        stopRoundTimer();
+        updateTime(formatTimeText(ROUND_RESULT_VISIBLE_MILLIS));
+        roundTimer = new CountDownTimer(ROUND_RESULT_VISIBLE_MILLIS, TIMER_INTERVAL_MILLIS) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                updateTime(formatTimeText(millisUntilFinished));
+            }
+
+            @Override
+            public void onFinish() {
+                updateTime(formatTimeText(0));
+                onFinish.run();
+            }
+        };
+        roundTimer.start();
     }
 
     private void startRoundTimer() {
         stopRoundTimer();
+        updateTime(formatTimeText(ROUND_DURATION_MILLIS));
         roundTimer = new CountDownTimer(ROUND_DURATION_MILLIS, TIMER_INTERVAL_MILLIS) {
             @Override
             public void onTick(long millisUntilFinished) {
@@ -436,6 +544,38 @@ public class AssociationsViewModel extends GameViewModel {
             roundTimer.cancel();
             roundTimer = null;
         }
+    }
+
+    private void recordRoundStatsIfNeeded() {
+        if (!roundOver || currentRound <= statsLastRecordedRound) {
+            return;
+        }
+        statsLastRecordedRound = currentRound;
+        if (finalAnswerSolved) {
+            statsSolvedRounds++;
+        } else {
+            statsUnsolvedRounds++;
+        }
+    }
+
+    private static long remainingPhaseMillis(long phaseEndsAtMillis) {
+        return Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis());
+    }
+
+    private long cappedRemainingPhaseMillis(long phaseEndsAtMillis) {
+        long remaining = remainingPhaseMillis(phaseEndsAtMillis);
+        long maxDuration = currentPhaseDurationMillis();
+        return maxDuration > 0L ? Math.min(remaining, maxDuration) : remaining;
+    }
+
+    private long currentPhaseDurationMillis() {
+        if (AssociationsRoomRepository.PHASE_ACTIVE.equals(phase)) {
+            return ROUND_DURATION_MILLIS;
+        }
+        if (AssociationsRoomRepository.PHASE_ROUND_OVER.equals(phase)) {
+            return ROUND_RESULT_VISIBLE_MILLIS;
+        }
+        return 0L;
     }
 
     private void switchActivePlayer() {
@@ -516,19 +656,66 @@ public class AssociationsViewModel extends GameViewModel {
     }
 
     @NonNull
-    private List<AssociationPuzzle> shuffledPuzzles() {
-        List<AssociationPuzzle> puzzles = new ArrayList<>(AssociationPuzzle.defaultPuzzles());
-        Collections.shuffle(puzzles, random);
-        return puzzles;
+    private List<AssociationPuzzle> buildRoundPuzzlePool(@NonNull List<AssociationPuzzle> remotePuzzles) {
+        List<AssociationPuzzle> pool = uniquePuzzles(remotePuzzles);
+        Collections.shuffle(pool, random);
+        if (pool.size() < TOTAL_ROUNDS) {
+            List<AssociationPuzzle> localPuzzles = uniquePuzzles(AssociationPuzzle.defaultPuzzles());
+            Collections.shuffle(localPuzzles, random);
+            Set<String> usedKeys = puzzleKeys(pool);
+            for (AssociationPuzzle puzzle : localPuzzles) {
+                String key = puzzleKey(puzzle);
+                if (usedKeys.add(key)) {
+                    pool.add(puzzle);
+                }
+                if (pool.size() >= TOTAL_ROUNDS) {
+                    break;
+                }
+            }
+        }
+        return pool;
     }
 
     @NonNull
     private AssociationPuzzle puzzleForRound(int roundNumber) {
         if (roundPuzzles.isEmpty()) {
-            roundPuzzles = shuffledPuzzles();
+            roundPuzzles = buildRoundPuzzlePool(List.of());
         }
-        int index = Math.max(0, (roundNumber - 1) % roundPuzzles.size());
+        int index = Math.min(Math.max(0, roundNumber - 1), roundPuzzles.size() - 1);
         return roundPuzzles.get(index);
+    }
+
+    @NonNull
+    private static List<AssociationPuzzle> uniquePuzzles(@NonNull List<AssociationPuzzle> puzzles) {
+        List<AssociationPuzzle> unique = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (AssociationPuzzle puzzle : puzzles) {
+            if (seen.add(puzzleKey(puzzle))) {
+                unique.add(puzzle);
+            }
+        }
+        return unique;
+    }
+
+    @NonNull
+    private static Set<String> puzzleKeys(@NonNull List<AssociationPuzzle> puzzles) {
+        Set<String> keys = new HashSet<>();
+        for (AssociationPuzzle puzzle : puzzles) {
+            keys.add(puzzleKey(puzzle));
+        }
+        return keys;
+    }
+
+    @NonNull
+    private static String puzzleKey(@NonNull AssociationPuzzle puzzle) {
+        StringBuilder builder = new StringBuilder(normalizeAnswer(puzzle.getFinalAnswer()));
+        for (AssociationColumn column : puzzle.getColumns()) {
+            builder.append('|').append(normalizeAnswer(column.getAnswer()));
+            for (String clue : column.getClues()) {
+                builder.append(':').append(normalizeAnswer(clue));
+            }
+        }
+        return builder.toString();
     }
 
     private static boolean isValidField(int columnIndex, int clueIndex) {
@@ -562,7 +749,7 @@ public class AssociationsViewModel extends GameViewModel {
 
     @NonNull
     private static String formatTimeText(long millis) {
-        long totalSeconds = Math.max(0, millis / 1000);
+        long totalSeconds = Math.max(0, millis / 1000L);
         long minutes = totalSeconds / 60;
         long seconds = totalSeconds % 60;
         return String.format(Locale.getDefault(), "Preostalo vreme: %02d:%02d", minutes, seconds);

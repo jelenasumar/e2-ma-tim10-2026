@@ -10,10 +10,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
@@ -32,7 +31,6 @@ import java.util.Locale;
 public class ProfileFragment extends Fragment {
 
     private ProfileViewModel viewModel;
-    private ActivityResultLauncher<String> pickImageLauncher;
 
     public ProfileFragment() {
         super(R.layout.fragment_profile);
@@ -42,15 +40,6 @@ public class ProfileFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         viewModel = new ViewModelProvider(this).get(ProfileViewModel.class);
-
-        pickImageLauncher = registerForActivityResult(
-                new ActivityResultContracts.GetContent(),
-                uri -> {
-                    if (uri != null) {
-                        viewModel.updateAvatar(uri);
-                    }
-                }
-        );
     }
 
     @Override
@@ -61,9 +50,7 @@ public class ProfileFragment extends Fragment {
                 NavHostFragment.findNavController(this).navigate(R.id.homeFragment)
         );
 
-        view.findViewById(R.id.profile_change_avatar).setOnClickListener(v ->
-                pickImageLauncher.launch("image/*")
-        );
+        view.findViewById(R.id.profile_change_avatar).setOnClickListener(v -> showAvatarPicker());
 
         MaterialButton logout = view.findViewById(R.id.profile_logout);
         logout.setOnClickListener(v -> viewModel.logout());
@@ -74,6 +61,35 @@ public class ProfileFragment extends Fragment {
         );
 
         observeViewModel(view);
+        viewModel.startProfileListener();
+    }
+
+    private void showAvatarPicker() {
+        String[] labels = {
+                "Crveni pas",
+                "Ljubicasta macka",
+                "Plavi zec",
+                "Zeleni medved",
+                "Narandzasta lisica",
+                "Tirkizna sova"
+        };
+        String[] values = {
+                "preset:avatar_preset_1",
+                "preset:avatar_preset_2",
+                "preset:avatar_preset_3",
+                "preset:avatar_preset_4",
+                "preset:avatar_preset_5",
+                "preset:avatar_preset_6"
+        };
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.profile_change_avatar)
+                .setItems(labels, (dialog, which) -> viewModel.updateAvatarPreset(values[which]))
+                .show();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
         viewModel.loadProfile();
     }
 
@@ -88,6 +104,13 @@ public class ProfileFragment extends Fragment {
             TextView statsBody = root.findViewById(R.id.profile_stats_body);
             if (stats != null) {
                 statsBody.setText(stats);
+            }
+        });
+
+        viewModel.getMatchSummaryText().observe(getViewLifecycleOwner(), summary -> {
+            TextView matchSummary = root.findViewById(R.id.profile_match_summary);
+            if (summary != null) {
+                matchSummary.setText(summary);
             }
         });
 

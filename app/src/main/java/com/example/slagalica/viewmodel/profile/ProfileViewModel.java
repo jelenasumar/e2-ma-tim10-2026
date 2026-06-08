@@ -14,6 +14,7 @@ import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.utils.SingleLiveEvent;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.List;
 import java.util.Locale;
@@ -24,10 +25,12 @@ public class ProfileViewModel extends AndroidViewModel {
 
     private final MutableLiveData<UserProfile> profile = new MutableLiveData<>();
     private final MutableLiveData<String> statsText = new MutableLiveData<>();
+    private final MutableLiveData<String> matchSummaryText = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
     private final SingleLiveEvent<Boolean> logoutCompleted = new SingleLiveEvent<>();
     private final SingleLiveEvent<Boolean> qrGenerationFailed = new SingleLiveEvent<>();
+    private ListenerRegistration profileListener;
 
     public ProfileViewModel(@NonNull Application application) {
         super(application);
@@ -42,6 +45,11 @@ public class ProfileViewModel extends AndroidViewModel {
     @NonNull
     public LiveData<String> getStatsText() {
         return statsText;
+    }
+
+    @NonNull
+    public LiveData<String> getMatchSummaryText() {
+        return matchSummaryText;
     }
 
     @NonNull
@@ -73,6 +81,7 @@ public class ProfileViewModel extends AndroidViewModel {
                     isLoading.setValue(false);
                     profile.setValue(loadedProfile);
                     statsText.setValue(buildStatsText(loadedProfile));
+                    matchSummaryText.setValue(buildMatchSummaryText(loadedProfile));
                 },
                 error -> {
                     isLoading.setValue(false);
@@ -80,6 +89,25 @@ public class ProfileViewModel extends AndroidViewModel {
                     UserProfile cached = repository.loadProfile();
                     profile.setValue(cached);
                     statsText.setValue(buildStatsText(cached));
+                    matchSummaryText.setValue(buildMatchSummaryText(cached));
+                }
+        );
+    }
+
+    public void startProfileListener() {
+        if (profileListener != null) {
+            return;
+        }
+        profileListener = repository.listenCurrentProfile(
+                loadedProfile -> {
+                    isLoading.setValue(false);
+                    profile.setValue(loadedProfile);
+                    statsText.setValue(buildStatsText(loadedProfile));
+                    matchSummaryText.setValue(buildMatchSummaryText(loadedProfile));
+                },
+                error -> {
+                    errorMessage.setValue(error);
+                    loadProfile();
                 }
         );
     }
@@ -96,9 +124,34 @@ public class ProfileViewModel extends AndroidViewModel {
         );
     }
 
+    public void updateAvatarPreset(@NonNull String presetAvatarUri) {
+        isLoading.setValue(true);
+        repository.saveAvatarPreset(
+                presetAvatarUri,
+                () -> loadProfile(),
+                error -> {
+                    isLoading.setValue(false);
+                    errorMessage.setValue(mapAvatarError(error));
+                }
+        );
+    }
+
     public void logout() {
+        if (profileListener != null) {
+            profileListener.remove();
+            profileListener = null;
+        }
         repository.clearSession();
         logoutCompleted.setValue(true);
+    }
+
+    @Override
+    protected void onCleared() {
+        if (profileListener != null) {
+            profileListener.remove();
+            profileListener = null;
+        }
+        super.onCleared();
     }
 
     public void notifyQrGenerationFailed() {
@@ -161,11 +214,19 @@ public class ProfileViewModel extends AndroidViewModel {
 
         sb.append(getApplication().getString(R.string.profile_stat_asoc, s.getAsocijacijeSolved(), s.getAsocijacijeUnsolved())).append("\n\n");
         sb.append(getApplication().getString(R.string.profile_stat_skocko, s.getSkockoComboPercent())).append("\n\n");
-        sb.append(getApplication().getString(R.string.profile_stat_spojnice, s.getSpojniceLinkedPercent())).append("\n\n");
-
-        sb.append(getApplication().getString(R.string.profile_stat_matches_total, s.getTotalMatches())).append("\n\n");
-        sb.append(getApplication().getString(R.string.profile_stat_win_loss, s.getMatchesWinPercent(), s.getMatchesLossPercent()));
+        sb.append(getApplication().getString(R.string.profile_stat_spojnice, s.getSpojniceLinkedPercent()));
 
         return sb.toString();
+    }
+
+    @NonNull
+    private String buildMatchSummaryText(@NonNull UserProfile profile) {
+        PlayerStatistics s = profile.getStatistics();
+        return getApplication().getString(
+                R.string.profile_match_summary,
+                s.getTotalMatches(),
+                s.getMatchesWon(),
+                s.getMatchesLost()
+        );
     }
 }

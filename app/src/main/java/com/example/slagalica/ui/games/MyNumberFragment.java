@@ -13,6 +13,10 @@ import android.view.ViewGroup;
 import android.widget.Button;
 
 import com.example.slagalica.R;
+import com.example.slagalica.data.repository.UserProfileRepository;
+import com.example.slagalica.model.GameHeaderPlayerState;
+import com.example.slagalica.model.GameHeaderState;
+import com.example.slagalica.model.UserProfile;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -72,11 +76,31 @@ public class MyNumberFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        setupGameHeader(view);
         Button submitBtn = view.findViewById(R.id.submitButton);
 
         submitBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
                     .navigateUp();
         });
+    }
+
+    private void setupGameHeader(@NonNull View view) {
+        Fragment fragment = getChildFragmentManager().findFragmentById(R.id.mojBrojGameHeader);
+        if (!(fragment instanceof GameHeaderFragment)) {
+            return;
+        }
+        GameHeaderFragment gameHeader = (GameHeaderFragment) fragment;
+        UserProfile profile = new UserProfileRepository(requireContext()).loadProfile();
+        String username = profile.getUsername();
+        if (username.trim().isEmpty()) {
+            username = getString(R.string.guest_player);
+        }
+        gameHeader.setHeaderState(new GameHeaderState(
+                getString(R.string.game_header_round_default),
+                getString(R.string.game_header_time_default),
+                new GameHeaderPlayerState(username, 0, profile.getAvatarUri()),
+                new GameHeaderPlayerState(getString(R.string.opponent_player), 0, null)
+        ));
     }
 }

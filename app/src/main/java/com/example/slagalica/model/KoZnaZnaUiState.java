@@ -1,6 +1,7 @@
 package com.example.slagalica.model;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.Collections;
 import java.util.List;
@@ -17,6 +18,8 @@ public final class KoZnaZnaUiState {
     private final int playerTwoScore;
     private final String playerOneLabel;
     private final String playerTwoLabel;
+    private final String playerOneAvatarUri;
+    private final String playerTwoAvatarUri;
     private final String questionText;
     private final List<String> options;
     private final int selectedAnswerIndex;
@@ -34,6 +37,8 @@ public final class KoZnaZnaUiState {
             int playerTwoScore,
             @NonNull String playerOneLabel,
             @NonNull String playerTwoLabel,
+            @Nullable String playerOneAvatarUri,
+            @Nullable String playerTwoAvatarUri,
             @NonNull String questionText,
             @NonNull List<String> options,
             int selectedAnswerIndex,
@@ -50,6 +55,8 @@ public final class KoZnaZnaUiState {
         this.playerTwoScore = playerTwoScore;
         this.playerOneLabel = playerOneLabel;
         this.playerTwoLabel = playerTwoLabel;
+        this.playerOneAvatarUri = playerOneAvatarUri;
+        this.playerTwoAvatarUri = playerTwoAvatarUri;
         this.questionText = questionText;
         this.options = options;
         this.selectedAnswerIndex = selectedAnswerIndex;
@@ -91,6 +98,16 @@ public final class KoZnaZnaUiState {
     @NonNull
     public String getPlayerTwoLabel() {
         return playerTwoLabel;
+    }
+
+    @Nullable
+    public String getPlayerOneAvatarUri() {
+        return playerOneAvatarUri;
+    }
+
+    @Nullable
+    public String getPlayerTwoAvatarUri() {
+        return playerTwoAvatarUri;
     }
 
     @NonNull

@@ -8,6 +8,7 @@ import com.example.slagalica.model.KoZnaZnaMatch;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.ListenerRegistration;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 public final class KoZnaZnaMatchRepository {
@@ -57,10 +58,20 @@ public final class KoZnaZnaMatchRepository {
             @NonNull String hostUsername,
             @NonNull String guestUid,
             @NonNull String guestUsername,
+            @NonNull List<Integer> questionOrder,
             @NonNull Consumer<String> onSuccess,
             @NonNull Consumer<String> onError
     ) {
-        remote.createMatchFromLobby(lobbyCode, hostUid, hostUsername, guestUid, guestUsername, onSuccess, onError);
+        remote.createMatchFromLobby(
+                lobbyCode,
+                hostUid,
+                hostUsername,
+                guestUid,
+                guestUsername,
+                questionOrder,
+                onSuccess,
+                onError
+        );
     }
 
     public void createMatchFromRoom(
@@ -69,10 +80,20 @@ public final class KoZnaZnaMatchRepository {
             @NonNull String hostUsername,
             @NonNull String guestUid,
             @NonNull String guestUsername,
+            @NonNull List<Integer> questionOrder,
             @NonNull Consumer<String> onSuccess,
             @NonNull Consumer<String> onError
     ) {
-        remote.createMatchFromRoom(roomId, hostUid, hostUsername, guestUid, guestUsername, onSuccess, onError);
+        remote.createMatchFromRoom(
+                roomId,
+                hostUid,
+                hostUsername,
+                guestUid,
+                guestUsername,
+                questionOrder,
+                onSuccess,
+                onError
+        );
     }
 
     @NonNull
@@ -86,13 +107,35 @@ public final class KoZnaZnaMatchRepository {
 
     public void submitAnswer(
             @NonNull String matchId,
-            boolean isHost,
+            @NonNull String playerUid,
+            @NonNull String hostUid,
             int answerIndex,
             long answeredAtMs,
             @NonNull Runnable onSuccess,
             @NonNull Consumer<String> onError
     ) {
-        remote.submitAnswer(matchId, isHost, answerIndex, answeredAtMs, onSuccess, onError);
+        remote.submitAnswer(matchId, playerUid, hostUid, answerIndex, answeredAtMs, onSuccess, onError);
+    }
+
+    public void markPlayerPresent(
+            @NonNull String matchId,
+            @NonNull String playerUid,
+            @NonNull String hostUid,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        remote.markPlayerPresent(matchId, playerUid, hostUid, onSuccess, onError);
+    }
+
+    public void updatePlayerAvatar(
+            @NonNull String matchId,
+            @NonNull String playerUid,
+            @NonNull String hostUid,
+            @NonNull String avatarUri,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        remote.updatePlayerAvatar(matchId, playerUid, hostUid, avatarUri, onSuccess, onError);
     }
 
     public void tryResolveQuestion(

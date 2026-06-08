@@ -23,6 +23,7 @@ import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.model.skocko.SkockoAttempt;
 import com.example.slagalica.model.skocko.SkockoGameState;
 import com.example.slagalica.model.skocko.SkockoSymbol;
+import com.example.slagalica.ui.room.RoomGameFlow;
 import com.example.slagalica.viewmodel.games.SkockoViewModel;
 
 import java.util.List;
@@ -38,6 +39,9 @@ public class SkockoFragment extends Fragment {
     private final TextView[] finalCombinationCells = new TextView[COMBINATION_SIZE];
     private Button submitButton;
     private SkockoViewModel viewModel;
+    private String roomId = "";
+    private boolean gameOverHandled;
+    private boolean statsRecorded;
 
     public SkockoFragment() {
         super(R.layout.fragment_skocko);
@@ -64,7 +68,6 @@ public class SkockoFragment extends Fragment {
             }
         });
 
-        String roomId = "";
         Bundle args = getArguments();
         if (args != null) {
             roomId = args.getString("roomId", "");
@@ -131,6 +134,29 @@ public class SkockoFragment extends Fragment {
         }
         renderFinalCombination(state);
         submitButton.setEnabled(canSubmit(state));
+
+        recordStatsIfNeeded(state);
+
+        if (state.isGameOver() && !roomId.isEmpty() && !gameOverHandled) {
+            gameOverHandled = true;
+            RoomGameFlow.onGameFinished(
+                    this,
+                    roomId,
+                    viewModel.getPlayerOneScore(),
+                    viewModel.getPlayerTwoScore()
+            );
+        }
+    }
+
+    private void recordStatsIfNeeded(@NonNull SkockoGameState state) {
+        if (statsRecorded || !state.isGameOver()) {
+            return;
+        }
+        statsRecorded = true;
+        new UserProfileRepository(requireContext()).recordSkockoGame(
+                viewModel.getCurrentUserGameScore(),
+                viewModel.getStatsComboPercent()
+        );
     }
 
     private void renderSubmittedAttempts(@NonNull List<SkockoAttempt> attempts) {

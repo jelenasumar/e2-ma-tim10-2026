@@ -15,7 +15,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
 
       match /notifications/{notificationId} {
         allow read, create, update: if isSignedIn() && request.auth.uid == userId;
@@ -52,6 +53,18 @@ service cloud.firestore {
     }
 
     match /association_puzzles/{puzzleId} {
+      allow read: if isSignedIn();
+    }
+
+    match /kzz_questions/{questionId} {
+      allow read: if isSignedIn();
+    }
+
+    match /spojnice_puzzles/{puzzleId} {
+      allow read: if isSignedIn();
+    }
+
+    match /korak_po_korak_puzzles/{puzzleId} {
       allow read: if isSignedIn();
     }
 

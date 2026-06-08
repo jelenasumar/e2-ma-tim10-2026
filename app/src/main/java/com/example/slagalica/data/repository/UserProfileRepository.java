@@ -4,6 +4,7 @@ import android.content.Context;
 import android.net.Uri;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.example.slagalica.data.local.UserPreferences;
 import com.example.slagalica.data.remote.FireBaseUserDataSource;
@@ -11,7 +12,11 @@ import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.R;
 import com.example.slagalica.utils.AvatarFileStorage;
+import com.example.slagalica.utils.AvatarImageLoader;
+import com.google.firebase.firestore.ListenerRegistration;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -90,6 +95,123 @@ public final class UserProfileRepository {
         }, onError);
     }
 
+    @Nullable
+    public ListenerRegistration listenCurrentProfile(
+            @NonNull Consumer<UserProfile> onChanged,
+            @NonNull Consumer<String> onError
+    ) {
+        String uid = remote.getCurrentUid();
+        if (!remote.isLoggedIn() || uid == null) {
+            onChanged.accept(preferences.loadProfile());
+            return null;
+        }
+        return remote.listenUserProfile(uid, profile -> {
+            preferences.saveProfile(profile);
+            onChanged.accept(profile);
+        }, onError);
+    }
+
+    public void ensurePublicAvatarUri(
+            @NonNull Consumer<String> onReady,
+            @NonNull Consumer<String> onError
+    ) {
+        UserProfile profile = loadProfile();
+        String avatarUri = profile.getAvatarUri();
+        if (avatarUri != null
+                && AvatarImageLoader.isSharedAvatarUri(avatarUri)) {
+            onReady.accept(avatarUri);
+            return;
+        }
+        if (!remote.isLoggedIn()) {
+            onReady.accept("");
+            return;
+        }
+        String uid = remote.getCurrentUid();
+        if (uid == null) {
+            onReady.accept("");
+            return;
+        }
+        File localFile = resolveAvatarFile(avatarUri, uid);
+        if (localFile == null || !localFile.exists()) {
+            onReady.accept("");
+            return;
+        }
+        try {
+            byte[] imageBytes = AvatarFileStorage.readBytes(localFile);
+            remote.uploadAvatar(uid, imageBytes, downloadUrl -> {
+                persistAvatar(downloadUrl, () -> onReady.accept(downloadUrl));
+            }, onError);
+        } catch (IOException e) {
+            onError.accept(e.getMessage() != null ? e.getMessage() : "Avatar upload failed.");
+        }
+    }
+
+    @Nullable
+    private File resolveAvatarFile(@Nullable String avatarUri, @NonNull String uid) {
+        if (avatarUri != null && !avatarUri.isEmpty()) {
+            if (avatarUri.startsWith("file:")) {
+                String path = Uri.parse(avatarUri).getPath();
+                if (path != null) {
+                    File filePath = new File(path);
+                    if (filePath.exists()) {
+                        return filePath;
+                    }
+                }
+            }
+            File directPath = new File(avatarUri);
+            if (directPath.exists()) {
+                return directPath;
+            }
+        }
+        File defaultFile = AvatarFileStorage.avatarFile(appContext, uid);
+        return defaultFile.exists() ? defaultFile : null;
+    }
+
+    public void fetchAvatarUriForUser(
+            @NonNull String uid,
+            @NonNull Consumer<String> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String currentUid = remote.getCurrentUid();
+        if (currentUid != null && currentUid.equals(uid)) {
+            String localUri = loadProfile().getAvatarUri();
+            onSuccess.accept(localUri != null ? localUri : "");
+            return;
+        }
+        remote.fetchUserProfile(
+                uid,
+                profile -> {
+                    String avatarUri = profile.getAvatarUri();
+                    onSuccess.accept(avatarUri != null ? avatarUri : "");
+                },
+                onError
+        );
+    }
+
+    @Nullable
+    public ListenerRegistration listenAvatarUriForUser(
+            @NonNull String uid,
+            @NonNull Consumer<String> onChanged,
+            @NonNull Consumer<String> onError
+    ) {
+        if (uid.isEmpty()) {
+            onChanged.accept("");
+            return null;
+        }
+        String currentUid = remote.getCurrentUid();
+        if (currentUid == null || !remote.isLoggedIn()) {
+            fetchAvatarUriForUser(uid, onChanged, onError);
+            return null;
+        }
+        return remote.listenUserProfile(uid, profile -> {
+            if (currentUid.equals(uid)) {
+                preferences.saveProfile(profile);
+            }
+            String avatarUri = profile.getAvatarUri();
+            onChanged.accept(avatarUri != null ? avatarUri : "");
+        }, onError);
+    }
+
     public void saveAvatarUri(
             @NonNull Uri pickedImageUri,
             @NonNull Runnable onSuccess,
@@ -109,22 +231,41 @@ public final class UserProfileRepository {
         try {
             java.io.File localFile = AvatarFileStorage.copyToInternalStorage(appContext, uid, pickedImageUri);
             byte[] imageBytes = AvatarFileStorage.readBytes(localFile);
-            String localPath = localFile.getAbsolutePath();
 
             remote.uploadAvatar(uid, imageBytes, downloadUrl -> {
                 persistAvatar(downloadUrl, onSuccess);
-            }, error -> {
-                if ("STORAGE_NOT_AVAILABLE".equals(error) || "STORAGE_PERMISSION_DENIED".equals(error)) {
-                    remote.saveAvatarUriToFirestore(uid, localPath, savedUri -> {
-                        persistAvatar(savedUri, onSuccess);
-                    }, onError);
-                    return;
-                }
-                onError.accept(error);
-            });
+            }, onError);
         } catch (Exception e) {
             onError.accept(e.getMessage() != null ? e.getMessage() : "Avatar save failed.");
         }
+    }
+
+    public void saveAvatarPreset(
+            @NonNull String presetAvatarUri,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (!remote.isLoggedIn()) {
+            onError.accept("NOT_LOGGED_IN");
+            return;
+        }
+
+        String uid = remote.getCurrentUid();
+        if (uid == null) {
+            onError.accept("NOT_LOGGED_IN");
+            return;
+        }
+        if (!presetAvatarUri.startsWith("preset:")) {
+            onError.accept("INVALID_AVATAR");
+            return;
+        }
+
+        remote.saveAvatarUriToFirestore(
+                uid,
+                presetAvatarUri,
+                savedUri -> persistAvatar(savedUri, onSuccess),
+                onError
+        );
     }
 
     private void persistAvatar(
@@ -246,7 +387,9 @@ public final class UserProfileRepository {
                 stats.getSpojniceLinkedPercent(),
                 stats.getTotalMatches(),
                 stats.getMatchesWinPercent(),
-                stats.getMatchesLossPercent()
+                stats.getMatchesLossPercent(),
+                stats.getMatchesWon(),
+                stats.getMatchesLost()
         );
 
         UserProfile updatedProfile = new UserProfile(
@@ -307,7 +450,9 @@ public final class UserProfileRepository {
                 newPercent,
                 stats.getTotalMatches(),
                 stats.getMatchesWinPercent(),
-                stats.getMatchesLossPercent()
+                stats.getMatchesLossPercent(),
+                stats.getMatchesWon(),
+                stats.getMatchesLost()
         );
 
         UserProfile updatedProfile = new UserProfile(
@@ -330,6 +475,162 @@ public final class UserProfileRepository {
             String uid = remote.getCurrentUid();
             if (uid != null) {
                 remote.saveUserProfile(uid, updatedProfile, () -> { }, error -> { });
+            }
+        }
+    }
+
+    public void recordAsocijacijeGame(int gameScore, int solvedRounds, int unsolvedRounds) {
+        if (!isRegisteredPlayer()) {
+            return;
+        }
+        UserProfile profile = preferences.loadProfile();
+        PlayerStatistics stats = profile.getStatistics();
+
+        int gamesPlayed = preferences.getAsocijacijeGamesPlayed();
+        float newAvg = gamesPlayed == 0
+                ? gameScore
+                : ((stats.getAvgScoreAsocijacije() * gamesPlayed) + gameScore) / (gamesPlayed + 1f);
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                stats.getAvgScoreKoZnaZna(),
+                stats.getAvgScoreSpojnice(),
+                stats.getAvgScoreMojBroj(),
+                stats.getAvgScoreKorakPoKorak(),
+                newAvg,
+                stats.getAvgScoreSkocko(),
+                stats.getKoZnaZnaHits(),
+                stats.getKoZnaZnaMisses(),
+                stats.getMojBrojCorrectPercent(),
+                stats.getKorakPoKorakStepPercents(),
+                stats.getAsocijacijeSolved() + solvedRounds,
+                stats.getAsocijacijeUnsolved() + unsolvedRounds,
+                stats.getSkockoComboPercent(),
+                stats.getSpojniceLinkedPercent(),
+                stats.getTotalMatches(),
+                stats.getMatchesWinPercent(),
+                stats.getMatchesLossPercent(),
+                stats.getMatchesWon(),
+                stats.getMatchesLost()
+        );
+
+        UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);
+        preferences.setAsocijacijeGamesPlayed(gamesPlayed + 1);
+        preferences.saveProfile(updatedProfile);
+        saveRemoteProfile(updatedProfile);
+    }
+
+    public void recordRoomMatchResult(int myTotalScore, int opponentTotalScore) {
+        if (!isRegisteredPlayer()) {
+            return;
+        }
+        UserProfile profile = preferences.loadProfile();
+        PlayerStatistics stats = profile.getStatistics();
+
+        int totalMatches = stats.getTotalMatches() + 1;
+        int matchesWon = stats.getMatchesWon();
+        int matchesLost = stats.getMatchesLost();
+        if (myTotalScore > opponentTotalScore) {
+            matchesWon++;
+        } else if (myTotalScore < opponentTotalScore) {
+            matchesLost++;
+        }
+        float winPercent = totalMatches > 0 ? (matchesWon * 100f) / totalMatches : 0f;
+        float lossPercent = totalMatches > 0 ? (matchesLost * 100f) / totalMatches : 0f;
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                stats.getAvgScoreKoZnaZna(),
+                stats.getAvgScoreSpojnice(),
+                stats.getAvgScoreMojBroj(),
+                stats.getAvgScoreKorakPoKorak(),
+                stats.getAvgScoreAsocijacije(),
+                stats.getAvgScoreSkocko(),
+                stats.getKoZnaZnaHits(),
+                stats.getKoZnaZnaMisses(),
+                stats.getMojBrojCorrectPercent(),
+                stats.getKorakPoKorakStepPercents(),
+                stats.getAsocijacijeSolved(),
+                stats.getAsocijacijeUnsolved(),
+                stats.getSkockoComboPercent(),
+                stats.getSpojniceLinkedPercent(),
+                totalMatches,
+                winPercent,
+                lossPercent,
+                matchesWon,
+                matchesLost
+        );
+
+        UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);
+        preferences.saveProfile(updatedProfile);
+        saveRemoteProfile(updatedProfile);
+    }
+
+    public void recordSkockoGame(int gameScore, float comboPercent) {
+        if (!isRegisteredPlayer()) {
+            return;
+        }
+        UserProfile profile = preferences.loadProfile();
+        PlayerStatistics stats = profile.getStatistics();
+
+        int gamesPlayed = preferences.getSkockoGamesPlayed();
+        float newAvg = gamesPlayed == 0
+                ? gameScore
+                : ((stats.getAvgScoreSkocko() * gamesPlayed) + gameScore) / (gamesPlayed + 1f);
+        float newComboPercent = gamesPlayed == 0
+                ? comboPercent
+                : ((stats.getSkockoComboPercent() * gamesPlayed) + comboPercent) / (gamesPlayed + 1f);
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                stats.getAvgScoreKoZnaZna(),
+                stats.getAvgScoreSpojnice(),
+                stats.getAvgScoreMojBroj(),
+                stats.getAvgScoreKorakPoKorak(),
+                stats.getAvgScoreAsocijacije(),
+                newAvg,
+                stats.getKoZnaZnaHits(),
+                stats.getKoZnaZnaMisses(),
+                stats.getMojBrojCorrectPercent(),
+                stats.getKorakPoKorakStepPercents(),
+                stats.getAsocijacijeSolved(),
+                stats.getAsocijacijeUnsolved(),
+                newComboPercent,
+                stats.getSpojniceLinkedPercent(),
+                stats.getTotalMatches(),
+                stats.getMatchesWinPercent(),
+                stats.getMatchesLossPercent(),
+                stats.getMatchesWon(),
+                stats.getMatchesLost()
+        );
+
+        UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);
+        preferences.setSkockoGamesPlayed(gamesPlayed + 1);
+        preferences.saveProfile(updatedProfile);
+        saveRemoteProfile(updatedProfile);
+    }
+
+    @NonNull
+    private static UserProfile profileWithStatistics(
+            @NonNull UserProfile profile,
+            @NonNull PlayerStatistics statistics
+    ) {
+        return new UserProfile(
+                profile.getUsername(),
+                profile.getEmail(),
+                profile.getAvatarUri(),
+                profile.getTokens(),
+                profile.getTotalStars(),
+                profile.getLeagueName(),
+                profile.getLeagueTierKey(),
+                profile.getRegion(),
+                profile.getInvitePayload(),
+                statistics
+        );
+    }
+
+    private void saveRemoteProfile(@NonNull UserProfile profile) {
+        if (remote.isLoggedIn()) {
+            String uid = remote.getCurrentUid();
+            if (uid != null) {
+                remote.saveUserProfile(uid, profile, () -> { }, error -> { });
             }
         }
     }

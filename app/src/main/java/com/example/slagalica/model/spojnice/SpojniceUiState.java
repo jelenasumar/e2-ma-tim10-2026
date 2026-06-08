@@ -1,6 +1,7 @@
 package com.example.slagalica.model.spojnice;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,8 @@ public final class SpojniceUiState {
     private final int playerTwoScore;
     private final String playerOneLabel;
     private final String playerTwoLabel;
+    private final String playerOneAvatarUri;
+    private final String playerTwoAvatarUri;
     private final String criterion;
     private final List<String> leftTerms;
     private final List<String> rightTerms;
@@ -46,6 +49,8 @@ public final class SpojniceUiState {
             int playerTwoScore,
             @NonNull String playerOneLabel,
             @NonNull String playerTwoLabel,
+            @Nullable String playerOneAvatarUri,
+            @Nullable String playerTwoAvatarUri,
             @NonNull String criterion,
             @NonNull List<String> leftTerms,
             @NonNull List<String> rightTerms,
@@ -72,6 +77,8 @@ public final class SpojniceUiState {
         this.playerTwoScore = playerTwoScore;
         this.playerOneLabel = playerOneLabel;
         this.playerTwoLabel = playerTwoLabel;
+        this.playerOneAvatarUri = playerOneAvatarUri;
+        this.playerTwoAvatarUri = playerTwoAvatarUri;
         this.criterion = criterion;
         this.leftTerms = new ArrayList<>(leftTerms);
         this.rightTerms = new ArrayList<>(rightTerms);
@@ -120,6 +127,16 @@ public final class SpojniceUiState {
     @NonNull
     public String getPlayerTwoLabel() {
         return playerTwoLabel;
+    }
+
+    @Nullable
+    public String getPlayerOneAvatarUri() {
+        return playerOneAvatarUri;
+    }
+
+    @Nullable
+    public String getPlayerTwoAvatarUri() {
+        return playerTwoAvatarUri;
     }
 
     @NonNull

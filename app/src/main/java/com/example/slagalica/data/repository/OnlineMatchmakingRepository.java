@@ -159,14 +159,7 @@ public final class OnlineMatchmakingRepository {
         room.put("guestTotalScore", 0);
         room.put("currentGame", "KO_ZNA_ZNA");
         room.put("currentGameIndex", 0);
-        room.put("gameOrder", java.util.Arrays.asList(
-                "KO_ZNA_ZNA",
-                "SPOJNICE",
-                "ASOCIJACIJE",
-                "SKOCKO",
-                "KORAK_PO_KORAK",
-                "MOJ_BROJ"
-        ));
+        room.put("gameOrder", com.example.slagalica.model.RoomGameKeys.DEFAULT_GAME_ORDER);
         room.put("status", "READY");
         room.put("matchType", "RANDOM");
         room.put("createdAt", FieldValue.serverTimestamp());

@@ -62,57 +62,6 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="@string/invite_friends_button" />
-
-        <TextView
-            android:id="@+id/gamesSectionTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/games_section_title"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <Button
-            android:id="@+id/koZnaZna"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/ko_zna_zna_button" />
-
-        <Button
-            android:id="@+id/spojnice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/spojnice_button" />
-
-        <Button
-            android:id="@+id/asocijacije"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/asocijacije" />
-
-        <Button
-            android:id="@+id/skocko"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/skocko" />
-
-        <Button
-            android:id="@+id/korakPoKorak"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/korak_po_korak" />
-
-        <Button
-            android:id="@+id/mojBroj"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/moj_broj" />
     </LinearLayout>
 
     <Button

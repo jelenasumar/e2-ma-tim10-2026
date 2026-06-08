@@ -48,6 +48,9 @@ public final class AssociationPuzzlesRepository {
 
     @Nullable
     private static AssociationPuzzle parsePuzzle(@NonNull DocumentSnapshot document) {
+        if (Boolean.FALSE.equals(document.getBoolean("active"))) {
+            return null;
+        }
         Object rawColumns = document.get(COLUMNS);
         List<AssociationColumn> columns = parseColumns(rawColumns);
         String finalAnswer = stringOrEmpty(document.getString(FINAL_ANSWER));

@@ -41,11 +41,15 @@ public final class UserPreferences {
     private static final String KEY_ASOC_SOLVED = "asoc_solved";
     private static final String KEY_ASOC_UNSOLVED = "asoc_unsolved";
     private static final String KEY_SKOCKO_COMBO_PCT = "skocko_combo_pct";
+    private static final String KEY_ASOC_GAMES = "asoc_games_count";
+    private static final String KEY_SKOCKO_GAMES = "skocko_games_count";
     private static final String KEY_SPOJNICE_LINKED_PCT = "spojnice_linked_pct";
     private static final String KEY_SPOJNICE_GAMES = "spojnice_games_count";
     private static final String KEY_TOTAL_MATCHES = "total_matches";
     private static final String KEY_WIN_PCT = "matches_win_pct";
     private static final String KEY_LOSS_PCT = "matches_loss_pct";
+    private static final String KEY_MATCHES_WON = "matches_won";
+    private static final String KEY_MATCHES_LOST = "matches_lost";
 
     private final SharedPreferences prefs;
 
@@ -73,7 +77,9 @@ public final class UserPreferences {
                 prefs.getFloat(KEY_SPOJNICE_LINKED_PCT, 0f),
                 prefs.getInt(KEY_TOTAL_MATCHES, 0),
                 prefs.getFloat(KEY_WIN_PCT, 0f),
-                prefs.getFloat(KEY_LOSS_PCT, 0f)
+                prefs.getFloat(KEY_LOSS_PCT, 0f),
+                prefs.getInt(KEY_MATCHES_WON, 0),
+                prefs.getInt(KEY_MATCHES_LOST, 0)
         );
 
         String invitePayload = prefs.getString(KEY_INVITE_PAYLOAD, "");
@@ -101,6 +107,22 @@ public final class UserPreferences {
 
     public void setSpojniceGamesPlayed(int count) {
         prefs.edit().putInt(KEY_SPOJNICE_GAMES, count).apply();
+    }
+
+    public int getAsocijacijeGamesPlayed() {
+        return prefs.getInt(KEY_ASOC_GAMES, 0);
+    }
+
+    public void setAsocijacijeGamesPlayed(int count) {
+        prefs.edit().putInt(KEY_ASOC_GAMES, count).apply();
+    }
+
+    public int getSkockoGamesPlayed() {
+        return prefs.getInt(KEY_SKOCKO_GAMES, 0);
+    }
+
+    public void setSkockoGamesPlayed(int count) {
+        prefs.edit().putInt(KEY_SKOCKO_GAMES, count).apply();
     }
 
     public void saveProfile(@NonNull UserProfile profile) {
@@ -134,6 +156,8 @@ public final class UserPreferences {
                 .putInt(KEY_TOTAL_MATCHES, stats.getTotalMatches())
                 .putFloat(KEY_WIN_PCT, stats.getMatchesWinPercent())
                 .putFloat(KEY_LOSS_PCT, stats.getMatchesLossPercent())
+                .putInt(KEY_MATCHES_WON, stats.getMatchesWon())
+                .putInt(KEY_MATCHES_LOST, stats.getMatchesLost())
                 .apply();
 
         syncInviteCodeFromPayload(profile.getInvitePayload());

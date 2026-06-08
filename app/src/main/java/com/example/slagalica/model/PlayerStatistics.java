@@ -25,6 +25,8 @@ public final class PlayerStatistics {
     private final int totalMatches;
     private final float matchesWinPercent;
     private final float matchesLossPercent;
+    private final int matchesWon;
+    private final int matchesLost;
 
     public PlayerStatistics(
             float avgScoreKoZnaZna,
@@ -43,7 +45,9 @@ public final class PlayerStatistics {
             float spojniceLinkedPercent,
             int totalMatches,
             float matchesWinPercent,
-            float matchesLossPercent
+            float matchesLossPercent,
+            int matchesWon,
+            int matchesLost
     ) {
         this.avgScoreKoZnaZna = avgScoreKoZnaZna;
         this.avgScoreSpojnice = avgScoreSpojnice;
@@ -62,6 +66,8 @@ public final class PlayerStatistics {
         this.totalMatches = totalMatches;
         this.matchesWinPercent = matchesWinPercent;
         this.matchesLossPercent = matchesLossPercent;
+        this.matchesWon = matchesWon;
+        this.matchesLost = matchesLost;
     }
 
     public float getAvgScoreKoZnaZna() {
@@ -130,5 +136,13 @@ public final class PlayerStatistics {
 
     public float getMatchesLossPercent() {
         return matchesLossPercent;
+    }
+
+    public int getMatchesWon() {
+        return matchesWon;
+    }
+
+    public int getMatchesLost() {
+        return matchesLost;
     }
 }

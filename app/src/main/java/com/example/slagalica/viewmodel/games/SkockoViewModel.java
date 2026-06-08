@@ -1,5 +1,6 @@
 package com.example.slagalica.viewmodel.games;
 
+import android.app.Application;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
@@ -12,6 +13,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.example.slagalica.data.repository.RoomSessionRepository;
 import com.example.slagalica.data.repository.SkockoRoomRepository;
 import com.example.slagalica.model.GameHeaderPlayerState;
+import com.example.slagalica.model.GameHeaderState;
 import com.example.slagalica.model.RoomSession;
 import com.example.slagalica.model.skocko.SkockoAttempt;
 import com.example.slagalica.model.skocko.SkockoAttemptResult;
@@ -35,7 +37,7 @@ public class SkockoViewModel extends GameViewModel {
     private static final long ROUND_DURATION_MILLIS = 30_000L;
     private static final long BONUS_DURATION_MILLIS = 10_000L;
     private static final long TIMER_INTERVAL_MILLIS = 1_000L;
-    private static final long ROUND_RESULT_VISIBLE_MILLIS = 2_500L;
+    private static final long ROUND_RESULT_VISIBLE_MILLIS = 5_000L;
 
     private final MutableLiveData<SkockoGameState> gameState = new MutableLiveData<>();
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
@@ -63,10 +65,19 @@ public class SkockoViewModel extends GameViewModel {
     private int activePlayerNumber = 1;
     private int playerOneScore = 0;
     private int playerTwoScore = 0;
+    private int basePlayerOneScore = 0;
+    private int basePlayerTwoScore = 0;
     private boolean bonusPhase = false;
     private boolean roundOver = false;
     private boolean gameOver = false;
     private boolean roomMode = false;
+    private int statsExactMatches = 0;
+    private int statsTotalSlots = 0;
+    private int statsLastRecordedRound = 0;
+
+    public SkockoViewModel(@NonNull Application application) {
+        super(application);
+    }
 
     @NonNull
     public LiveData<SkockoGameState> getGameState() {
@@ -189,6 +200,53 @@ public class SkockoViewModel extends GameViewModel {
         publishGameState();
     }
 
+    public int getCurrentUserScore() {
+        if (!roomMode) {
+            return playerOneScore;
+        }
+        if (roomSession == null || myUid.isEmpty()) {
+            return 0;
+        }
+        if (myUid.equals(roomSession.getHostUid())) {
+            return playerOneScore;
+        }
+        if (myUid.equals(roomSession.getGuestUid())) {
+            return playerTwoScore;
+        }
+        return 0;
+    }
+
+    public int getPlayerOneScore() {
+        return playerOneScore;
+    }
+
+    public int getPlayerTwoScore() {
+        return playerTwoScore;
+    }
+
+    public int getCurrentUserGameScore() {
+        if (!roomMode) {
+            return playerOneScore;
+        }
+        if (roomSession == null || myUid.isEmpty()) {
+            return 0;
+        }
+        if (myUid.equals(roomSession.getHostUid())) {
+            return playerOneScore - basePlayerOneScore;
+        }
+        if (myUid.equals(roomSession.getGuestUid())) {
+            return playerTwoScore - basePlayerTwoScore;
+        }
+        return 0;
+    }
+
+    public float getStatsComboPercent() {
+        if (statsTotalSlots == 0) {
+            return 0f;
+        }
+        return (statsExactMatches * 100f) / statsTotalSlots;
+    }
+
     @Override
     protected void onCleared() {
         super.onCleared();
@@ -204,6 +262,8 @@ public class SkockoViewModel extends GameViewModel {
 
     private void onRoomChanged(@NonNull RoomSession room) {
         roomSession = room;
+        basePlayerOneScore = room.getHostTotalScore();
+        basePlayerTwoScore = room.getGuestTotalScore();
         applyRoomPlayers(room, playerOneScore, playerTwoScore);
         if (skockoListener == null) {
             skockoListener = skockoRoomRepository.listenState(
@@ -249,11 +309,12 @@ public class SkockoViewModel extends GameViewModel {
         if (roundOver) {
             bonusInput = parseSymbols(snapshot.get("bonusAttempt"));
         }
+        recordRoundStatsIfNeeded();
 
         applyRoomPlayersFromState(snapshot);
         initializeHeader(
                 formatRoundText(currentRound, TOTAL_ROUNDS),
-                formatTimeText(Math.max(0L, longOrZero(snapshot.get("phaseEndsAtMillis")) - System.currentTimeMillis())),
+                formatTimeText(cappedRemainingPhaseMillis(longOrZero(snapshot.get("phaseEndsAtMillis")))),
                 playerOne.withScore(playerOneScore),
                 playerTwo.withScore(playerTwoScore)
         );
@@ -263,15 +324,42 @@ public class SkockoViewModel extends GameViewModel {
     }
 
     private void applyRoomPlayers(@NonNull RoomSession room, int firstScore, int secondScore) {
-        playerOne = new GameHeaderPlayerState(room.getHostUsername(), firstScore, null);
-        playerTwo = new GameHeaderPlayerState(room.getGuestUsername(), secondScore, null);
+        playerOne = playerOneWithAvatars(room.getHostUsername(), firstScore);
+        playerTwo = playerTwoWithAvatars(room.getGuestUsername(), secondScore);
+        ensurePlayerAvatars(myUid, room.getHostUid(), room.getGuestUid(), this::refreshHeaderAvatars);
     }
 
     private void applyRoomPlayersFromState(@NonNull DocumentSnapshot snapshot) {
         String firstName = stringOrDefault(snapshot.getString("playerOneUsername"), "Igrac 1");
         String secondName = stringOrDefault(snapshot.getString("playerTwoUsername"), "Igrac 2");
-        playerOne = new GameHeaderPlayerState(firstName, playerOneScore, null);
-        playerTwo = new GameHeaderPlayerState(secondName, playerTwoScore, null);
+        playerOne = playerOneWithAvatars(firstName, playerOneScore);
+        playerTwo = playerTwoWithAvatars(secondName, playerTwoScore);
+        if (roomSession != null) {
+            ensurePlayerAvatars(
+                    myUid,
+                    roomSession.getHostUid(),
+                    roomSession.getGuestUid(),
+                    this::refreshHeaderAvatars
+            );
+        }
+    }
+
+    private void refreshHeaderAvatars() {
+        if (playerOne == null || playerTwo == null) {
+            return;
+        }
+        playerOne = playerOneWithAvatars(playerOne.getUsername(), playerOne.getScore());
+        playerTwo = playerTwoWithAvatars(playerTwo.getUsername(), playerTwo.getScore());
+        GameHeaderState currentState = getHeaderState().getValue();
+        if (currentState != null) {
+            setHeaderState(new GameHeaderState(
+                    currentState.getRoundText(),
+                    currentState.getTimeText(),
+                    playerOne,
+                    playerTwo,
+                    currentState.getActivePlayerNumber()
+            ));
+        }
     }
 
     private void submitRoomRoundAttempt() {
@@ -302,12 +390,13 @@ public class SkockoViewModel extends GameViewModel {
             return;
         }
 
-        long remaining = Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis());
+        long remaining = cappedRemainingPhaseMillis(phaseEndsAtMillis);
         if (remaining == 0L) {
             expireRemotePhase();
             return;
         }
 
+        updateTime(formatTimeText(remaining));
         roundTimer = new CountDownTimer(remaining, TIMER_INTERVAL_MILLIS) {
             @Override
             public void onTick(long millisUntilFinished) {
@@ -386,24 +475,43 @@ public class SkockoViewModel extends GameViewModel {
         stopRoundTimer();
         bonusPhase = false;
         roundOver = true;
+        recordRoundStatsIfNeeded();
         updateTime(formatTimeText(0));
         updateActivePlayer(0);
         updateScores(playerOneScore, playerTwoScore);
         publishGameState();
 
-        if (currentRound < TOTAL_ROUNDS) {
-            handler.postDelayed(
-                    () -> startRound(currentRound + 1),
-                    ROUND_RESULT_VISIBLE_MILLIS
-            );
-        } else {
-            gameOver = true;
-            publishGameState();
-        }
+        startResultTimer(() -> {
+            if (currentRound < TOTAL_ROUNDS) {
+                startRound(currentRound + 1);
+            } else {
+                gameOver = true;
+                publishGameState();
+            }
+        });
+    }
+
+    private void startResultTimer(@NonNull Runnable onFinish) {
+        stopRoundTimer();
+        updateTime(formatTimeText(ROUND_RESULT_VISIBLE_MILLIS));
+        roundTimer = new CountDownTimer(ROUND_RESULT_VISIBLE_MILLIS, TIMER_INTERVAL_MILLIS) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                updateTime(formatTimeText(millisUntilFinished));
+            }
+
+            @Override
+            public void onFinish() {
+                updateTime(formatTimeText(0));
+                onFinish.run();
+            }
+        };
+        roundTimer.start();
     }
 
     private void startRoundTimer() {
         stopRoundTimer();
+        updateTime(formatTimeText(ROUND_DURATION_MILLIS));
         roundTimer = new CountDownTimer(ROUND_DURATION_MILLIS, TIMER_INTERVAL_MILLIS) {
             @Override
             public void onTick(long millisUntilFinished) {
@@ -420,6 +528,7 @@ public class SkockoViewModel extends GameViewModel {
 
     private void startBonusTimer() {
         stopRoundTimer();
+        updateTime(formatTimeText(BONUS_DURATION_MILLIS));
         roundTimer = new CountDownTimer(BONUS_DURATION_MILLIS, TIMER_INTERVAL_MILLIS) {
             @Override
             public void onTick(long millisUntilFinished) {
@@ -439,6 +548,63 @@ public class SkockoViewModel extends GameViewModel {
             roundTimer.cancel();
             roundTimer = null;
         }
+    }
+
+    private void recordRoundStatsIfNeeded() {
+        if (!roundOver || currentRound <= statsLastRecordedRound) {
+            return;
+        }
+        statsLastRecordedRound = currentRound;
+
+        if (isCurrentUserActiveRoundPlayer()) {
+            for (SkockoAttempt attempt : attempts) {
+                statsExactMatches += attempt.getResult().getExactMatches();
+                statsTotalSlots += COMBINATION_SIZE;
+            }
+        }
+
+        if (bonusInput.size() == COMBINATION_SIZE && isCurrentUserBonusPlayer()) {
+            SkockoAttemptResult result = evaluateAttempt(bonusInput, secretCombination);
+            statsExactMatches += result.getExactMatches();
+            statsTotalSlots += COMBINATION_SIZE;
+        }
+    }
+
+    private boolean isCurrentUserActiveRoundPlayer() {
+        if (!roomMode) {
+            return activePlayerNumber == 1;
+        }
+        return !myUid.isEmpty() && myUid.equals(activePlayerUid);
+    }
+
+    private boolean isCurrentUserBonusPlayer() {
+        if (!roomMode) {
+            return getBonusPlayerNumber() == 1;
+        }
+        return !myUid.isEmpty() && myUid.equals(bonusPlayerUid);
+    }
+
+    private static long remainingPhaseMillis(long phaseEndsAtMillis) {
+        return Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis());
+    }
+
+    private long cappedRemainingPhaseMillis(long phaseEndsAtMillis) {
+        long remaining = remainingPhaseMillis(phaseEndsAtMillis);
+        long maxDuration = currentPhaseDurationMillis();
+        return maxDuration > 0L ? Math.min(remaining, maxDuration) : remaining;
+    }
+
+    private long currentPhaseDurationMillis() {
+        if (SkockoRoomRepository.PHASE_ROUND.equals(phase)) {
+            return ROUND_DURATION_MILLIS;
+        }
+        if (SkockoRoomRepository.PHASE_BONUS.equals(phase)) {
+            return BONUS_DURATION_MILLIS;
+        }
+        if (SkockoRoomRepository.PHASE_ROUND_OVER.equals(phase)) {
+            return ROUND_RESULT_VISIBLE_MILLIS;
+        }
+        return 0L;
     }
 
     private void addScoreForActivePlayer(int score) {
@@ -553,7 +719,7 @@ public class SkockoViewModel extends GameViewModel {
 
     @NonNull
     private static String formatTimeText(long millis) {
-        long totalSeconds = Math.max(0, millis / 1000);
+        long totalSeconds = Math.max(0, millis / 1000L);
         return String.format(Locale.getDefault(), "Preostalo vreme: 00:%02d", totalSeconds);
     }
 

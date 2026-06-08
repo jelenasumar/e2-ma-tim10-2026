@@ -73,6 +73,8 @@ public final class UserProfileMapper {
         map.put("totalMatches", stats.getTotalMatches());
         map.put("matchesWinPercent", stats.getMatchesWinPercent());
         map.put("matchesLossPercent", stats.getMatchesLossPercent());
+        map.put("matchesWon", stats.getMatchesWon());
+        map.put("matchesLost", stats.getMatchesLost());
         return map;
     }
 
@@ -102,7 +104,9 @@ public final class UserProfileMapper {
                 floatOrZero(map.get("spojniceLinkedPercent")),
                 intOrZero(map.get("totalMatches")),
                 floatOrZero(map.get("matchesWinPercent")),
-                floatOrZero(map.get("matchesLossPercent"))
+                floatOrZero(map.get("matchesLossPercent")),
+                intOrZero(map.get("matchesWon")),
+                intOrZero(map.get("matchesLost"))
         );
     }
 
@@ -116,7 +120,8 @@ public final class UserProfileMapper {
                 0, 0,
                 0f, 0f,
                 0,
-                0f, 0f
+                0f, 0f,
+                0, 0
         );
     }
 

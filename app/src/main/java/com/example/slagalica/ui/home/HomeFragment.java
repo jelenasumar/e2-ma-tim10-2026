@@ -26,12 +26,6 @@ public class HomeFragment extends Fragment {
 
         Button logoutBtn = view.findViewById(R.id.logout);
         Button profileBtn = view.findViewById(R.id.profile_button);
-        Button koZnaZnaBtn = view.findViewById(R.id.koZnaZna);
-        Button mojBrojBtn = view.findViewById(R.id.mojBroj);
-        Button spojniceBtn = view.findViewById(R.id.spojnice);
-        Button stepByStepBtn = view.findViewById(R.id.korakPoKorak);
-        Button associationsBtn = view.findViewById(R.id.asocijacije);
-        Button skockoBtn = view.findViewById(R.id.skocko);
         Button notificationsBtn = view.findViewById(R.id.notifikacije);
         Button startOnlineMatchBtn = view.findViewById(R.id.startOnlineMatch);
         Button inviteFriendsBtn = view.findViewById(R.id.inviteFriends);
@@ -55,34 +49,6 @@ public class HomeFragment extends Fragment {
             requireActivity().finish();
         });
 
-        mojBrojBtn.setOnClickListener(v -> {
-            NavHostFragment.findNavController(this)
-                    .navigate(R.id.action_home_to_mojBroj);
-        });
-
-        spojniceBtn.setOnClickListener(v -> {
-            NavHostFragment.findNavController(this)
-                    .navigate(R.id.action_home_to_spojnice);
-        });
-
-        koZnaZnaBtn.setOnClickListener(v ->
-                NavHostFragment.findNavController(this)
-                        .navigate(R.id.action_home_to_koZnaZna)
-        );
-
-        stepByStepBtn.setOnClickListener(v -> {
-            NavHostFragment.findNavController(this)
-                    .navigate(R.id.action_home_to_stepByStep);
-        });
-
-        associationsBtn.setOnClickListener(v -> {
-            NavHostFragment.findNavController(this)
-                    .navigate(R.id.action_home_to_associations);
-        });
-        skockoBtn.setOnClickListener(v -> {
-            NavHostFragment.findNavController(this)
-                    .navigate(R.id.action_home_to_skocko);
-        });
         notificationsBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
                     .navigate(R.id.action_home_to_notifications);

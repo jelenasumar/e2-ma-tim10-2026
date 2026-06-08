@@ -1,6 +1,5 @@
 package com.example.slagalica.ui.invites;
 
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -18,6 +17,7 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
 import com.example.slagalica.model.InviteUser;
+import com.example.slagalica.utils.AvatarImageLoader;
 import com.example.slagalica.viewmodel.invites.InviteFriendsViewModel;
 
 import java.util.List;
@@ -79,18 +79,8 @@ public class InviteFriendsFragment extends Fragment {
         row.setPadding(0, dpToPx(8), 0, dpToPx(8));
 
         ImageView avatar = new ImageView(requireContext());
-        avatar.setImageResource(R.drawable.ic_avatar_placeholder);
         avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        if (!user.getAvatarUri().isEmpty()) {
-            try {
-                avatar.setImageURI(Uri.parse(user.getAvatarUri()));
-                if (avatar.getDrawable() == null) {
-                    avatar.setImageResource(R.drawable.ic_avatar_placeholder);
-                }
-            } catch (Throwable ignored) {
-                avatar.setImageResource(R.drawable.ic_avatar_placeholder);
-            }
-        }
+        AvatarImageLoader.load(avatar, user.getAvatarUri(), R.drawable.ic_avatar_placeholder);
         row.addView(avatar, new LinearLayout.LayoutParams(dpToPx(40), dpToPx(40)));
 
         TextView name = new TextView(requireContext());

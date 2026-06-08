@@ -13,6 +13,7 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageMetadata;
@@ -133,6 +134,25 @@ public final class FireBaseUserDataSource {
                     onSuccess.accept(UserProfileMapper.fromDocument(document));
                 })
                 .addOnFailureListener(e -> onError.accept(e.getMessage() != null ? e.getMessage() : "Load failed."));
+    }
+
+    @NonNull
+    public ListenerRegistration listenUserProfile(
+            @NonNull String uid,
+            @NonNull Consumer<UserProfile> onChanged,
+            @NonNull Consumer<String> onError
+    ) {
+        return db.collection("users")
+                .document(uid)
+                .addSnapshotListener((snapshot, error) -> {
+                    if (error != null) {
+                        onError.accept(error.getMessage() != null ? error.getMessage() : "Load failed.");
+                        return;
+                    }
+                    if (snapshot != null && snapshot.exists()) {
+                        onChanged.accept(UserProfileMapper.fromDocument(snapshot));
+                    }
+                });
     }
 
     public void uploadAvatar(

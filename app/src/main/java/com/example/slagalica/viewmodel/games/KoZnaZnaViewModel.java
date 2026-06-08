@@ -11,6 +11,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.slagalica.R;
+import com.example.slagalica.data.remote.KoZnaZnaMatchDataSource;
 import com.example.slagalica.data.repository.KoZnaZnaMatchRepository;
 import com.example.slagalica.data.repository.RoomSessionRepository;
 import com.example.slagalica.data.repository.UserProfileRepository;
@@ -19,13 +20,13 @@ import com.example.slagalica.model.KoZnaZnaQuestion;
 import com.example.slagalica.model.KoZnaZnaScoring;
 import com.example.slagalica.model.KoZnaZnaUiState;
 import com.example.slagalica.model.RoomSession;
+import com.example.slagalica.utils.AvatarImageLoader;
 import com.google.firebase.firestore.ListenerRegistration;
 
+import java.util.Collections;
 import java.util.List;
 
 public class KoZnaZnaViewModel extends AndroidViewModel {
-
-    private static final int TOTAL_QUESTIONS = 5;
 
     private final KoZnaZnaMatchRepository matchRepository;
     private final UserProfileRepository profileRepository;
@@ -44,13 +45,25 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private boolean isHost;
     private boolean iHaveAnswered;
     private boolean statsRecorded;
-    private boolean advancingQuestion;
     private boolean roomMatchCreationStarted;
-    private int lastScheduledAdvanceIndex = -1;
+    private boolean resolveInFlight;
+    private boolean presenceMarkInFlight;
     private int selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
     private int myHits;
     private int myMisses;
+    private int roomBaseHostScore;
+    private int roomBaseGuestScore;
     private String localStatusMessage = "";
+    private String hostAvatarUri = "";
+    private String guestAvatarUri = "";
+    private String observedHostUid = "";
+    private String observedGuestUid = "";
+    private String lastPublishedAvatarUri = "";
+    private ListenerRegistration hostAvatarListener;
+    private ListenerRegistration guestAvatarListener;
+    private String displayedQuestionKey = "";
+    private long displayedQuestionStartedAtMs = 0L;
+    private long displayedQuestionEndsAtMs = 0L;
     @Nullable
     private KoZnaZnaMatch latestMatch;
 
@@ -76,17 +89,30 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         this.isHost = false;
         this.iHaveAnswered = false;
         this.statsRecorded = false;
-        this.advancingQuestion = false;
-        this.lastScheduledAdvanceIndex = -1;
+        this.resolveInFlight = false;
+        this.presenceMarkInFlight = false;
         this.selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
         this.myHits = 0;
         this.myMisses = 0;
+        if (activeRoomId.isEmpty()) {
+            this.roomBaseHostScore = 0;
+            this.roomBaseGuestScore = 0;
+        }
+        this.hostAvatarUri = "";
+        this.guestAvatarUri = "";
+        this.observedHostUid = "";
+        this.observedGuestUid = "";
+        this.lastPublishedAvatarUri = "";
+        this.displayedQuestionKey = "";
+        this.displayedQuestionStartedAtMs = 0L;
+        this.displayedQuestionEndsAtMs = 0L;
         this.localStatusMessage = getApplication().getString(R.string.kzz_waiting_sync);
 
         if (matchListener != null) {
             matchListener.remove();
         }
 
+        mainHandler.removeCallbacks(timerTickRunnable);
         matchListener = matchRepository.listenMatch(
                 matchId,
                 this::onMatchUpdated,
@@ -124,6 +150,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     private void onRoomSessionUpdated(@NonNull RoomSession room) {
+        roomBaseHostScore = room.getHostTotalScore();
+        roomBaseGuestScore = room.getGuestTotalScore();
         String existingMatchId = room.getKoZnaZnaMatchId();
         if (!existingMatchId.isEmpty()) {
             if (roomListener != null) {
@@ -146,12 +174,16 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
 
         roomMatchCreationStarted = true;
+        List<Integer> questionOrder = KoZnaZnaMatchDataSource.shuffledQuestionOrderStatic(
+                KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH
+        );
         matchRepository.createMatchFromRoom(
                 room.getRoomId(),
                 room.getHostUid(),
                 room.getHostUsername(),
                 room.getGuestUid(),
                 room.getGuestUsername(),
+                questionOrder,
                 createdMatchId -> { },
                 error -> {
                     roomMatchCreationStarted = false;
@@ -163,21 +195,24 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private void publishWaitingState(@NonNull RoomSession room) {
         uiState.setValue(new KoZnaZnaUiState(
                 1,
-                TOTAL_QUESTIONS,
+                KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH,
                 0,
                 0,
-                0,
-                0,
+                room.getHostTotalScore(),
+                room.getGuestTotalScore(),
                 room.getHostUsername(),
                 room.getGuestUsername(),
                 "",
-                KoZnaZnaQuestion.defaultQuestions().get(0).getOptions(),
+                "",
+                "",
+                Collections.emptyList(),
                 KoZnaZnaUiState.NO_SELECTION,
                 false,
                 false,
                 localStatusMessage,
                 false
         ));
+        syncAvatarsFromMatch(null, room.getHostUid(), room.getGuestUid());
     }
 
     public void selectAnswer(int answerIndex) {
@@ -197,7 +232,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
 
-        long answeredAtMs = System.currentTimeMillis() - latestMatch.getQuestionStartedAtMs();
+        long answeredAtMs = localQuestionElapsedMillis();
         KoZnaZnaQuestion question = currentQuestion(latestMatch);
         if (question != null && question.isCorrect(selectedAnswerIndex)) {
             myHits++;
@@ -206,12 +241,21 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
 
         iHaveAnswered = true;
+        publishFromMatch(latestMatch);
         matchRepository.submitAnswer(
                 matchId,
-                isHost,
+                myUid,
+                latestMatch.getHostUid(),
                 selectedAnswerIndex,
                 answeredAtMs,
-                () -> publishFromMatch(latestMatch),
+                () -> {
+                    if (latestMatch != null) {
+                        publishFromMatch(latestMatch);
+                        if (isHost) {
+                            maybeResolveQuestion(latestMatch);
+                        }
+                    }
+                },
                 error -> errorMessage.setValue(error)
         );
     }
@@ -221,13 +265,22 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
         iHaveAnswered = true;
-        long answeredAtMs = System.currentTimeMillis() - latestMatch.getQuestionStartedAtMs();
+        publishFromMatch(latestMatch);
+        long answeredAtMs = localQuestionElapsedMillis();
         matchRepository.submitAnswer(
                 matchId,
-                isHost,
+                myUid,
+                latestMatch.getHostUid(),
                 KoZnaZnaScoring.ANSWER_SKIP,
                 answeredAtMs,
-                () -> publishFromMatch(latestMatch),
+                () -> {
+                    if (latestMatch != null) {
+                        publishFromMatch(latestMatch);
+                        if (isHost) {
+                            maybeResolveQuestion(latestMatch);
+                        }
+                    }
+                },
                 error -> errorMessage.setValue(error)
         );
     }
@@ -241,6 +294,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             roomListener.remove();
             roomListener = null;
         }
+        removeAvatarListeners();
         mainHandler.removeCallbacks(timerTickRunnable);
     }
 
@@ -255,18 +309,30 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             myUid = matchRepository.getCurrentUid() != null ? matchRepository.getCurrentUid() : myUid;
         }
         isHost = myUid.equals(match.getHostUid());
+        syncAvatarsFromMatch(match, match.getHostUid(), match.getGuestUid());
+        publishMyAvatarToMatch(match);
+        markPlayerPresentIfNeeded(match);
 
         int previousQuestionIndex = latestMatch != null ? latestMatch.getCurrentQuestionIndex() : -1;
         if (match.getCurrentQuestionIndex() != previousQuestionIndex) {
-            lastScheduledAdvanceIndex = -1;
-            advancingQuestion = false;
-        }
-
-        if (match.getCurrentQuestionIndex() != previousQuestionIndex
-                || (latestMatch != null && latestMatch.isQuestionResolved() && !match.isQuestionResolved())) {
+            resolveInFlight = false;
             iHaveAnswered = false;
             selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
-            localStatusMessage = "";
+            if (latestMatch != null) {
+                localStatusMessage = buildResolutionMessage(latestMatch);
+            }
+        } else {
+            int myAnswerIndex = myUid.equals(match.getHostUid())
+                    ? match.getHostAnswerIndex()
+                    : match.getGuestAnswerIndex();
+            if (myAnswerIndex != KoZnaZnaScoring.ANSWER_PENDING) {
+                iHaveAnswered = true;
+            }
+        }
+        if (latestMatch != null
+                && KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())
+                && !KoZnaZnaMatch.STATUS_FINISHED.equals(latestMatch.getStatus())) {
+            localStatusMessage = buildResolutionMessage(latestMatch);
         }
 
         latestMatch = match;
@@ -283,26 +349,35 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     private void maybeResolveQuestion(@NonNull KoZnaZnaMatch match) {
-        if (match.isQuestionResolved() || advancingQuestion) {
-            if (match.isQuestionResolved() && !advancingQuestion && !KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
-                scheduleAdvanceIfHost(match);
-            }
+        if (!isHost || resolveInFlight || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
             return;
         }
 
-        long now = System.currentTimeMillis();
+        if (match.isQuestionResolved()) {
+            if (match.getQuestionStartedAtMs() == 0L) {
+                return;
+            }
+            resolveInFlight = true;
+            matchRepository.advanceQuestion(
+                    matchId,
+                    unused -> resolveInFlight = false,
+                    error -> {
+                        resolveInFlight = false;
+                        errorMessage.setValue(error);
+                    }
+            );
+            return;
+        }
+
+        if (match.getQuestionStartedAtMs() <= 0L) {
+            return;
+        }
         boolean hostPending = match.getHostAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
         boolean guestPending = match.getGuestAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
-        boolean timeUp = now >= match.getQuestionEndsAtMs()
-                || now >= match.getRoundEndsAtMs();
+        boolean bothAnswered = !hostPending && !guestPending;
+        boolean timeUp = localQuestionRemainingMillis() <= KoZnaZnaMatchDataSource.RESOLVE_GRACE_MS;
 
-        if (hostPending && guestPending && !timeUp) {
-            return;
-        }
-        if (!hostPending && guestPending && !timeUp) {
-            return;
-        }
-        if (hostPending && !guestPending && !timeUp) {
+        if (!bothAnswered && !timeUp) {
             return;
         }
 
@@ -311,46 +386,23 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
 
+        resolveInFlight = true;
         matchRepository.tryResolveQuestion(
                 matchId,
                 question.getCorrectIndex(),
-                resolved -> {
-                    localStatusMessage = buildResolutionMessage(resolved);
-                    matchRepository.updateStatusMessage(matchId, localStatusMessage, () -> { }, error -> { });
-                    scheduleAdvanceIfHost(resolved);
-                },
-                error -> errorMessage.setValue(error)
-        );
-    }
-
-    private void scheduleAdvanceIfHost(@NonNull KoZnaZnaMatch match) {
-        if (!isHost || advancingQuestion || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
-            return;
-        }
-        if (lastScheduledAdvanceIndex == match.getCurrentQuestionIndex()) {
-            return;
-        }
-        lastScheduledAdvanceIndex = match.getCurrentQuestionIndex();
-        advancingQuestion = true;
-        mainHandler.postDelayed(() -> matchRepository.advanceQuestion(
-                matchId,
-                advanced -> {
-                    advancingQuestion = false;
-                    localStatusMessage = "";
-                },
+                unused -> resolveInFlight = false,
                 error -> {
-                    advancingQuestion = false;
-                    lastScheduledAdvanceIndex = -1;
+                    resolveInFlight = false;
                     errorMessage.setValue(error);
                 }
-        ), 1200L);
+        );
     }
 
     private void onTimerTick() {
         if (latestMatch != null) {
+            markPlayerPresentIfNeeded(latestMatch);
             publishFromMatch(latestMatch);
-            if (isHost && !latestMatch.isQuestionResolved()
-                    && KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())) {
+            if (isHost && KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())) {
                 maybeResolveQuestion(latestMatch);
             }
         }
@@ -362,78 +414,296 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
 
-        long now = System.currentTimeMillis();
-        int roundLeft = (int) Math.max(0, Math.ceil((match.getRoundEndsAtMs() - now) / 1000.0));
-        int questionLeft = (int) Math.max(0, Math.ceil((match.getQuestionEndsAtMs() - now) / 1000.0));
+        boolean waitingForStart = match.getQuestionStartedAtMs() <= 0L;
+        updateDisplayedQuestionClock(match);
+        int totalQuestions = match.getQuestionOrder().isEmpty()
+                ? KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH
+                : match.getQuestionOrder().size();
+        int questionSlotSeconds = KoZnaZnaMatchDataSource.QUESTION_MS / 1000;
+        int questionLeft = waitingForStart
+                ? questionSlotSeconds
+                : secondsFromMillis(localQuestionRemainingMillis());
+        int remainingQuestionSlots = Math.max(0, totalQuestions - match.getCurrentQuestionIndex() - 1);
+        int roundLeft = waitingForStart
+                ? totalQuestions * questionSlotSeconds
+                : remainingQuestionSlots * questionSlotSeconds + questionLeft;
 
         KoZnaZnaQuestion question = currentQuestion(match);
-        List<String> options = question != null
-                ? question.getOptions()
-                : KoZnaZnaQuestion.defaultQuestions().get(0).getOptions();
+        boolean showQuestion = !waitingForStart || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus());
+        String questionText = "";
+        List<String> options = Collections.emptyList();
+        if (showQuestion && question != null) {
+            questionText = question.getText();
+            options = question.getOptions();
+        }
 
         boolean finished = KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus());
-        boolean canAnswer = canAnswerLocally() && !match.isQuestionResolved() && questionLeft > 0 && !finished;
-
-        int myAnswerIndex = isHost ? match.getHostAnswerIndex() : match.getGuestAnswerIndex();
-        int opponentAnswerIndex = isHost ? match.getGuestAnswerIndex() : match.getHostAnswerIndex();
-        boolean waitingOpponent = iHaveAnswered
-                && opponentAnswerIndex == KoZnaZnaScoring.ANSWER_PENDING
-                && !match.isQuestionResolved();
+        boolean canAnswer = canAnswerLocally() && !finished;
 
         String status = !match.getStatusMessage().isEmpty()
                 ? match.getStatusMessage()
                 : localStatusMessage;
-        if (waitingOpponent) {
-            status = getApplication().getString(R.string.kzz_waiting_opponent);
+        if (waitingForStart && !finished && !canAnswer && !iHaveAnswered) {
+            status = getApplication().getString(R.string.kzz_waiting_sync);
         }
 
         if (finished && status.isEmpty()) {
             status = getApplication().getString(
                     R.string.kzz_game_finished,
-                    match.getHostScore(),
-                    match.getGuestScore()
+                    displayHostScore(match),
+                    displayGuestScore(match)
             );
         }
 
         uiState.setValue(new KoZnaZnaUiState(
-                Math.min(match.getCurrentQuestionIndex() + 1, TOTAL_QUESTIONS),
-                TOTAL_QUESTIONS,
+                Math.min(match.getCurrentQuestionIndex() + 1, totalQuestions),
+                totalQuestions,
                 roundLeft,
                 questionLeft,
-                match.getHostScore(),
-                match.getGuestScore(),
+                displayHostScore(match),
+                displayGuestScore(match),
                 match.getHostUsername(),
                 match.getGuestUsername(),
-                question != null ? question.getText() : "",
+                hostAvatarUri,
+                guestAvatarUri,
+                questionText,
                 options,
                 selectedAnswerIndex,
                 canAnswer,
                 finished,
                 status,
-                waitingOpponent
+                false
         ));
     }
 
+    private void syncAvatarsFromMatch(
+            @Nullable KoZnaZnaMatch match,
+            @NonNull String hostUid,
+            @NonNull String guestUid
+    ) {
+        if (match != null) {
+            if (!match.getHostAvatarUri().isEmpty()) {
+                hostAvatarUri = displayAvatarUri(match.getHostAvatarUri(), myUid.equals(hostUid));
+            }
+            if (!match.getGuestAvatarUri().isEmpty()) {
+                guestAvatarUri = displayAvatarUri(match.getGuestAvatarUri(), myUid.equals(guestUid));
+            }
+        }
+        applyLocalAvatarOverride(hostUid, guestUid);
+        listenPlayerAvatars(hostUid, guestUid);
+    }
+
+    private void listenPlayerAvatars(@NonNull String hostUid, @NonNull String guestUid) {
+        if (hostUid.equals(observedHostUid) && guestUid.equals(observedGuestUid)) {
+            return;
+        }
+        observedHostUid = hostUid;
+        observedGuestUid = guestUid;
+        removeAvatarListeners();
+        hostAvatarListener = profileRepository.listenAvatarUriForUser(
+                hostUid,
+                uri -> onProfileAvatarChanged(true, hostUid, guestUid, uri),
+                error -> { }
+        );
+        guestAvatarListener = profileRepository.listenAvatarUriForUser(
+                guestUid,
+                uri -> onProfileAvatarChanged(false, hostUid, guestUid, uri),
+                error -> { }
+        );
+    }
+
+    private void onProfileAvatarChanged(
+            boolean hostSlot,
+            @NonNull String hostUid,
+            @NonNull String guestUid,
+            @Nullable String avatarUri
+    ) {
+        boolean isCurrentUser = hostSlot ? myUid.equals(hostUid) : myUid.equals(guestUid);
+        String resolved = displayAvatarUri(avatarUri, isCurrentUser);
+        if (hostSlot) {
+            hostAvatarUri = resolved;
+        } else {
+            guestAvatarUri = resolved;
+        }
+        applyLocalAvatarOverride(hostUid, guestUid);
+        publishCurrentAvatarToMatchIfNeeded(hostSlot, avatarUri != null ? avatarUri : "");
+        if (latestMatch != null) {
+            publishFromMatch(latestMatch);
+        }
+    }
+
+    private void removeAvatarListeners() {
+        if (hostAvatarListener != null) {
+            hostAvatarListener.remove();
+            hostAvatarListener = null;
+        }
+        if (guestAvatarListener != null) {
+            guestAvatarListener.remove();
+            guestAvatarListener = null;
+        }
+    }
+
+    private void publishMyAvatarToMatch(@NonNull KoZnaZnaMatch match) {
+        if (matchId == null || matchId.isEmpty() || myUid.isEmpty()) {
+            return;
+        }
+        profileRepository.ensurePublicAvatarUri(
+                avatarUri -> publishAvatarToMatchIfNeeded(match, avatarUri),
+                error -> { }
+        );
+    }
+
+    private void publishAvatarToMatchIfNeeded(@NonNull KoZnaZnaMatch match, @NonNull String avatarUri) {
+        if (avatarUri.isEmpty()) {
+            return;
+        }
+        String existing = myUid.equals(match.getHostUid())
+                ? match.getHostAvatarUri()
+                : match.getGuestAvatarUri();
+        if (avatarUri.equals(existing) || avatarUri.equals(lastPublishedAvatarUri)) {
+            lastPublishedAvatarUri = avatarUri;
+            return;
+        }
+        lastPublishedAvatarUri = avatarUri;
+        matchRepository.updatePlayerAvatar(
+                matchId,
+                myUid,
+                match.getHostUid(),
+                avatarUri,
+                () -> { },
+                error -> lastPublishedAvatarUri = ""
+        );
+    }
+
+    private void publishCurrentAvatarToMatchIfNeeded(boolean hostSlot, @NonNull String avatarUri) {
+        if (latestMatch == null
+                || matchId == null
+                || matchId.isEmpty()
+                || myUid.isEmpty()
+                || avatarUri.isEmpty()
+                || !AvatarImageLoader.isSharedAvatarUri(avatarUri)) {
+            return;
+        }
+        boolean isMine = hostSlot
+                ? myUid.equals(latestMatch.getHostUid())
+                : myUid.equals(latestMatch.getGuestUid());
+        if (!isMine) {
+            return;
+        }
+        publishAvatarToMatchIfNeeded(latestMatch, avatarUri);
+    }
+
+    private void applyLocalAvatarOverride(@NonNull String hostUid, @NonNull String guestUid) {
+        String localAvatar = localAvatarUri(profileRepository.loadProfile().getAvatarUri());
+        if (localAvatar.isEmpty()) {
+            return;
+        }
+        if (myUid.equals(hostUid)) {
+            hostAvatarUri = localAvatar;
+        } else if (myUid.equals(guestUid)) {
+            guestAvatarUri = localAvatar;
+        }
+    }
+
+    @NonNull
+    private static String displayAvatarUri(@Nullable String avatarUri, boolean isCurrentUser) {
+        if (avatarUri == null || avatarUri.isEmpty()) {
+            return "";
+        }
+        if (isCurrentUser || AvatarImageLoader.isSharedAvatarUri(avatarUri)) {
+            return avatarUri;
+        }
+        return "";
+    }
+
+    @NonNull
+    private static String localAvatarUri(@Nullable String avatarUri) {
+        return avatarUri != null ? avatarUri : "";
+    }
+
+    private void markPlayerPresentIfNeeded(@NonNull KoZnaZnaMatch match) {
+        if (match.getQuestionStartedAtMs() > 0L
+                || presenceMarkInFlight
+                || matchId == null
+                || matchId.isEmpty()
+                || myUid.isEmpty()) {
+            return;
+        }
+        presenceMarkInFlight = true;
+        matchRepository.markPlayerPresent(
+                matchId,
+                myUid,
+                match.getHostUid(),
+                () -> presenceMarkInFlight = false,
+                error -> presenceMarkInFlight = false
+        );
+    }
+
+    private void updateDisplayedQuestionClock(@NonNull KoZnaZnaMatch match) {
+        if (match.getQuestionStartedAtMs() <= 0L) {
+            displayedQuestionKey = "";
+            displayedQuestionStartedAtMs = 0L;
+            displayedQuestionEndsAtMs = 0L;
+            return;
+        }
+        String questionKey = match.getMatchId() + "|" + match.getCurrentQuestionIndex();
+        if (questionKey.equals(displayedQuestionKey)) {
+            return;
+        }
+        displayedQuestionKey = questionKey;
+        displayedQuestionStartedAtMs = System.currentTimeMillis();
+        displayedQuestionEndsAtMs = displayedQuestionStartedAtMs + KoZnaZnaMatchDataSource.QUESTION_MS;
+    }
+
+    private long localQuestionRemainingMillis() {
+        if (displayedQuestionEndsAtMs <= 0L) {
+            return 0L;
+        }
+        return Math.min(
+                Math.max(0L, displayedQuestionEndsAtMs - System.currentTimeMillis()),
+                KoZnaZnaMatchDataSource.QUESTION_MS
+        );
+    }
+
+    private long localQuestionElapsedMillis() {
+        if (displayedQuestionStartedAtMs <= 0L) {
+            return 0L;
+        }
+        return Math.min(
+                KoZnaZnaMatchDataSource.QUESTION_MS,
+                Math.max(0L, System.currentTimeMillis() - displayedQuestionStartedAtMs)
+        );
+    }
+
+    private static int secondsFromMillis(long millis) {
+        return (int) Math.max(0, Math.ceil(millis / 1000.0));
+    }
+
     private boolean canAnswerLocally() {
-        return latestMatch != null
-                && KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())
-                && !iHaveAnswered
-                && !latestMatch.isQuestionResolved();
+        if (latestMatch == null
+                || !KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())
+                || iHaveAnswered
+                || myUid.isEmpty()) {
+            return false;
+        }
+        if (latestMatch.getQuestionStartedAtMs() <= 0L || localQuestionRemainingMillis() <= 0L) {
+            return false;
+        }
+        int myAnswerIndex = myUid.equals(latestMatch.getHostUid())
+                ? latestMatch.getHostAnswerIndex()
+                : latestMatch.getGuestAnswerIndex();
+        return myAnswerIndex == KoZnaZnaScoring.ANSWER_PENDING;
     }
 
     @Nullable
     private KoZnaZnaQuestion currentQuestion(@NonNull KoZnaZnaMatch match) {
-        List<Integer> order = match.getQuestionOrder();
+        List<Integer> order = KoZnaZnaMatch.normalizeQuestionOrder(match.getQuestionOrder());
         int index = match.getCurrentQuestionIndex();
         if (index < 0 || index >= order.size()) {
             return null;
         }
         List<KoZnaZnaQuestion> questions = KoZnaZnaQuestion.defaultQuestions();
-        int questionIndex = order.get(index);
-        if (questionIndex < 0 || questionIndex >= questions.size()) {
-            return null;
-        }
-        return questions.get(questionIndex);
+        return questions.get(order.get(index));
     }
 
     @NonNull
@@ -461,9 +731,17 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
 
         return getApplication().getString(
                 R.string.kzz_question_resolved,
-                match.getHostScore(),
-                match.getGuestScore()
+                displayHostScore(match),
+                displayGuestScore(match)
         );
+    }
+
+    private int displayHostScore(@NonNull KoZnaZnaMatch match) {
+        return roomBaseHostScore + match.getHostScore();
+    }
+
+    private int displayGuestScore(@NonNull KoZnaZnaMatch match) {
+        return roomBaseGuestScore + match.getGuestScore();
     }
 
     private void recordStatsIfNeeded(@NonNull KoZnaZnaMatch match) {

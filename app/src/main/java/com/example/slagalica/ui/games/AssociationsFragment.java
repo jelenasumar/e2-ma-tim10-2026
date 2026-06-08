@@ -19,6 +19,7 @@ import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.model.associations.AssociationColumn;
 import com.example.slagalica.model.associations.AssociationPuzzle;
 import com.example.slagalica.model.associations.AssociationsGameState;
+import com.example.slagalica.ui.room.RoomGameFlow;
 import com.example.slagalica.viewmodel.games.AssociationsViewModel;
 
 public class AssociationsFragment extends Fragment {
@@ -31,6 +32,9 @@ public class AssociationsFragment extends Fragment {
     private Button finishTurnButton;
     private AssociationsViewModel viewModel;
     private int renderedRound = -1;
+    private String roomId = "";
+    private boolean gameOverHandled;
+    private boolean statsRecorded;
 
     public AssociationsFragment() {
         super(R.layout.fragment_associations);
@@ -55,7 +59,6 @@ public class AssociationsFragment extends Fragment {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
             }
         });
-        String roomId = "";
         Bundle args = getArguments();
         if (args != null) {
             roomId = args.getString("roomId", "");
@@ -168,6 +171,30 @@ public class AssociationsFragment extends Fragment {
         finalAnswerInput.setEnabled(state.isInputsEnabled() && !revealAll);
         finalSubmitButton.setEnabled(state.isInputsEnabled() && !revealAll && state.isFieldOpenedThisTurn());
         finishTurnButton.setEnabled(state.isInputsEnabled() && !revealAll && state.isFieldOpenedThisTurn());
+
+        recordStatsIfNeeded(state);
+
+        if (state.isGameOver() && !roomId.isEmpty() && !gameOverHandled) {
+            gameOverHandled = true;
+            RoomGameFlow.onGameFinished(
+                    this,
+                    roomId,
+                    state.getPlayerOneScore(),
+                    state.getPlayerTwoScore()
+            );
+        }
+    }
+
+    private void recordStatsIfNeeded(@NonNull AssociationsGameState state) {
+        if (statsRecorded || !state.isGameOver()) {
+            return;
+        }
+        statsRecorded = true;
+        new UserProfileRepository(requireContext()).recordAsocijacijeGame(
+                viewModel.getCurrentUserGameScore(),
+                viewModel.getStatsSolvedRounds(),
+                viewModel.getStatsUnsolvedRounds()
+        );
     }
 
     private void renderColumn(

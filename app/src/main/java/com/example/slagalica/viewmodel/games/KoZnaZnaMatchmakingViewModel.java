@@ -10,11 +10,14 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.slagalica.R;
+import com.example.slagalica.data.remote.KoZnaZnaMatchDataSource;
 import com.example.slagalica.data.repository.KoZnaZnaMatchRepository;
 import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.utils.SingleLiveEvent;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.ListenerRegistration;
+
+import java.util.List;
 
 public class KoZnaZnaMatchmakingViewModel extends AndroidViewModel {
 
@@ -183,12 +186,16 @@ public class KoZnaZnaMatchmakingViewModel extends AndroidViewModel {
                             R.string.kzz_opponent_joined,
                             guestUsername != null ? guestUsername : getApplication().getString(R.string.kzz_opponent)
                     ));
+                    List<Integer> questionOrder = KoZnaZnaMatchDataSource.shuffledQuestionOrderStatic(
+                            KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH
+                    );
                     matchRepository.createMatchFromLobby(
                             code,
                             myUid,
                             myUsername,
                             guestUid,
                             guestUsername != null ? guestUsername : "",
+                            questionOrder,
                             createdMatchId -> { },
                             error -> {
                                 matchCreationStarted = false;
