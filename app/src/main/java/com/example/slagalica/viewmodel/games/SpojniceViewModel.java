@@ -306,6 +306,10 @@ public class SpojniceViewModel extends AndroidViewModel {
         activePlayerUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
         followupPlayerUid = stringOrEmpty(snapshot.getString("followupPlayerUid"));
         phase = newPhase;
+        if (SpojniceRoomRepository.PHASE_ACTIVE.equals(phase)) {
+            activePlayerNumber = startingPlayerNumber(currentRound);
+            activePlayerUid = startingPlayerUid(currentRound);
+        }
         currentLeftIndex = newLeftIndex;
         criterion = stringOrDefault(snapshot.getString("criterion"), "");
         leftTerms = stringList(snapshot.get("leftTerms"));
@@ -538,6 +542,20 @@ public class SpojniceViewModel extends AndroidViewModel {
             return 1;
         }
         return 2;
+    }
+
+    @NonNull
+    private String startingPlayerUid(int round) {
+        if (roomSession == null) {
+            return activePlayerUid;
+        }
+        return startingPlayerNumber(round) == 1
+                ? roomSession.getHostUid()
+                : roomSession.getGuestUid();
+    }
+
+    private static int startingPlayerNumber(int round) {
+        return round % 2 == 0 ? 2 : 1;
     }
 
     private boolean canCurrentUserPlay() {

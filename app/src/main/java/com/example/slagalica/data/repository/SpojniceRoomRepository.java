@@ -108,9 +108,9 @@ public final class SpojniceRoomRepository {
                 return null;
             }
 
-            String activeUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
             String followupUid = stringOrEmpty(snapshot.getString("followupPlayerUid"));
-            if (PHASE_ACTIVE.equals(phase) && !myUid.equals(activeUid)) {
+            int currentRound = intOrZero(snapshot.get("currentRound"));
+            if (PHASE_ACTIVE.equals(phase) && !myUid.equals(startingPlayerUid(snapshot, currentRound))) {
                 return null;
             }
             if (PHASE_FOLLOWUP.equals(phase) && !myUid.equals(followupUid)) {
@@ -174,6 +174,9 @@ public final class SpojniceRoomRepository {
             updates.put("playerOneScore", playerOneScore);
             updates.put("playerTwoScore", playerTwoScore);
             updates.put("lastSubmitMillis", System.currentTimeMillis());
+            if (PHASE_ACTIVE.equals(phase)) {
+                applyExpectedStarter(snapshot, updates);
+            }
 
             if (PHASE_ACTIVE.equals(phase)) {
                 int nextLeftIndex = currentLeftIndex + 1;
@@ -218,6 +221,7 @@ public final class SpojniceRoomRepository {
 
             Map<String, Object> updates = new HashMap<>();
             if (PHASE_ACTIVE.equals(phase)) {
+                applyExpectedStarter(snapshot, updates);
                 List<Integer> connected = intList(snapshot.get("connectedLeft"));
                 List<Integer> attempted = intList(snapshot.get("attemptedLeft"));
                 applyFollowupOrRoundOver(snapshot, updates, connected, attempted);
@@ -288,10 +292,10 @@ public final class SpojniceRoomRepository {
 
     @NonNull
     private static String followupPlayerUid(@NonNull DocumentSnapshot snapshot) {
-        String activeUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
-        String playerOneUid = stringOrEmpty(snapshot.getString("playerOneUid"));
-        String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
-        return activeUid.equals(playerOneUid) ? playerTwoUid : playerOneUid;
+        int round = intOrZero(snapshot.get("currentRound"));
+        return startingPlayerNumber(round) == 1
+                ? stringOrEmpty(snapshot.getString("playerTwoUid"))
+                : stringOrEmpty(snapshot.getString("playerOneUid"));
     }
 
     private static boolean allRemainingConnected(@NonNull List<Integer> connected) {
@@ -308,6 +312,21 @@ public final class SpojniceRoomRepository {
             }
         }
         return true;
+    }
+
+    private static void applyExpectedStarter(
+            @NonNull DocumentSnapshot snapshot,
+            @NonNull Map<String, Object> updates
+    ) {
+        int round = intOrZero(snapshot.get("currentRound"));
+        String expectedUid = startingPlayerUid(snapshot, round);
+        int expectedNumber = startingPlayerNumber(round);
+        if (!expectedUid.equals(stringOrEmpty(snapshot.getString("activePlayerUid")))) {
+            updates.put("activePlayerUid", expectedUid);
+        }
+        if (expectedNumber != intOrZero(snapshot.get("activePlayerNumber"))) {
+            updates.put("activePlayerNumber", expectedNumber);
+        }
     }
 
     @NonNull
