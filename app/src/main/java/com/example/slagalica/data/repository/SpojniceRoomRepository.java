@@ -229,8 +229,15 @@ public final class SpojniceRoomRepository {
                     updates.put("phase", PHASE_GAME_OVER);
                     updates.put("phaseEndsAtMillis", 0L);
                 } else {
-                    String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
-                    updates.putAll(nextRoundState(snapshot, currentRound + 1, playerTwoUid, 2, nextRound, nextCriterion));
+                    int nextRoundNumber = currentRound + 1;
+                    updates.putAll(nextRoundState(
+                            snapshot,
+                            nextRoundNumber,
+                            startingPlayerUid(snapshot, nextRoundNumber),
+                            startingPlayerNumber(nextRoundNumber),
+                            nextRound,
+                            nextCriterion
+                    ));
                 }
             }
 
@@ -301,6 +308,17 @@ public final class SpojniceRoomRepository {
             }
         }
         return true;
+    }
+
+    @NonNull
+    private static String startingPlayerUid(@NonNull DocumentSnapshot snapshot, int round) {
+        return startingPlayerNumber(round) == 1
+                ? stringOrEmpty(snapshot.getString("playerOneUid"))
+                : stringOrEmpty(snapshot.getString("playerTwoUid"));
+    }
+
+    private static int startingPlayerNumber(int round) {
+        return round % 2 == 0 ? 2 : 1;
     }
 
     @NonNull
