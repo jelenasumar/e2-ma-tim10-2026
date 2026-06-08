@@ -35,7 +35,7 @@ public class AssociationsViewModel extends GameViewModel {
     private static final int TOTAL_ROUNDS = 2;
     private static final long ROUND_DURATION_MILLIS = 120_000L;
     private static final long TIMER_INTERVAL_MILLIS = 1_000L;
-    private static final long ROUND_RESULT_VISIBLE_MILLIS = 2_500L;
+    private static final long ROUND_RESULT_VISIBLE_MILLIS = 5_000L;
     private static final int COLUMN_BASE_SCORE = 2;
     private static final int FINAL_BASE_SCORE = 7;
     private static final int UNOPENED_COLUMN_SCORE = 6;

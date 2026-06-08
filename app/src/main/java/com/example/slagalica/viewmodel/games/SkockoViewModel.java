@@ -37,7 +37,7 @@ public class SkockoViewModel extends GameViewModel {
     private static final long ROUND_DURATION_MILLIS = 30_000L;
     private static final long BONUS_DURATION_MILLIS = 10_000L;
     private static final long TIMER_INTERVAL_MILLIS = 1_000L;
-    private static final long ROUND_RESULT_VISIBLE_MILLIS = 2_500L;
+    private static final long ROUND_RESULT_VISIBLE_MILLIS = 5_000L;
 
     private final MutableLiveData<SkockoGameState> gameState = new MutableLiveData<>();
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();

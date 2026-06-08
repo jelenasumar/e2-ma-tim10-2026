@@ -35,7 +35,7 @@ public final class SkockoRoomRepository {
     private static final int BONUS_SCORE = 10;
     private static final long ROUND_DURATION_MILLIS = 30_000L;
     private static final long BONUS_DURATION_MILLIS = 10_000L;
-    private static final long RESULT_VISIBLE_MILLIS = 2_500L;
+    private static final long RESULT_VISIBLE_MILLIS = 5_000L;
 
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
     private final FirebaseAuth auth = FirebaseAuth.getInstance();
