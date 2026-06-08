@@ -23,13 +23,16 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 
 public class SpojniceViewModel extends AndroidViewModel {
 
+    private static final String ROUND_ONE_CRITERION =
+            "Poveži izvođače sa nazivima njihovih pesama";
+    private static final String ROUND_TWO_CRITERION =
+            "Poveži glavne gradove sa državama";
     private static final int TOTAL_ROUNDS = 2;
     private static final int PAIRS_PER_ROUND = 5;
     private static final int TOTAL_PAIRS_PER_GAME = TOTAL_ROUNDS * PAIRS_PER_ROUND;
@@ -258,17 +261,17 @@ public class SpojniceViewModel extends AndroidViewModel {
     }
 
     private void loadRoundPuzzles(@NonNull Runnable onReady) {
-        if (!roundPuzzles.isEmpty()) {
+        if (roundPuzzles.size() >= TOTAL_ROUNDS) {
             onReady.run();
             return;
         }
         puzzlesRepository.loadPuzzles(
                 puzzles -> {
-                    roundPuzzles = buildRoundPuzzlePool(puzzles);
+                    roundPuzzles = buildFixedRoundPuzzles(puzzles);
                     onReady.run();
                 },
                 error -> {
-                    roundPuzzles = buildRoundPuzzlePool(List.of());
+                    roundPuzzles = buildFixedRoundPuzzles(List.of());
                     onReady.run();
                 }
         );
@@ -676,15 +679,18 @@ public class SpojniceViewModel extends AndroidViewModel {
 
     private void updateDisplayedPhaseClock(long phaseEndsAtMillis) {
         String phaseKey = currentRound + "|" + phase;
-        if (phaseKey.equals(displayedPhaseKey)) {
+        long maxDuration = currentPhaseDurationMillis();
+        if (phaseEndsAtMillis <= 0L || maxDuration <= 0L) {
+            if (!phaseKey.equals(displayedPhaseKey)) {
+                displayedPhaseKey = phaseKey;
+                displayedPhaseEndsAtMillis = 0L;
+            }
+            return;
+        }
+        if (phaseKey.equals(displayedPhaseKey) && displayedPhaseEndsAtMillis > 0L) {
             return;
         }
         displayedPhaseKey = phaseKey;
-        long maxDuration = currentPhaseDurationMillis();
-        if (phaseEndsAtMillis <= 0L || maxDuration <= 0L) {
-            displayedPhaseEndsAtMillis = 0L;
-            return;
-        }
         displayedPhaseEndsAtMillis = System.currentTimeMillis() + maxDuration;
     }
 
@@ -715,8 +721,8 @@ public class SpojniceViewModel extends AndroidViewModel {
 
     @NonNull
     private SpojnicePuzzle puzzleForRound(int round) {
-        if (roundPuzzles.isEmpty()) {
-            roundPuzzles = buildRoundPuzzlePool(List.of());
+        if (roundPuzzles.size() < TOTAL_ROUNDS) {
+            roundPuzzles = buildFixedRoundPuzzles(List.of());
         }
         int index = round - 1;
         if (index < 0 || index >= roundPuzzles.size()) {
@@ -726,35 +732,32 @@ public class SpojniceViewModel extends AndroidViewModel {
     }
 
     @NonNull
-    private List<SpojnicePuzzle> buildRoundPuzzlePool(@NonNull List<SpojnicePuzzle> remotePuzzles) {
-        List<SpojnicePuzzle> pool = new ArrayList<>();
-        for (SpojnicePuzzle puzzle : remotePuzzles) {
-            if (!containsCriterion(pool, puzzle.getCriterion())) {
-                pool.add(puzzle);
-            }
-        }
-        for (SpojnicePuzzle fallback : SpojnicePuzzle.defaultPuzzles()) {
-            if (pool.size() >= TOTAL_ROUNDS) {
-                break;
-            }
-            if (!containsCriterion(pool, fallback.getCriterion())) {
-                pool.add(fallback);
-            }
-        }
-        Collections.shuffle(pool, random);
+    private List<SpojnicePuzzle> buildFixedRoundPuzzles(@NonNull List<SpojnicePuzzle> remotePuzzles) {
+        List<SpojnicePuzzle> defaults = SpojnicePuzzle.defaultPuzzles();
+        List<SpojnicePuzzle> pool = new ArrayList<>(TOTAL_ROUNDS);
+        pool.add(resolvePuzzle(remotePuzzles, defaults, ROUND_ONE_CRITERION, 0));
+        pool.add(resolvePuzzle(remotePuzzles, defaults, ROUND_TWO_CRITERION, 1));
         return pool;
     }
 
-    private static boolean containsCriterion(
-            @NonNull List<SpojnicePuzzle> puzzles,
-            @NonNull String criterion
+    @NonNull
+    private static SpojnicePuzzle resolvePuzzle(
+            @NonNull List<SpojnicePuzzle> remotePuzzles,
+            @NonNull List<SpojnicePuzzle> defaultPuzzles,
+            @NonNull String criterion,
+            int defaultIndex
     ) {
-        for (SpojnicePuzzle puzzle : puzzles) {
+        for (SpojnicePuzzle puzzle : remotePuzzles) {
             if (criterion.equals(puzzle.getCriterion())) {
-                return true;
+                return puzzle;
             }
         }
-        return false;
+        for (SpojnicePuzzle puzzle : defaultPuzzles) {
+            if (criterion.equals(puzzle.getCriterion())) {
+                return puzzle;
+            }
+        }
+        return defaultPuzzles.get(defaultIndex);
     }
 
     private void stopPhaseTimer() {
