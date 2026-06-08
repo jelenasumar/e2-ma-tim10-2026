@@ -212,11 +212,7 @@ public final class SpojniceRoomRepository {
             }
 
             String phase = stringOrDefault(snapshot.getString("phase"), PHASE_ACTIVE);
-            long endsAt = longOrZero(snapshot.get("phaseEndsAtMillis"));
             if (PHASE_GAME_OVER.equals(phase)) {
-                return null;
-            }
-            if (endsAt > 0L && endsAt > System.currentTimeMillis()) {
                 return null;
             }
 

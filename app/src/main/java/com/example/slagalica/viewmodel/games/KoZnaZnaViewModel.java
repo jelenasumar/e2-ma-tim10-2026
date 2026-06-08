@@ -61,6 +61,9 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private String lastPublishedAvatarUri = "";
     private ListenerRegistration hostAvatarListener;
     private ListenerRegistration guestAvatarListener;
+    private String displayedQuestionKey = "";
+    private long displayedQuestionStartedAtMs = 0L;
+    private long displayedQuestionEndsAtMs = 0L;
     @Nullable
     private KoZnaZnaMatch latestMatch;
 
@@ -100,12 +103,16 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         this.observedHostUid = "";
         this.observedGuestUid = "";
         this.lastPublishedAvatarUri = "";
+        this.displayedQuestionKey = "";
+        this.displayedQuestionStartedAtMs = 0L;
+        this.displayedQuestionEndsAtMs = 0L;
         this.localStatusMessage = getApplication().getString(R.string.kzz_waiting_sync);
 
         if (matchListener != null) {
             matchListener.remove();
         }
 
+        mainHandler.removeCallbacks(timerTickRunnable);
         matchListener = matchRepository.listenMatch(
                 matchId,
                 this::onMatchUpdated,
@@ -225,9 +232,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
 
-        long answeredAtMs = latestMatch.getQuestionStartedAtMs() > 0L
-                ? Math.max(0L, System.currentTimeMillis() - latestMatch.getQuestionStartedAtMs())
-                : 0L;
+        long answeredAtMs = localQuestionElapsedMillis();
         KoZnaZnaQuestion question = currentQuestion(latestMatch);
         if (question != null && question.isCorrect(selectedAnswerIndex)) {
             myHits++;
@@ -261,9 +266,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
         iHaveAnswered = true;
         publishFromMatch(latestMatch);
-        long answeredAtMs = latestMatch.getQuestionStartedAtMs() > 0L
-                ? Math.max(0L, System.currentTimeMillis() - latestMatch.getQuestionStartedAtMs())
-                : 0L;
+        long answeredAtMs = localQuestionElapsedMillis();
         matchRepository.submitAnswer(
                 matchId,
                 myUid,
@@ -366,14 +369,13 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
 
-        long now = System.currentTimeMillis();
-        if (!isQuestionTimerActive(match, now)) {
+        if (match.getQuestionStartedAtMs() <= 0L) {
             return;
         }
         boolean hostPending = match.getHostAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
         boolean guestPending = match.getGuestAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
         boolean bothAnswered = !hostPending && !guestPending;
-        boolean timeUp = now >= match.getQuestionEndsAtMs() + KoZnaZnaMatchDataSource.RESOLVE_GRACE_MS;
+        boolean timeUp = localQuestionRemainingMillis() <= KoZnaZnaMatchDataSource.RESOLVE_GRACE_MS;
 
         if (!bothAnswered && !timeUp) {
             return;
@@ -412,15 +414,15 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
 
-        long now = System.currentTimeMillis();
         boolean waitingForStart = match.getQuestionStartedAtMs() <= 0L;
+        updateDisplayedQuestionClock(match);
         int totalQuestions = match.getQuestionOrder().isEmpty()
                 ? KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH
                 : match.getQuestionOrder().size();
         int questionSlotSeconds = KoZnaZnaMatchDataSource.QUESTION_MS / 1000;
         int questionLeft = waitingForStart
                 ? questionSlotSeconds
-                : secondsFromMillis(cappedQuestionRemainingMillis(match, now));
+                : secondsFromMillis(localQuestionRemainingMillis());
         int remainingQuestionSlots = Math.max(0, totalQuestions - match.getCurrentQuestionIndex() - 1);
         int roundLeft = waitingForStart
                 ? totalQuestions * questionSlotSeconds
@@ -637,13 +639,40 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         );
     }
 
-    private static boolean isQuestionTimerActive(@NonNull KoZnaZnaMatch match, long now) {
-        return match.getQuestionStartedAtMs() > 0L && now >= match.getQuestionStartedAtMs();
+    private void updateDisplayedQuestionClock(@NonNull KoZnaZnaMatch match) {
+        if (match.getQuestionStartedAtMs() <= 0L) {
+            displayedQuestionKey = "";
+            displayedQuestionStartedAtMs = 0L;
+            displayedQuestionEndsAtMs = 0L;
+            return;
+        }
+        String questionKey = match.getMatchId() + "|" + match.getCurrentQuestionIndex();
+        if (questionKey.equals(displayedQuestionKey)) {
+            return;
+        }
+        displayedQuestionKey = questionKey;
+        displayedQuestionStartedAtMs = System.currentTimeMillis();
+        displayedQuestionEndsAtMs = displayedQuestionStartedAtMs + KoZnaZnaMatchDataSource.QUESTION_MS;
     }
 
-    private static long cappedQuestionRemainingMillis(@NonNull KoZnaZnaMatch match, long now) {
-        long remaining = Math.max(0L, match.getQuestionEndsAtMs() - now);
-        return Math.min(remaining, KoZnaZnaMatchDataSource.QUESTION_MS);
+    private long localQuestionRemainingMillis() {
+        if (displayedQuestionEndsAtMs <= 0L) {
+            return 0L;
+        }
+        return Math.min(
+                Math.max(0L, displayedQuestionEndsAtMs - System.currentTimeMillis()),
+                KoZnaZnaMatchDataSource.QUESTION_MS
+        );
+    }
+
+    private long localQuestionElapsedMillis() {
+        if (displayedQuestionStartedAtMs <= 0L) {
+            return 0L;
+        }
+        return Math.min(
+                KoZnaZnaMatchDataSource.QUESTION_MS,
+                Math.max(0L, System.currentTimeMillis() - displayedQuestionStartedAtMs)
+        );
     }
 
     private static int secondsFromMillis(long millis) {
@@ -657,7 +686,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 || myUid.isEmpty()) {
             return false;
         }
-        if (latestMatch.getQuestionStartedAtMs() <= 0L) {
+        if (latestMatch.getQuestionStartedAtMs() <= 0L || localQuestionRemainingMillis() <= 0L) {
             return false;
         }
         int myAnswerIndex = myUid.equals(latestMatch.getHostUid())

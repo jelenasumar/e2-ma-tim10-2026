@@ -353,18 +353,12 @@ public final class KoZnaZnaMatchDataSource {
                 return match;
             }
 
-            long now = System.currentTimeMillis();
-            if (!isQuestionTimerActive(match, now)) {
+            if (match.getQuestionStartedAtMs() <= 0L) {
                 return match;
             }
             boolean hostPending = match.getHostAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
             boolean guestPending = match.getGuestAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
-            boolean bothAnswered = !hostPending && !guestPending;
-            boolean timeUp = now >= match.getQuestionEndsAtMs() + RESOLVE_GRACE_MS;
-
-            if (!bothAnswered && !timeUp) {
-                return match;
-            }
+            long now = System.currentTimeMillis();
 
             int hostIndex = hostPending ? KoZnaZnaScoring.ANSWER_SKIP : match.getHostAnswerIndex();
             int guestIndex = guestPending ? KoZnaZnaScoring.ANSWER_SKIP : match.getGuestAnswerIndex();
