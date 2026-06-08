@@ -98,6 +98,7 @@ public class SpojniceViewModel extends AndroidViewModel {
         this.roomId = roomId;
         String uid = spojniceRepository.getCurrentUid();
         myUid = uid != null ? uid : "";
+        loadRoundPuzzles(() -> { });
         roomListener = roomRepository.listenRoom(
                 roomId,
                 this::onRoomChanged,
@@ -233,17 +234,22 @@ public class SpojniceViewModel extends AndroidViewModel {
             return;
         }
         roomInitializationRequested = true;
+        loadRoundPuzzles(() -> startSpojniceRound(room, 1));
+    }
+
+    private void loadRoundPuzzles(@NonNull Runnable onReady) {
+        if (!roundPuzzles.isEmpty()) {
+            onReady.run();
+            return;
+        }
         puzzlesRepository.loadPuzzles(
                 puzzles -> {
-                    if (!puzzles.isEmpty()) {
-                        roundPuzzles = new ArrayList<>(puzzles);
-                        Collections.shuffle(roundPuzzles, random);
-                    }
-                    startSpojniceRound(room, 1);
+                    roundPuzzles = buildRoundPuzzlePool(puzzles);
+                    onReady.run();
                 },
                 error -> {
-                    errorMessage.setValue(error);
-                    startSpojniceRound(room, 1);
+                    roundPuzzles = buildRoundPuzzlePool(List.of());
+                    onReady.run();
                 }
         );
     }
@@ -508,13 +514,33 @@ public class SpojniceViewModel extends AndroidViewModel {
         if (roomId.isEmpty()) {
             return;
         }
-        int nextRound = Math.min(currentRound + 1, TOTAL_ROUNDS);
-        SpojnicePuzzle puzzle = puzzleForRound(nextRound);
-        SpojnicePuzzle.ShuffledRound shuffled = puzzle.shuffled(random);
+        if (SpojniceRoomRepository.PHASE_ROUND_OVER.equals(phase)) {
+            if (roomSession == null || !myUid.equals(roomSession.getHostUid())) {
+                return;
+            }
+            int nextRoundNumber = currentRound + 1;
+            if (nextRoundNumber > TOTAL_ROUNDS) {
+                spojniceRepository.handleExpiredPhase(
+                        roomId,
+                        puzzleForRound(TOTAL_ROUNDS).shuffled(random),
+                        puzzleForRound(TOTAL_ROUNDS).getCriterion(),
+                        errorMessage::setValue
+                );
+                return;
+            }
+            SpojnicePuzzle puzzle = puzzleForRound(nextRoundNumber);
+            spojniceRepository.handleExpiredPhase(
+                    roomId,
+                    puzzle.shuffled(random),
+                    puzzle.getCriterion(),
+                    errorMessage::setValue
+            );
+            return;
+        }
         spojniceRepository.handleExpiredPhase(
                 roomId,
-                shuffled,
-                puzzle.getCriterion(),
+                puzzleForRound(currentRound).shuffled(random),
+                puzzleForRound(currentRound).getCriterion(),
                 errorMessage::setValue
         );
     }
@@ -527,11 +553,45 @@ public class SpojniceViewModel extends AndroidViewModel {
     @NonNull
     private SpojnicePuzzle puzzleForRound(int round) {
         if (roundPuzzles.isEmpty()) {
-            roundPuzzles = new ArrayList<>(SpojnicePuzzle.defaultPuzzles());
-            Collections.shuffle(roundPuzzles, random);
+            roundPuzzles = buildRoundPuzzlePool(List.of());
         }
-        int index = Math.max(0, Math.min(round - 1, roundPuzzles.size() - 1));
+        int index = round - 1;
+        if (index < 0 || index >= roundPuzzles.size()) {
+            index = 0;
+        }
         return roundPuzzles.get(index);
+    }
+
+    @NonNull
+    private List<SpojnicePuzzle> buildRoundPuzzlePool(@NonNull List<SpojnicePuzzle> remotePuzzles) {
+        List<SpojnicePuzzle> pool = new ArrayList<>();
+        for (SpojnicePuzzle puzzle : remotePuzzles) {
+            if (!containsCriterion(pool, puzzle.getCriterion())) {
+                pool.add(puzzle);
+            }
+        }
+        for (SpojnicePuzzle fallback : SpojnicePuzzle.defaultPuzzles()) {
+            if (pool.size() >= TOTAL_ROUNDS) {
+                break;
+            }
+            if (!containsCriterion(pool, fallback.getCriterion())) {
+                pool.add(fallback);
+            }
+        }
+        Collections.shuffle(pool, random);
+        return pool;
+    }
+
+    private static boolean containsCriterion(
+            @NonNull List<SpojnicePuzzle> puzzles,
+            @NonNull String criterion
+    ) {
+        for (SpojnicePuzzle puzzle : puzzles) {
+            if (criterion.equals(puzzle.getCriterion())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void stopPhaseTimer() {

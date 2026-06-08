@@ -26,9 +26,9 @@ public final class RoomGameKeys {
     @NonNull
     public static final List<String> DEFAULT_GAME_ORDER = Collections.unmodifiableList(Arrays.asList(
             KO_ZNA_ZNA,
-            SKOCKO,
             SPOJNICE,
-            ASOCIJACIJE
+            ASOCIJACIJE,
+            SKOCKO
     ));
 
     private RoomGameKeys() {

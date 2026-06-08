@@ -26,9 +26,10 @@ public final class KoZnaZnaMatchDataSource {
     private static final String MATCHES = "kzz_matches";
     private static final String ROOMS = "rooms";
 
-    private static final int QUESTION_MS = 5_000;
-    private static final int DEFAULT_QUESTIONS_PER_MATCH = 5;
-    private static final int ADVANCE_DELAY_MS = 1_200;
+    public static final int QUESTION_MS = 5_000;
+    public static final int QUESTIONS_PER_MATCH = 5;
+    public static final int ROUND_MS = QUESTIONS_PER_MATCH * QUESTION_MS;
+    private static final int DEFAULT_QUESTIONS_PER_MATCH = QUESTIONS_PER_MATCH;
 
     private final FirebaseFirestore db;
     private final FirebaseAuth auth;
@@ -429,9 +430,7 @@ public final class KoZnaZnaMatchDataSource {
                 ? shuffledQuestionOrderStatic(DEFAULT_QUESTIONS_PER_MATCH)
                 : new ArrayList<>(questionOrder);
         int totalQuestions = order.size();
-        long roundMs = totalQuestions * QUESTION_MS
-                + Math.max(0, totalQuestions - 1) * ADVANCE_DELAY_MS
-                + 5_000L;
+        long roundMs = (long) totalQuestions * QUESTION_MS;
         Map<String, Object> match = new HashMap<>();
         match.put("hostUid", hostUid);
         match.put("guestUid", guestUid);

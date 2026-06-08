@@ -353,7 +353,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                     lastScheduledAdvanceIndex = -1;
                     errorMessage.setValue(error);
                 }
-        ), 1200L);
+        ), 400L);
     }
 
     private void onTimerTick() {

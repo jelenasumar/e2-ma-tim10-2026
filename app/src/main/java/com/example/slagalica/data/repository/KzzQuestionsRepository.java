@@ -16,7 +16,8 @@ import java.util.function.Consumer;
 public final class KzzQuestionsRepository {
 
     public static final String COLLECTION = "kzz_questions";
-    private static final int DEFAULT_MATCH_QUESTION_COUNT = 5;
+    private static final int DEFAULT_MATCH_QUESTION_COUNT =
+            com.example.slagalica.data.remote.KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH;
 
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
