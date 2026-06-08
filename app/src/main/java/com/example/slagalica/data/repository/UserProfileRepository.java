@@ -355,6 +355,110 @@ public final class UserProfileRepository {
         }
     }
 
+    public void recordAsocijacijeGame(int gameScore) {
+        if (!isRegisteredPlayer()) {
+            return;
+        }
+        UserProfile profile = preferences.loadProfile();
+        PlayerStatistics stats = profile.getStatistics();
+
+        int gamesPlayed = preferences.getAsocijacijeGamesPlayed();
+        float newAvg = gamesPlayed == 0
+                ? gameScore
+                : ((stats.getAvgScoreAsocijacije() * gamesPlayed) + gameScore) / (gamesPlayed + 1f);
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                stats.getAvgScoreKoZnaZna(),
+                stats.getAvgScoreSpojnice(),
+                stats.getAvgScoreMojBroj(),
+                stats.getAvgScoreKorakPoKorak(),
+                newAvg,
+                stats.getAvgScoreSkocko(),
+                stats.getKoZnaZnaHits(),
+                stats.getKoZnaZnaMisses(),
+                stats.getMojBrojCorrectPercent(),
+                stats.getKorakPoKorakStepPercents(),
+                stats.getAsocijacijeSolved(),
+                stats.getAsocijacijeUnsolved(),
+                stats.getSkockoComboPercent(),
+                stats.getSpojniceLinkedPercent(),
+                stats.getTotalMatches(),
+                stats.getMatchesWinPercent(),
+                stats.getMatchesLossPercent()
+        );
+
+        UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);
+        preferences.setAsocijacijeGamesPlayed(gamesPlayed + 1);
+        preferences.saveProfile(updatedProfile);
+        saveRemoteProfile(updatedProfile);
+    }
+
+    public void recordSkockoGame(int gameScore) {
+        if (!isRegisteredPlayer()) {
+            return;
+        }
+        UserProfile profile = preferences.loadProfile();
+        PlayerStatistics stats = profile.getStatistics();
+
+        int gamesPlayed = preferences.getSkockoGamesPlayed();
+        float newAvg = gamesPlayed == 0
+                ? gameScore
+                : ((stats.getAvgScoreSkocko() * gamesPlayed) + gameScore) / (gamesPlayed + 1f);
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                stats.getAvgScoreKoZnaZna(),
+                stats.getAvgScoreSpojnice(),
+                stats.getAvgScoreMojBroj(),
+                stats.getAvgScoreKorakPoKorak(),
+                stats.getAvgScoreAsocijacije(),
+                newAvg,
+                stats.getKoZnaZnaHits(),
+                stats.getKoZnaZnaMisses(),
+                stats.getMojBrojCorrectPercent(),
+                stats.getKorakPoKorakStepPercents(),
+                stats.getAsocijacijeSolved(),
+                stats.getAsocijacijeUnsolved(),
+                stats.getSkockoComboPercent(),
+                stats.getSpojniceLinkedPercent(),
+                stats.getTotalMatches(),
+                stats.getMatchesWinPercent(),
+                stats.getMatchesLossPercent()
+        );
+
+        UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);
+        preferences.setSkockoGamesPlayed(gamesPlayed + 1);
+        preferences.saveProfile(updatedProfile);
+        saveRemoteProfile(updatedProfile);
+    }
+
+    @NonNull
+    private static UserProfile profileWithStatistics(
+            @NonNull UserProfile profile,
+            @NonNull PlayerStatistics statistics
+    ) {
+        return new UserProfile(
+                profile.getUsername(),
+                profile.getEmail(),
+                profile.getAvatarUri(),
+                profile.getTokens(),
+                profile.getTotalStars(),
+                profile.getLeagueName(),
+                profile.getLeagueTierKey(),
+                profile.getRegion(),
+                profile.getInvitePayload(),
+                statistics
+        );
+    }
+
+    private void saveRemoteProfile(@NonNull UserProfile profile) {
+        if (remote.isLoggedIn()) {
+            String uid = remote.getCurrentUid();
+            if (uid != null) {
+                remote.saveUserProfile(uid, profile, () -> { }, error -> { });
+            }
+        }
+    }
+
     @NonNull
     private UserProfile createDefaultProfile(
             @NonNull String username,

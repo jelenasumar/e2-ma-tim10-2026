@@ -34,6 +34,7 @@ public class AssociationsFragment extends Fragment {
     private int renderedRound = -1;
     private String roomId = "";
     private boolean gameOverHandled;
+    private boolean statsRecorded;
 
     public AssociationsFragment() {
         super(R.layout.fragment_associations);
@@ -171,10 +172,20 @@ public class AssociationsFragment extends Fragment {
         finalSubmitButton.setEnabled(state.isInputsEnabled() && !revealAll && state.isFieldOpenedThisTurn());
         finishTurnButton.setEnabled(state.isInputsEnabled() && !revealAll && state.isFieldOpenedThisTurn());
 
+        recordStatsIfNeeded(state);
+
         if (state.isGameOver() && !roomId.isEmpty() && !gameOverHandled) {
             gameOverHandled = true;
             RoomGameFlow.onGameFinished(this, roomId);
         }
+    }
+
+    private void recordStatsIfNeeded(@NonNull AssociationsGameState state) {
+        if (statsRecorded || !state.isGameOver()) {
+            return;
+        }
+        statsRecorded = true;
+        new UserProfileRepository(requireContext()).recordAsocijacijeGame(viewModel.getCurrentUserScore());
     }
 
     private void renderColumn(

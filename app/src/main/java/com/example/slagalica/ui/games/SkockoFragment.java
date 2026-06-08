@@ -41,6 +41,7 @@ public class SkockoFragment extends Fragment {
     private SkockoViewModel viewModel;
     private String roomId = "";
     private boolean gameOverHandled;
+    private boolean statsRecorded;
 
     public SkockoFragment() {
         super(R.layout.fragment_skocko);
@@ -134,10 +135,20 @@ public class SkockoFragment extends Fragment {
         renderFinalCombination(state);
         submitButton.setEnabled(canSubmit(state));
 
+        recordStatsIfNeeded(state);
+
         if (state.isGameOver() && !roomId.isEmpty() && !gameOverHandled) {
             gameOverHandled = true;
             RoomGameFlow.onGameFinished(this, roomId);
         }
+    }
+
+    private void recordStatsIfNeeded(@NonNull SkockoGameState state) {
+        if (statsRecorded || !state.isGameOver()) {
+            return;
+        }
+        statsRecorded = true;
+        new UserProfileRepository(requireContext()).recordSkockoGame(viewModel.getCurrentUserScore());
     }
 
     private void renderSubmittedAttempts(@NonNull List<SkockoAttempt> attempts) {

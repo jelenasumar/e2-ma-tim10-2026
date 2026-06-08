@@ -195,6 +195,22 @@ public class SkockoViewModel extends GameViewModel {
         publishGameState();
     }
 
+    public int getCurrentUserScore() {
+        if (!roomMode) {
+            return playerOneScore;
+        }
+        if (roomSession == null || myUid.isEmpty()) {
+            return 0;
+        }
+        if (myUid.equals(roomSession.getHostUid())) {
+            return playerOneScore;
+        }
+        if (myUid.equals(roomSession.getGuestUid())) {
+            return playerTwoScore;
+        }
+        return 0;
+    }
+
     @Override
     protected void onCleared() {
         super.onCleared();
