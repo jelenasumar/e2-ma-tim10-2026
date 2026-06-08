@@ -22,6 +22,7 @@ import com.example.slagalica.model.KoZnaZnaUiState;
 import com.example.slagalica.model.RoomSession;
 import com.google.firebase.firestore.ListenerRegistration;
 
+import java.util.Collections;
 import java.util.List;
 
 public class KoZnaZnaViewModel extends AndroidViewModel {
@@ -178,7 +179,6 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     private void publishWaitingState(@NonNull RoomSession room) {
-        List<KoZnaZnaQuestion> questions = KoZnaZnaQuestion.defaultQuestions();
         uiState.setValue(new KoZnaZnaUiState(
                 1,
                 KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH,
@@ -190,8 +190,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 room.getGuestUsername(),
                 "",
                 "",
-                questions.get(0).getText(),
-                questions.get(0).getOptions(),
+                "",
+                Collections.emptyList(),
                 KoZnaZnaUiState.NO_SELECTION,
                 false,
                 false,
@@ -419,9 +419,13 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 : remainingQuestionSlots * questionSlotSeconds + questionLeft;
 
         KoZnaZnaQuestion question = currentQuestion(match);
-        List<String> options = question != null
-                ? question.getOptions()
-                : KoZnaZnaQuestion.defaultQuestions().get(0).getOptions();
+        boolean showQuestion = !waitingForStart || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus());
+        String questionText = "";
+        List<String> options = Collections.emptyList();
+        if (showQuestion && question != null) {
+            questionText = question.getText();
+            options = question.getOptions();
+        }
 
         boolean finished = KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus());
         boolean canAnswer = canAnswerLocally() && !finished;
@@ -452,7 +456,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 match.getGuestUsername(),
                 hostAvatarUri,
                 guestAvatarUri,
-                question != null ? question.getText() : "",
+                questionText,
                 options,
                 selectedAnswerIndex,
                 canAnswer,
@@ -488,7 +492,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         profileRepository.fetchAvatarUriForUser(
                 uid,
                 uri -> {
-                    String resolved = preferPublicAvatarUri(uri);
+                    String resolved = resolveRemoteAvatarUri(uri);
                     if (resolved.isEmpty()) {
                         return;
                     }
@@ -509,18 +513,10 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         if (myAvatarPublished || matchId == null || matchId.isEmpty() || myUid.isEmpty()) {
             return;
         }
-        String avatarUri = preferPublicAvatarUri(profileRepository.loadProfile().getAvatarUri());
-        if (avatarUri.isEmpty()) {
-            profileRepository.fetchProfile(
-                    profile -> {
-                        String remoteAvatar = preferPublicAvatarUri(profile.getAvatarUri());
-                        uploadAvatarIfNeeded(match, remoteAvatar);
-                    },
-                    error -> { }
-            );
-            return;
-        }
-        uploadAvatarIfNeeded(match, avatarUri);
+        profileRepository.ensurePublicAvatarUri(
+                avatarUri -> uploadAvatarIfNeeded(match, avatarUri),
+                error -> { }
+        );
     }
 
     private void uploadAvatarIfNeeded(@NonNull KoZnaZnaMatch match, @NonNull String avatarUri) {
@@ -558,7 +554,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     @NonNull
-    private static String preferPublicAvatarUri(@Nullable String avatarUri) {
+    private static String resolveRemoteAvatarUri(@Nullable String avatarUri) {
         if (avatarUri == null || avatarUri.isEmpty()) {
             return "";
         }

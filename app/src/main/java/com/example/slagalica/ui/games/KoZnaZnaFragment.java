@@ -132,10 +132,14 @@ public class KoZnaZnaFragment extends Fragment {
         ));
         questionTimeView.setText(getString(R.string.kzz_question_time_value, state.getQuestionSecondsLeft()));
         updateGameHeader(state);
+
+        boolean showQuestion = !state.getQuestionText().isEmpty();
+        questionView.setVisibility(showQuestion ? View.VISIBLE : View.GONE);
+        answersGroup.setVisibility(showQuestion ? View.VISIBLE : View.GONE);
         questionView.setText(state.getQuestionText());
 
         List<String> options = state.getOptions();
-        if (options.size() >= 4) {
+        if (showQuestion && options.size() >= 4) {
             answerA.setText(options.get(0));
             answerB.setText(options.get(1));
             answerC.setText(options.get(2));

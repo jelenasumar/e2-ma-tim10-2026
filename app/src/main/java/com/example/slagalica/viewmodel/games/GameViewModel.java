@@ -83,6 +83,18 @@ public class GameViewModel extends AndroidViewModel {
             return;
         }
         avatarsLoadRequested = true;
+        profileRepository.ensurePublicAvatarUri(
+                unused -> loadRemotePlayerAvatars(myUid, hostUid, guestUid, onUpdated),
+                error -> loadRemotePlayerAvatars(myUid, hostUid, guestUid, onUpdated)
+        );
+    }
+
+    private void loadRemotePlayerAvatars(
+            @NonNull String myUid,
+            @NonNull String hostUid,
+            @NonNull String guestUid,
+            @NonNull Runnable onUpdated
+    ) {
         profileRepository.fetchAvatarUriForUser(
                 hostUid,
                 uri -> {

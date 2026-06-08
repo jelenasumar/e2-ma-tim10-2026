@@ -4,6 +4,7 @@ import android.content.Context;
 import android.net.Uri;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.example.slagalica.data.local.UserPreferences;
 import com.example.slagalica.data.remote.FireBaseUserDataSource;
@@ -12,6 +13,8 @@ import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.R;
 import com.example.slagalica.utils.AvatarFileStorage;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -88,6 +91,62 @@ public final class UserProfileRepository {
             preferences.saveProfile(profile);
             onSuccess.accept(profile);
         }, onError);
+    }
+
+    public void ensurePublicAvatarUri(
+            @NonNull Consumer<String> onReady,
+            @NonNull Consumer<String> onError
+    ) {
+        UserProfile profile = loadProfile();
+        String avatarUri = profile.getAvatarUri();
+        if (avatarUri != null
+                && (avatarUri.startsWith("http://") || avatarUri.startsWith("https://"))) {
+            onReady.accept(avatarUri);
+            return;
+        }
+        if (!remote.isLoggedIn()) {
+            onReady.accept("");
+            return;
+        }
+        String uid = remote.getCurrentUid();
+        if (uid == null) {
+            onReady.accept("");
+            return;
+        }
+        File localFile = resolveAvatarFile(avatarUri, uid);
+        if (localFile == null || !localFile.exists()) {
+            onReady.accept("");
+            return;
+        }
+        try {
+            byte[] imageBytes = AvatarFileStorage.readBytes(localFile);
+            remote.uploadAvatar(uid, imageBytes, downloadUrl -> {
+                persistAvatar(downloadUrl, () -> onReady.accept(downloadUrl));
+            }, onError);
+        } catch (IOException e) {
+            onError.accept(e.getMessage() != null ? e.getMessage() : "Avatar upload failed.");
+        }
+    }
+
+    @Nullable
+    private File resolveAvatarFile(@Nullable String avatarUri, @NonNull String uid) {
+        if (avatarUri != null && !avatarUri.isEmpty()) {
+            if (avatarUri.startsWith("file:")) {
+                String path = Uri.parse(avatarUri).getPath();
+                if (path != null) {
+                    File filePath = new File(path);
+                    if (filePath.exists()) {
+                        return filePath;
+                    }
+                }
+            }
+            File directPath = new File(avatarUri);
+            if (directPath.exists()) {
+                return directPath;
+            }
+        }
+        File defaultFile = AvatarFileStorage.avatarFile(appContext, uid);
+        return defaultFile.exists() ? defaultFile : null;
     }
 
     public void fetchAvatarUriForUser(

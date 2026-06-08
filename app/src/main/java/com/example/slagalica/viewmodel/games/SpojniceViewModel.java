@@ -349,6 +349,13 @@ public class SpojniceViewModel extends AndroidViewModel {
             return;
         }
         avatarsLoadRequested = true;
+        profileRepository.ensurePublicAvatarUri(
+                unused -> fetchRemoteAvatars(hostUid, guestUid),
+                error -> fetchRemoteAvatars(hostUid, guestUid)
+        );
+    }
+
+    private void fetchRemoteAvatars(@NonNull String hostUid, @NonNull String guestUid) {
         profileRepository.fetchAvatarUriForUser(
                 hostUid,
                 uri -> {
