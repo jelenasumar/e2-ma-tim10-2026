@@ -107,13 +107,25 @@ public final class KoZnaZnaMatchRepository {
 
     public void submitAnswer(
             @NonNull String matchId,
-            boolean isHost,
+            @NonNull String playerUid,
+            @NonNull String hostUid,
             int answerIndex,
             long answeredAtMs,
             @NonNull Runnable onSuccess,
             @NonNull Consumer<String> onError
     ) {
-        remote.submitAnswer(matchId, isHost, answerIndex, answeredAtMs, onSuccess, onError);
+        remote.submitAnswer(matchId, playerUid, hostUid, answerIndex, answeredAtMs, onSuccess, onError);
+    }
+
+    public void updatePlayerAvatar(
+            @NonNull String matchId,
+            @NonNull String playerUid,
+            @NonNull String hostUid,
+            @NonNull String avatarUri,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        remote.updatePlayerAvatar(matchId, playerUid, hostUid, avatarUri, onSuccess, onError);
     }
 
     public void tryResolveQuestion(

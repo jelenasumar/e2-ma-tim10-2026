@@ -26,8 +26,6 @@ import java.util.List;
 
 public class KoZnaZnaViewModel extends AndroidViewModel {
 
-    private static final long ADVANCE_DELAY_MS = 1_200L;
-
     private final KoZnaZnaMatchRepository matchRepository;
     private final UserProfileRepository profileRepository;
     private final RoomSessionRepository roomRepository = new RoomSessionRepository();
@@ -47,7 +45,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private boolean statsRecorded;
     private boolean advancingQuestion;
     private boolean roomMatchCreationStarted;
-    private boolean avatarsLoadRequested;
+    private boolean myAvatarPublished;
     private int lastScheduledAdvanceIndex = -1;
     private int selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
     private int myHits;
@@ -81,7 +79,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         this.iHaveAnswered = false;
         this.statsRecorded = false;
         this.advancingQuestion = false;
-        this.avatarsLoadRequested = false;
+        this.myAvatarPublished = false;
         this.lastScheduledAdvanceIndex = -1;
         this.selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
         this.myHits = 0;
@@ -192,7 +190,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 localStatusMessage,
                 false
         ));
-        ensurePlayerAvatars(room.getHostUid(), room.getGuestUid());
+        syncAvatarsFromMatch(null, room.getHostUid(), room.getGuestUid());
     }
 
     public void selectAnswer(int answerIndex) {
@@ -223,7 +221,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         iHaveAnswered = true;
         matchRepository.submitAnswer(
                 matchId,
-                isHost,
+                myUid,
+                latestMatch.getHostUid(),
                 selectedAnswerIndex,
                 answeredAtMs,
                 () -> publishFromMatch(latestMatch),
@@ -239,7 +238,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         long answeredAtMs = System.currentTimeMillis() - latestMatch.getQuestionStartedAtMs();
         matchRepository.submitAnswer(
                 matchId,
-                isHost,
+                myUid,
+                latestMatch.getHostUid(),
                 KoZnaZnaScoring.ANSWER_SKIP,
                 answeredAtMs,
                 () -> publishFromMatch(latestMatch),
@@ -270,7 +270,8 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             myUid = matchRepository.getCurrentUid() != null ? matchRepository.getCurrentUid() : myUid;
         }
         isHost = myUid.equals(match.getHostUid());
-        ensurePlayerAvatars(match.getHostUid(), match.getGuestUid());
+        syncAvatarsFromMatch(match, match.getHostUid(), match.getGuestUid());
+        publishMyAvatarToMatch(match);
 
         int previousQuestionIndex = latestMatch != null ? latestMatch.getCurrentQuestionIndex() : -1;
         if (match.getCurrentQuestionIndex() != previousQuestionIndex) {
@@ -358,7 +359,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                     lastScheduledAdvanceIndex = -1;
                     errorMessage.setValue(error);
                 }
-        ), ADVANCE_DELAY_MS);
+        ), KoZnaZnaMatchDataSource.ADVANCE_DELAY_MS);
     }
 
     private void onTimerTick() {
@@ -390,7 +391,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 : match.getQuestionOrder().size();
 
         boolean finished = KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus());
-        boolean canAnswer = canAnswerLocally() && !match.isQuestionResolved() && questionLeft > 0 && !finished;
+        boolean canAnswer = canAnswerLocally() && !match.isQuestionResolved() && !finished;
 
         int opponentAnswerIndex = isHost ? match.getGuestAnswerIndex() : match.getHostAnswerIndex();
         boolean waitingOpponent = iHaveAnswered
@@ -433,28 +434,41 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         ));
     }
 
-    private void ensurePlayerAvatars(@NonNull String hostUid, @NonNull String guestUid) {
-        if (avatarsLoadRequested) {
-            applyLocalAvatarOverride(hostUid, guestUid);
+    private void syncAvatarsFromMatch(
+            @Nullable KoZnaZnaMatch match,
+            @NonNull String hostUid,
+            @NonNull String guestUid
+    ) {
+        if (match != null) {
+            if (!match.getHostAvatarUri().isEmpty()) {
+                hostAvatarUri = match.getHostAvatarUri();
+            }
+            if (!match.getGuestAvatarUri().isEmpty()) {
+                guestAvatarUri = match.getGuestAvatarUri();
+            }
+        }
+        applyLocalAvatarOverride(hostUid, guestUid);
+        fetchMissingAvatar(hostUid, true);
+        fetchMissingAvatar(guestUid, false);
+    }
+
+    private void fetchMissingAvatar(@NonNull String uid, boolean hostSlot) {
+        String current = hostSlot ? hostAvatarUri : guestAvatarUri;
+        if (!current.isEmpty() || uid.isEmpty()) {
             return;
         }
-        avatarsLoadRequested = true;
         profileRepository.fetchAvatarUriForUser(
-                hostUid,
+                uid,
                 uri -> {
-                    hostAvatarUri = uri != null ? uri : "";
-                    applyLocalAvatarOverride(hostUid, guestUid);
-                    if (latestMatch != null) {
-                        publishFromMatch(latestMatch);
+                    String resolved = preferPublicAvatarUri(uri);
+                    if (resolved.isEmpty()) {
+                        return;
                     }
-                },
-                error -> { }
-        );
-        profileRepository.fetchAvatarUriForUser(
-                guestUid,
-                uri -> {
-                    guestAvatarUri = uri != null ? uri : "";
-                    applyLocalAvatarOverride(hostUid, guestUid);
+                    if (hostSlot) {
+                        hostAvatarUri = resolved;
+                    } else {
+                        guestAvatarUri = resolved;
+                    }
                     if (latestMatch != null) {
                         publishFromMatch(latestMatch);
                     }
@@ -463,10 +477,50 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         );
     }
 
+    private void publishMyAvatarToMatch(@NonNull KoZnaZnaMatch match) {
+        if (myAvatarPublished || matchId == null || matchId.isEmpty() || myUid.isEmpty()) {
+            return;
+        }
+        String avatarUri = preferPublicAvatarUri(profileRepository.loadProfile().getAvatarUri());
+        if (avatarUri.isEmpty()) {
+            profileRepository.fetchProfile(
+                    profile -> {
+                        String remoteAvatar = preferPublicAvatarUri(profile.getAvatarUri());
+                        uploadAvatarIfNeeded(match, remoteAvatar);
+                    },
+                    error -> { }
+            );
+            return;
+        }
+        uploadAvatarIfNeeded(match, avatarUri);
+    }
+
+    private void uploadAvatarIfNeeded(@NonNull KoZnaZnaMatch match, @NonNull String avatarUri) {
+        if (avatarUri.isEmpty()) {
+            return;
+        }
+        String existing = myUid.equals(match.getHostUid())
+                ? match.getHostAvatarUri()
+                : match.getGuestAvatarUri();
+        if (avatarUri.equals(existing)) {
+            myAvatarPublished = true;
+            return;
+        }
+        myAvatarPublished = true;
+        matchRepository.updatePlayerAvatar(
+                matchId,
+                myUid,
+                match.getHostUid(),
+                avatarUri,
+                () -> { },
+                error -> myAvatarPublished = false
+        );
+    }
+
     private void applyLocalAvatarOverride(@NonNull String hostUid, @NonNull String guestUid) {
-        String localAvatar = profileRepository.loadProfile().getAvatarUri();
-        if (localAvatar == null) {
-            localAvatar = "";
+        String localAvatar = localAvatarUri(profileRepository.loadProfile().getAvatarUri());
+        if (localAvatar.isEmpty()) {
+            return;
         }
         if (myUid.equals(hostUid)) {
             hostAvatarUri = localAvatar;
@@ -475,11 +529,33 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
     }
 
+    @NonNull
+    private static String preferPublicAvatarUri(@Nullable String avatarUri) {
+        if (avatarUri == null || avatarUri.isEmpty()) {
+            return "";
+        }
+        if (avatarUri.startsWith("http://") || avatarUri.startsWith("https://")) {
+            return avatarUri;
+        }
+        return "";
+    }
+
+    @NonNull
+    private static String localAvatarUri(@Nullable String avatarUri) {
+        return avatarUri != null ? avatarUri : "";
+    }
+
     private boolean canAnswerLocally() {
-        return latestMatch != null
-                && KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())
-                && !iHaveAnswered
-                && !latestMatch.isQuestionResolved();
+        if (latestMatch == null
+                || !KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())
+                || iHaveAnswered
+                || latestMatch.isQuestionResolved()) {
+            return false;
+        }
+        int myAnswerIndex = myUid.equals(latestMatch.getHostUid())
+                ? latestMatch.getHostAnswerIndex()
+                : latestMatch.getGuestAnswerIndex();
+        return myAnswerIndex == KoZnaZnaScoring.ANSWER_PENDING;
     }
 
     @Nullable

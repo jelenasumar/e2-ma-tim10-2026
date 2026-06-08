@@ -29,6 +29,7 @@ public final class KoZnaZnaMatchDataSource {
     public static final int QUESTION_MS = 5_000;
     public static final int QUESTIONS_PER_MATCH = 5;
     public static final int ROUND_MS = QUESTIONS_PER_MATCH * QUESTION_MS;
+    public static final long ADVANCE_DELAY_MS = 600L;
     private static final int DEFAULT_QUESTIONS_PER_MATCH = QUESTIONS_PER_MATCH;
 
     private final FirebaseFirestore db;
@@ -218,12 +219,14 @@ public final class KoZnaZnaMatchDataSource {
 
     public void submitAnswer(
             @NonNull String matchId,
-            boolean isHost,
+            @NonNull String playerUid,
+            @NonNull String hostUid,
             int answerIndex,
             long answeredAtMs,
             @NonNull Runnable onSuccess,
             @NonNull Consumer<String> onError
     ) {
+        boolean isHost = playerUid.equals(hostUid);
         Map<String, Object> updates = new HashMap<>();
         if (isHost) {
             updates.put("hostAnswerIndex", answerIndex);
@@ -231,6 +234,29 @@ public final class KoZnaZnaMatchDataSource {
         } else {
             updates.put("guestAnswerIndex", answerIndex);
             updates.put("guestAnsweredAtMs", answeredAtMs);
+        }
+        db.collection(MATCHES).document(matchId).update(updates)
+                .addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> onError.accept(errorMessage(e)));
+    }
+
+    public void updatePlayerAvatar(
+            @NonNull String matchId,
+            @NonNull String playerUid,
+            @NonNull String hostUid,
+            @NonNull String avatarUri,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (avatarUri.isEmpty()) {
+            onSuccess.run();
+            return;
+        }
+        Map<String, Object> updates = new HashMap<>();
+        if (playerUid.equals(hostUid)) {
+            updates.put("hostAvatarUri", avatarUri);
+        } else {
+            updates.put("guestAvatarUri", avatarUri);
         }
         db.collection(MATCHES).document(matchId).update(updates)
                 .addOnSuccessListener(unused -> onSuccess.run())
@@ -312,7 +338,9 @@ public final class KoZnaZnaMatchDataSource {
                     guestPending ? KoZnaZnaScoring.ANSWER_SKIP : match.getGuestAnswerIndex(),
                     match.getHostAnsweredAtMs(),
                     match.getGuestAnsweredAtMs(),
-                    match.getQuestionOrder()
+                    match.getQuestionOrder(),
+                    match.getHostAvatarUri(),
+                    match.getGuestAvatarUri()
             );
         }).addOnSuccessListener(result -> onResolved.accept((KoZnaZnaMatch) result))
                 .addOnFailureListener(e -> onError.accept(errorMessage(e)));
@@ -345,9 +373,14 @@ public final class KoZnaZnaMatchDataSource {
                 updates.put("questionResolved", false);
                 updates.put("statusMessage", "");
             } else {
+                int remainingQuestions = totalQuestions - nextIndex;
                 updates.put("currentQuestionIndex", nextIndex);
                 updates.put("questionStartedAtMs", now);
                 updates.put("questionEndsAtMs", now + QUESTION_MS);
+                updates.put(
+                        "roundEndsAtMs",
+                        now + (long) remainingQuestions * QUESTION_MS
+                );
                 updates.put("questionResolved", false);
                 updates.put("statusMessage", "");
                 updates.put("hostAnswerIndex", KoZnaZnaScoring.ANSWER_PENDING);
@@ -385,7 +418,7 @@ public final class KoZnaZnaMatchDataSource {
             long answerMillis
     ) {
         if (answerIndex == KoZnaZnaScoring.ANSWER_SKIP || answerIndex == KoZnaZnaScoring.ANSWER_PENDING) {
-            return new KoZnaZnaScoring.PlayerAnswer(true, null, answerMillis);
+            return new KoZnaZnaScoring.PlayerAnswer(false, null, answerMillis);
         }
         return new KoZnaZnaScoring.PlayerAnswer(
                 true,
@@ -440,6 +473,8 @@ public final class KoZnaZnaMatchDataSource {
         match.put("hostAnsweredAtMs", 0L);
         match.put("guestAnsweredAtMs", 0L);
         match.put("questionOrder", order);
+        match.put("hostAvatarUri", "");
+        match.put("guestAvatarUri", "");
         return match;
     }
 

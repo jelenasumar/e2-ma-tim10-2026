@@ -15,7 +15,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
 
       match /notifications/{notificationId} {
         allow read, create, update: if isSignedIn() && request.auth.uid == userId;

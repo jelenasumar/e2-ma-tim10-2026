@@ -31,6 +31,8 @@ public final class KoZnaZnaMatch {
     private final long hostAnsweredAtMs;
     private final long guestAnsweredAtMs;
     private final List<Integer> questionOrder;
+    private final String hostAvatarUri;
+    private final String guestAvatarUri;
 
     public KoZnaZnaMatch(
             @NonNull String matchId,
@@ -51,7 +53,9 @@ public final class KoZnaZnaMatch {
             int guestAnswerIndex,
             long hostAnsweredAtMs,
             long guestAnsweredAtMs,
-            @NonNull List<Integer> questionOrder
+            @NonNull List<Integer> questionOrder,
+            @NonNull String hostAvatarUri,
+            @NonNull String guestAvatarUri
     ) {
         this.matchId = matchId;
         this.hostUid = hostUid;
@@ -72,6 +76,8 @@ public final class KoZnaZnaMatch {
         this.hostAnsweredAtMs = hostAnsweredAtMs;
         this.guestAnsweredAtMs = guestAnsweredAtMs;
         this.questionOrder = questionOrder;
+        this.hostAvatarUri = hostAvatarUri;
+        this.guestAvatarUri = guestAvatarUri;
     }
 
     @NonNull
@@ -112,7 +118,9 @@ public final class KoZnaZnaMatch {
                 intValue(map.get("guestAnswerIndex"), KoZnaZnaScoring.ANSWER_PENDING),
                 longValue(map.get("hostAnsweredAtMs")),
                 longValue(map.get("guestAnsweredAtMs")),
-                order
+                order,
+                stringValue(map.get("hostAvatarUri")),
+                stringValue(map.get("guestAvatarUri"))
         );
     }
 
@@ -219,5 +227,15 @@ public final class KoZnaZnaMatch {
     @NonNull
     public List<Integer> getQuestionOrder() {
         return questionOrder;
+    }
+
+    @NonNull
+    public String getHostAvatarUri() {
+        return hostAvatarUri;
+    }
+
+    @NonNull
+    public String getGuestAvatarUri() {
+        return guestAvatarUri;
     }
 }
