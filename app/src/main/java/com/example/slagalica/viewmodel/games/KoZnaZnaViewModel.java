@@ -413,7 +413,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         }
 
         long now = System.currentTimeMillis();
-        boolean waitingForStart = !isQuestionTimerActive(match, now);
+        boolean waitingForStart = match.getQuestionStartedAtMs() <= 0L;
         int totalQuestions = match.getQuestionOrder().isEmpty()
                 ? KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH
                 : match.getQuestionOrder().size();
@@ -657,7 +657,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 || myUid.isEmpty()) {
             return false;
         }
-        if (!isQuestionTimerActive(latestMatch, System.currentTimeMillis())) {
+        if (latestMatch.getQuestionStartedAtMs() <= 0L) {
             return false;
         }
         int myAnswerIndex = myUid.equals(latestMatch.getHostUid())

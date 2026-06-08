@@ -86,6 +86,8 @@ public class SpojniceViewModel extends AndroidViewModel {
     private boolean statsRecorded = false;
     private List<SpojnicePuzzle> roundPuzzles = new ArrayList<>();
     private boolean roomInitializationRequested = false;
+    private String displayedPhaseKey = "";
+    private long displayedPhaseEndsAtMillis = 0L;
 
     public SpojniceViewModel(@NonNull Application application) {
         super(application);
@@ -347,7 +349,8 @@ public class SpojniceViewModel extends AndroidViewModel {
         }
 
         long phaseEndsAt = longOrZero(snapshot.get("phaseEndsAtMillis"));
-        publishUiState(secondsFromMillis(cappedRemainingPhaseMillis(phaseEndsAt)));
+        updateDisplayedPhaseClock(phaseEndsAt);
+        publishUiState(secondsFromMillis(displayedRemainingPhaseMillis()));
         startRemotePhaseTimer(phaseEndsAt);
     }
 
@@ -579,7 +582,7 @@ public class SpojniceViewModel extends AndroidViewModel {
             return;
         }
 
-        long remaining = cappedRemainingPhaseMillis(phaseEndsAtMillis);
+        long remaining = displayedRemainingPhaseMillis();
         if (remaining == 0L) {
             expireRemotePhase();
             return;
@@ -638,10 +641,28 @@ public class SpojniceViewModel extends AndroidViewModel {
         return state != null ? state.getSecondsLeft() : 0;
     }
 
-    private long cappedRemainingPhaseMillis(long phaseEndsAtMillis) {
-        long remaining = Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis());
+    private void updateDisplayedPhaseClock(long phaseEndsAtMillis) {
+        String phaseKey = currentRound + "|" + phase;
+        if (phaseKey.equals(displayedPhaseKey)) {
+            return;
+        }
+        displayedPhaseKey = phaseKey;
         long maxDuration = currentPhaseDurationMillis();
-        return maxDuration > 0L ? Math.min(remaining, maxDuration) : remaining;
+        if (phaseEndsAtMillis <= 0L || maxDuration <= 0L) {
+            displayedPhaseEndsAtMillis = 0L;
+            return;
+        }
+        displayedPhaseEndsAtMillis = System.currentTimeMillis() + maxDuration;
+    }
+
+    private long displayedRemainingPhaseMillis() {
+        if (displayedPhaseEndsAtMillis <= 0L) {
+            return 0L;
+        }
+        return Math.min(
+                Math.max(0L, displayedPhaseEndsAtMillis - System.currentTimeMillis()),
+                currentPhaseDurationMillis()
+        );
     }
 
     private long currentPhaseDurationMillis() {
