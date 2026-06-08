@@ -47,8 +47,6 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private boolean myAvatarPublished;
     private boolean resolveInFlight;
     private boolean presenceMarkInFlight;
-    private int frozenRoundLeft = -1;
-    private int frozenQuestionLeft = -1;
     private int selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
     private int myHits;
     private int myMisses;
@@ -83,8 +81,6 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         this.myAvatarPublished = false;
         this.resolveInFlight = false;
         this.presenceMarkInFlight = false;
-        this.frozenRoundLeft = -1;
-        this.frozenQuestionLeft = -1;
         this.selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
         this.myHits = 0;
         this.myMisses = 0;
@@ -302,8 +298,6 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         if (match.getCurrentQuestionIndex() != previousQuestionIndex) {
             resolveInFlight = false;
             iHaveAnswered = false;
-            frozenRoundLeft = -1;
-            frozenQuestionLeft = -1;
             selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
             if (latestMatch != null) {
                 localStatusMessage = buildResolutionMessage(latestMatch);
@@ -416,15 +410,6 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 ? totalQuestions * questionSlotSeconds
                 : remainingQuestionSlots * questionSlotSeconds + questionLeft;
 
-        if (iHaveAnswered && !waitingForStart) {
-            if (frozenRoundLeft < 0) {
-                frozenRoundLeft = roundLeft;
-                frozenQuestionLeft = questionLeft;
-            }
-            roundLeft = frozenRoundLeft;
-            questionLeft = frozenQuestionLeft;
-        }
-
         KoZnaZnaQuestion question = currentQuestion(match);
         List<String> options = question != null
                 ? question.getOptions()
@@ -436,7 +421,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         String status = !match.getStatusMessage().isEmpty()
                 ? match.getStatusMessage()
                 : localStatusMessage;
-        if (waitingForStart && !finished && !canAnswer) {
+        if (waitingForStart && !finished && !canAnswer && !iHaveAnswered) {
             status = getApplication().getString(R.string.kzz_waiting_sync);
         }
 
@@ -607,6 +592,9 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 || !KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())
                 || iHaveAnswered
                 || myUid.isEmpty()) {
+            return false;
+        }
+        if (!isQuestionTimerActive(latestMatch, System.currentTimeMillis())) {
             return false;
         }
         int myAnswerIndex = myUid.equals(latestMatch.getHostUid())
