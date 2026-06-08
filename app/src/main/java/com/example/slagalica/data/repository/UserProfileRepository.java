@@ -90,6 +90,27 @@ public final class UserProfileRepository {
         }, onError);
     }
 
+    public void fetchAvatarUriForUser(
+            @NonNull String uid,
+            @NonNull Consumer<String> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String currentUid = remote.getCurrentUid();
+        if (currentUid != null && currentUid.equals(uid)) {
+            String localUri = loadProfile().getAvatarUri();
+            onSuccess.accept(localUri != null ? localUri : "");
+            return;
+        }
+        remote.fetchUserProfile(
+                uid,
+                profile -> {
+                    String avatarUri = profile.getAvatarUri();
+                    onSuccess.accept(avatarUri != null ? avatarUri : "");
+                },
+                onError
+        );
+    }
+
     public void saveAvatarUri(
             @NonNull Uri pickedImageUri,
             @NonNull Runnable onSuccess,

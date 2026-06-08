@@ -1,5 +1,6 @@
 package com.example.slagalica.viewmodel.games;
 
+import android.app.Application;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
@@ -12,6 +13,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.example.slagalica.data.repository.RoomSessionRepository;
 import com.example.slagalica.data.repository.SkockoRoomRepository;
 import com.example.slagalica.model.GameHeaderPlayerState;
+import com.example.slagalica.model.GameHeaderState;
 import com.example.slagalica.model.RoomSession;
 import com.example.slagalica.model.skocko.SkockoAttempt;
 import com.example.slagalica.model.skocko.SkockoAttemptResult;
@@ -67,6 +69,10 @@ public class SkockoViewModel extends GameViewModel {
     private boolean roundOver = false;
     private boolean gameOver = false;
     private boolean roomMode = false;
+
+    public SkockoViewModel(@NonNull Application application) {
+        super(application);
+    }
 
     @NonNull
     public LiveData<SkockoGameState> getGameState() {
@@ -263,15 +269,42 @@ public class SkockoViewModel extends GameViewModel {
     }
 
     private void applyRoomPlayers(@NonNull RoomSession room, int firstScore, int secondScore) {
-        playerOne = new GameHeaderPlayerState(room.getHostUsername(), firstScore, null);
-        playerTwo = new GameHeaderPlayerState(room.getGuestUsername(), secondScore, null);
+        playerOne = playerOneWithAvatars(room.getHostUsername(), firstScore);
+        playerTwo = playerTwoWithAvatars(room.getGuestUsername(), secondScore);
+        ensurePlayerAvatars(myUid, room.getHostUid(), room.getGuestUid(), this::refreshHeaderAvatars);
     }
 
     private void applyRoomPlayersFromState(@NonNull DocumentSnapshot snapshot) {
         String firstName = stringOrDefault(snapshot.getString("playerOneUsername"), "Igrac 1");
         String secondName = stringOrDefault(snapshot.getString("playerTwoUsername"), "Igrac 2");
-        playerOne = new GameHeaderPlayerState(firstName, playerOneScore, null);
-        playerTwo = new GameHeaderPlayerState(secondName, playerTwoScore, null);
+        playerOne = playerOneWithAvatars(firstName, playerOneScore);
+        playerTwo = playerTwoWithAvatars(secondName, playerTwoScore);
+        if (roomSession != null) {
+            ensurePlayerAvatars(
+                    myUid,
+                    roomSession.getHostUid(),
+                    roomSession.getGuestUid(),
+                    this::refreshHeaderAvatars
+            );
+        }
+    }
+
+    private void refreshHeaderAvatars() {
+        if (playerOne == null || playerTwo == null) {
+            return;
+        }
+        playerOne = playerOneWithAvatars(playerOne.getUsername(), playerOne.getScore());
+        playerTwo = playerTwoWithAvatars(playerTwo.getUsername(), playerTwo.getScore());
+        GameHeaderState currentState = getHeaderState().getValue();
+        if (currentState != null) {
+            setHeaderState(new GameHeaderState(
+                    currentState.getRoundText(),
+                    currentState.getTimeText(),
+                    playerOne,
+                    playerTwo,
+                    currentState.getActivePlayerNumber()
+            ));
+        }
     }
 
     private void submitRoomRoundAttempt() {

@@ -10,10 +10,9 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.slagalica.R;
+import com.example.slagalica.data.remote.KoZnaZnaMatchDataSource;
 import com.example.slagalica.data.repository.KoZnaZnaMatchRepository;
-import com.example.slagalica.data.repository.KzzQuestionsRepository;
 import com.example.slagalica.data.repository.UserProfileRepository;
-import com.example.slagalica.model.KoZnaZnaQuestion;
 import com.example.slagalica.utils.SingleLiveEvent;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.ListenerRegistration;
@@ -43,7 +42,6 @@ public class KoZnaZnaMatchmakingViewModel extends AndroidViewModel {
     }
 
     private final KoZnaZnaMatchRepository matchRepository;
-    private final KzzQuestionsRepository questionsRepository = new KzzQuestionsRepository();
     private final UserProfileRepository profileRepository;
 
     private final MutableLiveData<String> statusMessage = new MutableLiveData<>();
@@ -188,43 +186,20 @@ public class KoZnaZnaMatchmakingViewModel extends AndroidViewModel {
                             R.string.kzz_opponent_joined,
                             guestUsername != null ? guestUsername : getApplication().getString(R.string.kzz_opponent)
                     ));
-                    questionsRepository.loadQuestions(
-                            questions -> {
-                                int poolSize = questions.isEmpty()
-                                        ? KoZnaZnaQuestion.defaultQuestions().size()
-                                        : questions.size();
-                                List<Integer> questionOrder = KzzQuestionsRepository.shuffledIndices(poolSize);
-                                matchRepository.createMatchFromLobby(
-                                        code,
-                                        myUid,
-                                        myUsername,
-                                        guestUid,
-                                        guestUsername != null ? guestUsername : "",
-                                        questionOrder,
-                                        createdMatchId -> { },
-                                        error -> {
-                                            matchCreationStarted = false;
-                                            statusMessage.setValue(mapJoinError(error));
-                                        }
-                                );
-                            },
+                    List<Integer> questionOrder = KoZnaZnaMatchDataSource.shuffledQuestionOrderStatic(
+                            KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH
+                    );
+                    matchRepository.createMatchFromLobby(
+                            code,
+                            myUid,
+                            myUsername,
+                            guestUid,
+                            guestUsername != null ? guestUsername : "",
+                            questionOrder,
+                            createdMatchId -> { },
                             error -> {
-                                List<Integer> questionOrder = KzzQuestionsRepository.shuffledIndices(
-                                        KoZnaZnaQuestion.defaultQuestions().size()
-                                );
-                                matchRepository.createMatchFromLobby(
-                                        code,
-                                        myUid,
-                                        myUsername,
-                                        guestUid,
-                                        guestUsername != null ? guestUsername : "",
-                                        questionOrder,
-                                        createdMatchId -> { },
-                                        lobbyError -> {
-                                            matchCreationStarted = false;
-                                            statusMessage.setValue(mapJoinError(lobbyError));
-                                        }
-                                );
+                                matchCreationStarted = false;
+                                statusMessage.setValue(mapJoinError(error));
                             }
                     );
                 }

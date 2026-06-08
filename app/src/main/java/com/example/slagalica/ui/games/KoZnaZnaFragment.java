@@ -202,16 +202,6 @@ public class KoZnaZnaFragment extends Fragment {
             return;
         }
         GameHeaderFragment gameHeader = (GameHeaderFragment) fragment;
-        UserProfile profile = new UserProfileRepository(requireContext()).loadProfile();
-        String myName = profile.getUsername();
-        if (myName.trim().isEmpty()) {
-            myName = getString(R.string.guest_player);
-        }
-        String myAvatar = profile.getAvatarUri();
-        String playerOneName = state.getPlayerOneLabel();
-        String playerTwoName = state.getPlayerTwoLabel();
-        String playerOneAvatar = playerOneName.equals(myName) ? myAvatar : null;
-        String playerTwoAvatar = playerTwoName.equals(myName) ? myAvatar : null;
         gameHeader.setHeaderState(new GameHeaderState(
                 getString(
                         R.string.kzz_question_counter_value,
@@ -219,8 +209,16 @@ public class KoZnaZnaFragment extends Fragment {
                         state.getTotalQuestions()
                 ),
                 getString(R.string.kzz_round_time_value, state.getRoundSecondsLeft()),
-                new GameHeaderPlayerState(playerOneName, state.getPlayerOneScore(), playerOneAvatar),
-                new GameHeaderPlayerState(playerTwoName, state.getPlayerTwoScore(), playerTwoAvatar)
+                new GameHeaderPlayerState(
+                        state.getPlayerOneLabel(),
+                        state.getPlayerOneScore(),
+                        state.getPlayerOneAvatarUri()
+                ),
+                new GameHeaderPlayerState(
+                        state.getPlayerTwoLabel(),
+                        state.getPlayerTwoScore(),
+                        state.getPlayerTwoAvatarUri()
+                )
         ));
     }
 

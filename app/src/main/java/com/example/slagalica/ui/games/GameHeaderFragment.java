@@ -1,6 +1,5 @@
 package com.example.slagalica.ui.games;
 
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
@@ -16,6 +15,7 @@ import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.GameHeaderPlayerState;
 import com.example.slagalica.model.GameHeaderState;
 import com.example.slagalica.model.UserProfile;
+import com.example.slagalica.utils.AvatarImageLoader;
 
 import java.util.Locale;
 
@@ -130,19 +130,7 @@ public class GameHeaderFragment extends Fragment {
     }
 
     private void bindAvatar(@NonNull ImageView imageView, @Nullable String avatarUri) {
-        if (avatarUri == null || avatarUri.isEmpty()) {
-            imageView.setImageResource(R.drawable.ic_avatar_placeholder);
-            return;
-        }
-
-        try {
-            imageView.setImageURI(Uri.parse(avatarUri));
-            if (imageView.getDrawable() == null) {
-                imageView.setImageResource(R.drawable.ic_avatar_placeholder);
-            }
-        } catch (Throwable ignored) {
-            imageView.setImageResource(R.drawable.ic_avatar_placeholder);
-        }
+        AvatarImageLoader.load(imageView, avatarUri, R.drawable.ic_avatar_placeholder);
     }
 
     private int dpToPx(int value) {

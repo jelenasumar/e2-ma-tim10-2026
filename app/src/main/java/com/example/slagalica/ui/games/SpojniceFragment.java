@@ -359,21 +359,19 @@ public class SpojniceFragment extends Fragment {
             return;
         }
         GameHeaderFragment gameHeader = (GameHeaderFragment) fragment;
-        UserProfile profile = new UserProfileRepository(requireContext()).loadProfile();
-        String myName = profile.getUsername();
-        if (myName.trim().isEmpty()) {
-            myName = getString(R.string.guest_player);
-        }
-        String myAvatar = profile.getAvatarUri();
-        String playerOneName = state.getPlayerOneLabel();
-        String playerTwoName = state.getPlayerTwoLabel();
-        String playerOneAvatar = playerOneName.equals(myName) ? myAvatar : null;
-        String playerTwoAvatar = playerTwoName.equals(myName) ? myAvatar : null;
         gameHeader.setHeaderState(new GameHeaderState(
                 getString(R.string.spojnice_round_value, state.getCurrentRound(), state.getTotalRounds()),
                 getString(R.string.spojnice_time_value, state.getSecondsLeft()),
-                new GameHeaderPlayerState(playerOneName, state.getPlayerOneScore(), playerOneAvatar),
-                new GameHeaderPlayerState(playerTwoName, state.getPlayerTwoScore(), playerTwoAvatar),
+                new GameHeaderPlayerState(
+                        state.getPlayerOneLabel(),
+                        state.getPlayerOneScore(),
+                        state.getPlayerOneAvatarUri()
+                ),
+                new GameHeaderPlayerState(
+                        state.getPlayerTwoLabel(),
+                        state.getPlayerTwoScore(),
+                        state.getPlayerTwoAvatarUri()
+                ),
                 state.getActivePlayerNumber()
         ));
     }

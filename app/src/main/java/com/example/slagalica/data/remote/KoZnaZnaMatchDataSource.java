@@ -257,20 +257,15 @@ public final class KoZnaZnaMatchDataSource {
             long now = System.currentTimeMillis();
             boolean hostPending = match.getHostAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
             boolean guestPending = match.getGuestAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING;
-            boolean timeUp = now >= match.getQuestionEndsAtMs()
-                    || now >= match.getRoundEndsAtMs();
+            boolean timeUp = now >= match.getQuestionEndsAtMs();
 
             if (hostPending && guestPending && !timeUp) {
                 return match;
             }
-
-            if (!hostPending && !guestPending && !timeUp) {
-                // both answered early - resolve now
-            } else if (hostPending && guestPending && timeUp) {
-                // timeout with no answers
-            } else if (!hostPending && guestPending && !timeUp) {
+            if (!hostPending && guestPending && !timeUp) {
                 return match;
-            } else if (hostPending && !guestPending && !timeUp) {
+            }
+            if (hostPending && !guestPending && !timeUp) {
                 return match;
             }
 
@@ -347,11 +342,6 @@ public final class KoZnaZnaMatchDataSource {
             if (nextIndex >= totalQuestions) {
                 updates.put("status", KoZnaZnaMatch.STATUS_FINISHED);
                 updates.put("currentQuestionIndex", Math.min(nextIndex, totalQuestions - 1));
-                updates.put("questionResolved", false);
-                updates.put("statusMessage", "");
-            } else if (now >= match.getRoundEndsAtMs()) {
-                updates.put("status", KoZnaZnaMatch.STATUS_FINISHED);
-                updates.put("currentQuestionIndex", match.getCurrentQuestionIndex());
                 updates.put("questionResolved", false);
                 updates.put("statusMessage", "");
             } else {
