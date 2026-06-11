@@ -29,6 +29,8 @@ public class StepByStepFragment extends Fragment {
 
     private static final int STEP_COUNT = 7;
 
+    private static final int[] STEP_POINTS = {20, 18, 16, 14, 12, 10, 8};
+
     private StepByStepViewModel viewModel;
 
     private final TextView[] sentenceViews = new TextView[STEP_COUNT];
@@ -42,6 +44,8 @@ public class StepByStepFragment extends Fragment {
     private GameHeaderFragment gameHeader;
     private GameHeaderPlayerState playerOneHeaderState;
     private GameHeaderPlayerState playerTwoHeaderState;
+
+    private boolean statsRecorded;
 
     public StepByStepFragment() {
         // Required empty public constructor
@@ -162,6 +166,7 @@ public class StepByStepFragment extends Fragment {
     private void renderState(@NonNull KorakPoKorakUiState state) {
 
         updateGameHeader(state);
+        recordStatsIfNeeded(state);
 
         renderSteps(state);
         renderTimers(state);
@@ -174,7 +179,6 @@ public class StepByStepFragment extends Fragment {
         }
 
         answerInput.setEnabled(state.isCanSubmit());
-        submitButton.setEnabled(state.isCanSubmit());
 
         if (state.isBonusPhase()) {
             answerInput.setHint("Bonus odgovor igrača " + state.getAnsweringPlayerNumber());
@@ -190,8 +194,30 @@ public class StepByStepFragment extends Fragment {
             );
         } else {
             submitButton.setText(R.string.submit);
+            submitButton.setEnabled(state.isCanSubmit());
+            submitButton.setOnClickListener(v -> {
+                String answer = answerInput.getText() != null
+                        ? answerInput.getText().toString()
+                        : "";
+
+                viewModel.submitAnswer(answer);
+                answerInput.setText("");
+            });
         }
 
+    }
+
+    private void recordStatsIfNeeded(@NonNull KorakPoKorakUiState state) {
+        if (statsRecorded || !state.isGameOver()) {
+            return;
+        }
+
+        statsRecorded = true;
+
+        new UserProfileRepository(requireContext()).recordKorakPoKorakGame(
+                viewModel.getPlayerOneScore(),
+                viewModel.getPlayerOneOwnRoundSolvedStepIndex()
+        );
     }
 
     private void renderSteps(@NonNull KorakPoKorakUiState state) {
@@ -217,6 +243,7 @@ public class StepByStepFragment extends Fragment {
                 timerViews[i].setText(String.valueOf(state.getSecondsLeft()));
                 timerViews[i].setAlpha(1f);
             } else {
+                timerViews[i].setText(String.valueOf(STEP_POINTS[i]));
                 timerViews[i].setAlpha(0.35f);
             }
         }

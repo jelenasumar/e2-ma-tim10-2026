@@ -56,6 +56,8 @@ public class StepByStepViewModel extends AndroidViewModel {
 
     private String lastStatusMessage = "";
 
+    private int playerOneOwnRoundSolvedStepIndex = -1;
+
     public StepByStepViewModel(@NonNull Application application) {
         super(application);
     }
@@ -70,6 +72,8 @@ public class StepByStepViewModel extends AndroidViewModel {
             return;
         }
         started = true;
+
+        playerOneOwnRoundSolvedStepIndex = -1;
 
         puzzlesRepository.loadPuzzles(
                 puzzles -> {
@@ -98,6 +102,11 @@ public class StepByStepViewModel extends AndroidViewModel {
             } else {
                 int points = STEP_POINTS[currentStepIndex];
                 addScore(activePlayerNumber, points);
+
+                if (activePlayerNumber == 1) {
+                    playerOneOwnRoundSolvedStepIndex = currentStepIndex;
+                }
+
                 finishRound("Tacno. Igrac " + activePlayerNumber + " osvaja " + points + " bodova.");
             }
             return;
@@ -289,4 +298,13 @@ public class StepByStepViewModel extends AndroidViewModel {
         handler.removeCallbacksAndMessages(null);
         super.onCleared();
     }
+
+    public int getPlayerOneScore() {
+        return playerOneScore;
+    }
+
+    public int getPlayerOneOwnRoundSolvedStepIndex() {
+        return playerOneOwnRoundSolvedStepIndex;
+    }
+
 }
