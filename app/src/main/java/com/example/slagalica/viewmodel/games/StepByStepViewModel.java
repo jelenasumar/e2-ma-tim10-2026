@@ -79,6 +79,10 @@ public class StepByStepViewModel extends AndroidViewModel {
     private String bonusPlayerUid = "";
     private boolean roomMode = false;
     private boolean roomInitializationRequested = false;
+    private int basePlayerOneScore = 0;
+    private int basePlayerTwoScore = 0;
+    private boolean baseScoresCaptured = false;
+    private int currentUserOwnRoundSolvedStepIndex = -1;
 
     public StepByStepViewModel(@NonNull Application application) {
         super(application);
@@ -120,6 +124,9 @@ public class StepByStepViewModel extends AndroidViewModel {
         roomMode = true;
         this.roomId = roomId;
 
+        baseScoresCaptured = false;
+        currentUserOwnRoundSolvedStepIndex = -1;
+
         String uid = roomGameRepository.getCurrentUid();
         myUid = uid != null ? uid : "";
 
@@ -155,6 +162,12 @@ public class StepByStepViewModel extends AndroidViewModel {
 
     private void onRoomChanged(@NonNull RoomSession room) {
         roomSession = room;
+
+        if (!baseScoresCaptured) {
+            baseScoresCaptured = true;
+            basePlayerOneScore = room.getHostTotalScore();
+            basePlayerTwoScore = room.getGuestTotalScore();
+        }
 
         if (korakPoKorakListener == null) {
             korakPoKorakListener = roomGameRepository.listenState(
@@ -209,14 +222,18 @@ public class StepByStepViewModel extends AndroidViewModel {
             currentPuzzle = new KorakPoKorakPuzzle(answer, steps);
         }
 
-        if (myUid.equals(roomSession != null ? roomSession.getHostUid() : "")) {
-            Integer solvedStepIndex = snapshot.contains("solvedStepIndex")
-                    ? intOrDefault(snapshot.get("solvedStepIndex"), -1)
-                    : -1;
+        int solvedStepIndex = snapshot.contains("solvedStepIndex")
+                ? intOrDefault(snapshot.get("solvedStepIndex"), -1)
+                : -1;
 
-            if (activePlayerNumber == 1 && solvedStepIndex >= 0) {
-                playerOneOwnRoundSolvedStepIndex = solvedStepIndex;
-            }
+        if (!myUid.isEmpty()
+                && myUid.equals(activePlayerUid)
+                && solvedStepIndex >= 0) {
+            currentUserOwnRoundSolvedStepIndex = solvedStepIndex;
+        }
+
+        if (activePlayerNumber == 1 && solvedStepIndex >= 0) {
+            playerOneOwnRoundSolvedStepIndex = solvedStepIndex;
         }
 
         long phaseEndsAtMillis = longOrZero(snapshot.get("phaseEndsAtMillis"));
@@ -606,6 +623,34 @@ public class StepByStepViewModel extends AndroidViewModel {
             }
         }
         return values;
+    }
+
+    public int getCurrentUserGameScore() {
+        if (!roomMode) {
+            return playerOneScore;
+        }
+
+        if (roomSession == null || myUid.isEmpty()) {
+            return 0;
+        }
+
+        if (myUid.equals(roomSession.getHostUid())) {
+            return playerOneScore - basePlayerOneScore;
+        }
+
+        if (myUid.equals(roomSession.getGuestUid())) {
+            return playerTwoScore - basePlayerTwoScore;
+        }
+
+        return 0;
+    }
+
+    public int getCurrentUserOwnRoundSolvedStepIndex() {
+        if (!roomMode) {
+            return playerOneOwnRoundSolvedStepIndex;
+        }
+
+        return currentUserOwnRoundSolvedStepIndex;
     }
 
 }

@@ -235,15 +235,15 @@ public class StepByStepFragment extends Fragment {
     }
 
     private void recordStatsIfNeeded(@NonNull KorakPoKorakUiState state) {
-        if (statsRecorded || !state.isGameOver() || !roomId.isEmpty()) {
+        if (statsRecorded || !state.isGameOver()) {
             return;
         }
 
         statsRecorded = true;
 
         new UserProfileRepository(requireContext()).recordKorakPoKorakGame(
-                viewModel.getPlayerOneScore(),
-                viewModel.getPlayerOneOwnRoundSolvedStepIndex()
+                viewModel.getCurrentUserGameScore(),
+                viewModel.getCurrentUserOwnRoundSolvedStepIndex()
         );
     }
 
