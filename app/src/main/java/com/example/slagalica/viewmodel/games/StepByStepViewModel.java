@@ -54,6 +54,8 @@ public class StepByStepViewModel extends AndroidViewModel {
     private boolean gameOver = false;
     private boolean started = false;
 
+    private String lastStatusMessage = "";
+
     public StepByStepViewModel(@NonNull Application application) {
         super(application);
     }
@@ -140,7 +142,7 @@ public class StepByStepViewModel extends AndroidViewModel {
         timer = new CountDownTimer(STEP_DURATION_MS, TIMER_INTERVAL_MS) {
             @Override
             public void onTick(long millisUntilFinished) {
-                publishState(secondsFromMillis(millisUntilFinished), "");
+                publishState(secondsFromMillis(millisUntilFinished), lastStatusMessage);
             }
 
             @Override
@@ -176,7 +178,7 @@ public class StepByStepViewModel extends AndroidViewModel {
         timer = new CountDownTimer(BONUS_DURATION_MS, TIMER_INTERVAL_MS) {
             @Override
             public void onTick(long millisUntilFinished) {
-                publishState(secondsFromMillis(millisUntilFinished), "");
+                publishState(secondsFromMillis(millisUntilFinished), lastStatusMessage);
             }
 
             @Override
@@ -227,6 +229,10 @@ public class StepByStepViewModel extends AndroidViewModel {
             return;
         }
 
+        if (!statusMessage.isEmpty()) {
+            lastStatusMessage = statusMessage;
+        }
+
         List<String> visibleSteps = new ArrayList<>();
         for (int i = 0; i <= currentStepIndex && i < STEP_COUNT; i++) {
             visibleSteps.add(currentPuzzle.getStep(i));
@@ -246,7 +252,7 @@ public class StepByStepViewModel extends AndroidViewModel {
                 roundOver,
                 gameOver,
                 !roundOver && !gameOver,
-                statusMessage
+                lastStatusMessage
         ));
     }
 

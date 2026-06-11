@@ -18,6 +18,13 @@ import com.example.slagalica.R;
 import com.example.slagalica.model.korakpokorak.KorakPoKorakUiState;
 import com.example.slagalica.viewmodel.games.StepByStepViewModel;
 
+import com.example.slagalica.data.repository.UserProfileRepository;
+import com.example.slagalica.model.GameHeaderPlayerState;
+import com.example.slagalica.model.GameHeaderState;
+import com.example.slagalica.model.UserProfile;
+
+import java.util.Locale;
+
 public class StepByStepFragment extends Fragment {
 
     private static final int STEP_COUNT = 7;
@@ -31,6 +38,10 @@ public class StepByStepFragment extends Fragment {
     private Button submitButton;
 
     private TextView statusView;
+
+    private GameHeaderFragment gameHeader;
+    private GameHeaderPlayerState playerOneHeaderState;
+    private GameHeaderPlayerState playerTwoHeaderState;
 
     public StepByStepFragment() {
         // Required empty public constructor
@@ -55,6 +66,8 @@ public class StepByStepFragment extends Fragment {
         viewModel = new ViewModelProvider(this).get(StepByStepViewModel.class);
 
         bindViews(view);
+
+        setupGameHeader();
 
         submitButton.setOnClickListener(v -> {
             String answer = answerInput.getText() != null
@@ -92,7 +105,64 @@ public class StepByStepFragment extends Fragment {
         statusView = view.findViewById(R.id.stepByStepStatus);
     }
 
+    private void setupGameHeader() {
+        Fragment fragment = getChildFragmentManager().findFragmentById(R.id.stepByStepGameHeader);
+        if (!(fragment instanceof GameHeaderFragment)) {
+            return;
+        }
+
+        gameHeader = (GameHeaderFragment) fragment;
+
+        UserProfile profile = new UserProfileRepository(requireContext()).loadProfile();
+        String username = profile.getUsername();
+        if (username == null || username.trim().isEmpty()) {
+            username = getString(R.string.guest_player);
+        }
+
+        playerOneHeaderState = new GameHeaderPlayerState(username, 0, profile.getAvatarUri());
+        playerTwoHeaderState = new GameHeaderPlayerState(getString(R.string.opponent_player), 0, null);
+
+        gameHeader.setHeaderState(new GameHeaderState(
+                getString(R.string.game_header_round_default),
+                getString(R.string.game_header_time_default),
+                playerOneHeaderState,
+                playerTwoHeaderState,
+                1
+        ));
+    }
+
+    private void updateGameHeader(@NonNull KorakPoKorakUiState state) {
+        if (gameHeader == null || playerOneHeaderState == null || playerTwoHeaderState == null) {
+            return;
+        }
+
+        int highlightedPlayer = state.isBonusPhase()
+                ? state.getAnsweringPlayerNumber()
+                : state.getActivePlayerNumber();
+
+        gameHeader.setHeaderState(new GameHeaderState(
+                String.format(
+                        Locale.getDefault(),
+                        "Runda: %d/%d",
+                        state.getCurrentRound(),
+                        state.getTotalRounds()
+                ),
+                String.format(
+                        Locale.getDefault(),
+                        "Preostalo vreme: 00:%02d",
+                        state.getSecondsLeft()
+                ),
+                playerOneHeaderState.withScore(state.getPlayerOneScore()),
+                playerTwoHeaderState.withScore(state.getPlayerTwoScore()),
+                state.isGameOver() ? 0 : highlightedPlayer
+        ));
+    }
+
+
     private void renderState(@NonNull KorakPoKorakUiState state) {
+
+        updateGameHeader(state);
+
         renderSteps(state);
         renderTimers(state);
 
