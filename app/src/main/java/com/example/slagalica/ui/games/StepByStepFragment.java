@@ -22,6 +22,7 @@ import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.GameHeaderPlayerState;
 import com.example.slagalica.model.GameHeaderState;
 import com.example.slagalica.model.UserProfile;
+import com.example.slagalica.ui.room.RoomGameFlow;
 
 import java.util.Locale;
 
@@ -46,6 +47,9 @@ public class StepByStepFragment extends Fragment {
     private GameHeaderPlayerState playerTwoHeaderState;
 
     private boolean statsRecorded;
+
+    private String roomId = "";
+    private boolean gameOverHandled;
 
     public StepByStepFragment() {
         // Required empty public constructor
@@ -84,7 +88,14 @@ public class StepByStepFragment extends Fragment {
 
         viewModel.getUiState().observe(getViewLifecycleOwner(), this::renderState);
 
-        viewModel.startGame();
+        Bundle args = getArguments();
+        roomId = args != null ? args.getString("roomId", "") : "";
+
+        if (!roomId.isEmpty()) {
+            viewModel.startRoomGame(roomId);
+        } else {
+            viewModel.startGame();
+        }
     }
 
     private void bindViews(@NonNull View view) {
@@ -167,6 +178,7 @@ public class StepByStepFragment extends Fragment {
 
         updateGameHeader(state);
         recordStatsIfNeeded(state);
+        handleOnlineGameOver(state);
 
         renderSteps(state);
         renderTimers(state);
@@ -207,8 +219,23 @@ public class StepByStepFragment extends Fragment {
 
     }
 
+    private void handleOnlineGameOver(@NonNull KorakPoKorakUiState state) {
+        if (roomId.isEmpty() || gameOverHandled || !state.isGameOver()) {
+            return;
+        }
+
+        gameOverHandled = true;
+
+        RoomGameFlow.onGameFinished(
+                this,
+                roomId,
+                state.getPlayerOneScore(),
+                state.getPlayerTwoScore()
+        );
+    }
+
     private void recordStatsIfNeeded(@NonNull KorakPoKorakUiState state) {
-        if (statsRecorded || !state.isGameOver()) {
+        if (statsRecorded || !state.isGameOver() || !roomId.isEmpty()) {
             return;
         }
 

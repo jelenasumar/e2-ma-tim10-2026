@@ -14,6 +14,13 @@ import com.example.slagalica.data.repository.KorakPoKorakPuzzlesRepository;
 import com.example.slagalica.model.korakpokorak.KorakPoKorakPuzzle;
 import com.example.slagalica.model.korakpokorak.KorakPoKorakUiState;
 
+import com.example.slagalica.data.repository.KorakPoKorakRoomRepository;
+import com.example.slagalica.data.repository.RoomSessionRepository;
+import com.example.slagalica.model.RoomSession;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.ListenerRegistration;
+import androidx.annotation.Nullable;
+
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -58,6 +65,21 @@ public class StepByStepViewModel extends AndroidViewModel {
 
     private int playerOneOwnRoundSolvedStepIndex = -1;
 
+    private final RoomSessionRepository roomRepository = new RoomSessionRepository();
+    private final KorakPoKorakRoomRepository roomGameRepository = new KorakPoKorakRoomRepository();
+
+    private ListenerRegistration roomListener;
+    private ListenerRegistration korakPoKorakListener;
+
+    private RoomSession roomSession;
+    private String roomId = "";
+    private String myUid = "";
+    private String phase = KorakPoKorakRoomRepository.PHASE_ACTIVE;
+    private String activePlayerUid = "";
+    private String bonusPlayerUid = "";
+    private boolean roomMode = false;
+    private boolean roomInitializationRequested = false;
+
     public StepByStepViewModel(@NonNull Application application) {
         super(application);
     }
@@ -90,7 +112,192 @@ public class StepByStepViewModel extends AndroidViewModel {
         );
     }
 
+    public void startRoomGame(@NonNull String roomId) {
+        if (roomId.isEmpty() || roomId.equals(this.roomId)) {
+            return;
+        }
+
+        roomMode = true;
+        this.roomId = roomId;
+
+        String uid = roomGameRepository.getCurrentUid();
+        myUid = uid != null ? uid : "";
+
+        loadRoundPuzzles(() -> {
+            roomListener = roomRepository.listenRoom(
+                    roomId,
+                    this::onRoomChanged,
+                    error -> publishState(remainingSeconds(), error)
+            );
+        });
+    }
+
+    private void loadRoundPuzzles(@NonNull Runnable onReady) {
+        if (roundPuzzles.size() >= TOTAL_ROUNDS) {
+            onReady.run();
+            return;
+        }
+
+        puzzlesRepository.loadPuzzles(
+                puzzles -> {
+                    List<KorakPoKorakPuzzle> source = puzzles.isEmpty()
+                            ? KorakPoKorakPuzzle.defaultPuzzles()
+                            : puzzles;
+                    preparePuzzles(source);
+                    onReady.run();
+                },
+                error -> {
+                    preparePuzzles(KorakPoKorakPuzzle.defaultPuzzles());
+                    onReady.run();
+                }
+        );
+    }
+
+    private void onRoomChanged(@NonNull RoomSession room) {
+        roomSession = room;
+
+        if (korakPoKorakListener == null) {
+            korakPoKorakListener = roomGameRepository.listenState(
+                    room.getRoomId(),
+                    this::onRemoteStateChanged,
+                    error -> publishState(remainingSeconds(), error)
+            );
+        }
+
+        if (myUid.equals(room.getHostUid())) {
+            initializeRoomGameIfNeeded(room);
+        }
+    }
+
+    private void initializeRoomGameIfNeeded(@NonNull RoomSession room) {
+        if (roomInitializationRequested) {
+            return;
+        }
+
+        roomInitializationRequested = true;
+
+        loadRoundPuzzles(() -> roomGameRepository.initializeIfNeeded(
+                room,
+                puzzleForRound(1),
+                error -> publishState(remainingSeconds(), error)
+        ));
+    }
+
+    private void onRemoteStateChanged(@NonNull DocumentSnapshot snapshot) {
+        currentRound = intOrDefault(snapshot.get("currentRound"), 1);
+        activePlayerNumber = intOrDefault(snapshot.get("activePlayerNumber"), currentRound);
+        playerOneScore = intOrDefault(snapshot.get("playerOneScore"), 0);
+        playerTwoScore = intOrDefault(snapshot.get("playerTwoScore"), 0);
+        currentStepIndex = intOrDefault(snapshot.get("currentStepIndex"), 0);
+
+        activePlayerUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
+        bonusPlayerUid = stringOrEmpty(snapshot.getString("bonusPlayerUid"));
+        phase = stringOrDefault(snapshot.getString("phase"), KorakPoKorakRoomRepository.PHASE_ACTIVE);
+
+        bonusPhase = KorakPoKorakRoomRepository.PHASE_BONUS.equals(phase);
+        roundOver = KorakPoKorakRoomRepository.PHASE_ROUND_OVER.equals(phase)
+                || KorakPoKorakRoomRepository.PHASE_GAME_OVER.equals(phase);
+        gameOver = KorakPoKorakRoomRepository.PHASE_GAME_OVER.equals(phase);
+
+        answeringPlayerNumber = bonusPhase
+                ? playerNumberForUid(bonusPlayerUid)
+                : activePlayerNumber;
+
+        String answer = stringOrEmpty(snapshot.getString("answer"));
+        List<String> steps = stringList(snapshot.get("steps"));
+        if (!answer.isEmpty() && steps.size() == STEP_COUNT) {
+            currentPuzzle = new KorakPoKorakPuzzle(answer, steps);
+        }
+
+        if (myUid.equals(roomSession != null ? roomSession.getHostUid() : "")) {
+            Integer solvedStepIndex = snapshot.contains("solvedStepIndex")
+                    ? intOrDefault(snapshot.get("solvedStepIndex"), -1)
+                    : -1;
+
+            if (activePlayerNumber == 1 && solvedStepIndex >= 0) {
+                playerOneOwnRoundSolvedStepIndex = solvedStepIndex;
+            }
+        }
+
+        long phaseEndsAtMillis = longOrZero(snapshot.get("phaseEndsAtMillis"));
+        int secondsLeft = secondsFromMillis(Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis()));
+
+        publishState(secondsLeft, buildRemoteStatusMessage());
+        startRemoteTimer(phaseEndsAtMillis);
+    }
+
+    private void startRemoteTimer(long phaseEndsAtMillis) {
+        stopTimer();
+
+        if (gameOver || phaseEndsAtMillis <= 0L) {
+            publishState(0, buildRemoteStatusMessage());
+            return;
+        }
+
+        long remaining = Math.max(0L, phaseEndsAtMillis - System.currentTimeMillis());
+        if (remaining == 0L) {
+            expireRemotePhase();
+            return;
+        }
+
+        timer = new CountDownTimer(remaining, TIMER_INTERVAL_MS) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                publishState(secondsFromMillis(millisUntilFinished), buildRemoteStatusMessage());
+            }
+
+            @Override
+            public void onFinish() {
+                publishState(0, buildRemoteStatusMessage());
+                expireRemotePhase();
+            }
+        };
+
+        timer.start();
+    }
+
+    private void expireRemotePhase() {
+        if (!roomMode || roomId.isEmpty()) {
+            return;
+        }
+
+        roomGameRepository.handleExpiredPhase(
+                roomId,
+                puzzleForRound(Math.min(currentRound + 1, TOTAL_ROUNDS)),
+                error -> publishState(remainingSeconds(), error)
+        );
+    }
+
+    @NonNull
+    private KorakPoKorakPuzzle puzzleForRound(int round) {
+        if (roundPuzzles.isEmpty()) {
+            preparePuzzles(KorakPoKorakPuzzle.defaultPuzzles());
+        }
+
+        int index = round - 1;
+        if (index < 0 || index >= roundPuzzles.size()) {
+            index = 0;
+        }
+
+        return roundPuzzles.get(index);
+    }
+
     public void submitAnswer(@NonNull String answer) {
+
+        if (roomMode) {
+            if (answer.trim().isEmpty()) {
+                return;
+            }
+
+            roomGameRepository.submitAnswer(
+                    roomId,
+                    myUid,
+                    answer,
+                    error -> publishState(remainingSeconds(), error)
+            );
+            return;
+        }
+
         if (currentPuzzle == null || gameOver || roundOver || answer.trim().isEmpty()) {
             return;
         }
@@ -247,6 +454,14 @@ public class StepByStepViewModel extends AndroidViewModel {
             visibleSteps.add(currentPuzzle.getStep(i));
         }
 
+        boolean canSubmit;
+        if (roomMode) {
+            String expectedUid = bonusPhase ? bonusPlayerUid : activePlayerUid;
+            canSubmit = !roundOver && !gameOver && !myUid.isEmpty() && myUid.equals(expectedUid);
+        } else {
+            canSubmit = !roundOver && !gameOver;
+        }
+
         uiState.setValue(new KorakPoKorakUiState(
                 currentRound,
                 TOTAL_ROUNDS,
@@ -260,7 +475,7 @@ public class StepByStepViewModel extends AndroidViewModel {
                 bonusPhase,
                 roundOver,
                 gameOver,
-                !roundOver && !gameOver,
+                canSubmit,
                 lastStatusMessage
         ));
     }
@@ -296,6 +511,15 @@ public class StepByStepViewModel extends AndroidViewModel {
     protected void onCleared() {
         stopTimer();
         handler.removeCallbacksAndMessages(null);
+
+        if (roomListener != null) {
+            roomListener.remove();
+        }
+
+        if (korakPoKorakListener != null) {
+            korakPoKorakListener.remove();
+        }
+
         super.onCleared();
     }
 
@@ -305,6 +529,83 @@ public class StepByStepViewModel extends AndroidViewModel {
 
     public int getPlayerOneOwnRoundSolvedStepIndex() {
         return playerOneOwnRoundSolvedStepIndex;
+    }
+
+    @NonNull
+    private String buildRemoteStatusMessage() {
+        if (gameOver) {
+            return "Kraj igre. Igrac 1: " + playerOneScore + ", Igrac 2: " + playerTwoScore + ".";
+        }
+
+        if (KorakPoKorakRoomRepository.PHASE_ROUND_OVER.equals(phase)) {
+            return "Runda je zavrsena. Sledeca runda uskoro.";
+        }
+
+        if (bonusPhase) {
+            if (myUid.equals(bonusPlayerUid)) {
+                return "Bonus sansa. Imas 10 sekundi za odgovor.";
+            }
+            return "Protivnik ima bonus sansu.";
+        }
+
+        if (myUid.equals(activePlayerUid)) {
+            return "Tvoj red. Pogodi pojam u sto manje koraka.";
+        }
+
+        return "Protivnik igra ovu rundu.";
+    }
+
+    private int playerNumberForUid(@NonNull String uid) {
+        if (roomSession == null || uid.isEmpty()) {
+            return activePlayerNumber;
+        }
+
+        if (uid.equals(roomSession.getHostUid())) {
+            return 1;
+        }
+
+        if (uid.equals(roomSession.getGuestUid())) {
+            return 2;
+        }
+
+        return activePlayerNumber;
+    }
+
+    @NonNull
+    private static String stringOrEmpty(@Nullable String value) {
+        return value != null ? value : "";
+    }
+
+    @NonNull
+    private static String stringOrDefault(@Nullable String value, @NonNull String fallback) {
+        return value != null && !value.isEmpty() ? value : fallback;
+    }
+
+    private static int intOrDefault(@Nullable Object value, int fallback) {
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return fallback;
+    }
+
+    private static long longOrZero(@Nullable Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return 0L;
+    }
+
+    @NonNull
+    private static List<String> stringList(@Nullable Object raw) {
+        List<String> values = new ArrayList<>();
+        if (raw instanceof List) {
+            for (Object value : (List<?>) raw) {
+                if (value != null) {
+                    values.add(String.valueOf(value));
+                }
+            }
+        }
+        return values;
     }
 
 }
