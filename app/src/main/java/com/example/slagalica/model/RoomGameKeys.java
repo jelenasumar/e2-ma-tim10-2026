@@ -11,6 +11,8 @@ import java.util.List;
 
 public final class RoomGameKeys {
 
+
+    public static final String KORAK_PO_KORAK = "KORAK_PO_KORAK";
     public static final String KO_ZNA_ZNA = "KO_ZNA_ZNA";
     public static final String SKOCKO = "SKOCKO";
     public static final String SPOJNICE = "SPOJNICE";
@@ -25,6 +27,7 @@ public final class RoomGameKeys {
 
     @NonNull
     public static final List<String> DEFAULT_GAME_ORDER = Collections.unmodifiableList(Arrays.asList(
+            KORAK_PO_KORAK,
             KO_ZNA_ZNA,
             SPOJNICE,
             ASOCIJACIJE,
@@ -44,6 +47,8 @@ public final class RoomGameKeys {
                 return R.id.spojniceFragment;
             case ASOCIJACIJE:
                 return R.id.associationsFragment;
+            case KORAK_PO_KORAK:
+                return R.id.stepByStepFragment;
             default:
                 return 0;
         }
