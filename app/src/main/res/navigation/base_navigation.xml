@@ -15,10 +15,6 @@
             app:destination="@id/mojBrojFragment" />
 
         <action
-            android:id="@+id/action_home_to_stepByStep"
-            app:destination="@id/stepByStepFragment" />
-
-        <action
             android:id="@+id/action_home_to_associations"
             app:destination="@id/associationsFragment" />
 

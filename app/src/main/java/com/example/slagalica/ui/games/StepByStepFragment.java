@@ -94,7 +94,14 @@ public class StepByStepFragment extends Fragment {
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
         } else {
-            viewModel.startGame();
+            statusView.setVisibility(View.VISIBLE);
+            statusView.setText("Korak po korak se pokrece iz online partije.");
+            answerInput.setEnabled(false);
+            submitButton.setEnabled(true);
+            submitButton.setText(R.string.back);
+            submitButton.setOnClickListener(v ->
+                    NavHostFragment.findNavController(this).navigateUp()
+            );
         }
     }
 

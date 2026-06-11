@@ -29,7 +29,6 @@ public class HomeFragment extends Fragment {
         Button notificationsBtn = view.findViewById(R.id.notifikacije);
         Button startOnlineMatchBtn = view.findViewById(R.id.startOnlineMatch);
         Button inviteFriendsBtn = view.findViewById(R.id.inviteFriends);
-        Button stepByStepBtn = view.findViewById(R.id.stepByStepGame);
 
         if (isGuestMode()) {
             view.findViewById(R.id.accountSectionTitle).setVisibility(View.GONE);
@@ -61,10 +60,6 @@ public class HomeFragment extends Fragment {
         inviteFriendsBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
                     .navigate(R.id.action_home_to_inviteFriends);
-        });
-        stepByStepBtn.setOnClickListener(v -> {
-            NavHostFragment.findNavController(this)
-                    .navigate(R.id.action_home_to_stepByStep);
         });
     }
 
