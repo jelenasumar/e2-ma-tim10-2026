@@ -23,10 +23,16 @@ import com.example.slagalica.model.mynumber.MyNumberUiState;
 import com.example.slagalica.ui.room.RoomGameFlow;
 import com.example.slagalica.viewmodel.games.MyNumberViewModel;
 
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+
 import java.util.List;
 import java.util.Locale;
 
-public class MyNumberFragment extends Fragment {
+public class MyNumberFragment extends Fragment implements SensorEventListener {
 
     private static final int NUMBER_COUNT = 6;
 
@@ -47,6 +53,19 @@ public class MyNumberFragment extends Fragment {
 
     private String roomId = "";
     private boolean gameOverHandled;
+
+    private SensorManager sensorManager;
+    private Sensor accelerometer;
+    private MyNumberUiState latestState;
+
+    private long lastShakeMillis;
+    private float lastX;
+    private float lastY;
+    private float lastZ;
+    private boolean hasLastAcceleration;
+
+    private static final float SHAKE_THRESHOLD = 18f;
+    private static final long SHAKE_COOLDOWN_MS = 1_000L;
 
     public MyNumberFragment() {
         // Required empty public constructor.
@@ -71,6 +90,7 @@ public class MyNumberFragment extends Fragment {
         viewModel = new ViewModelProvider(this).get(MyNumberViewModel.class);
 
         bindViews(view);
+        setupShakeSensor();
         setupGameHeader();
 
         stopTargetButton.setOnClickListener(v -> viewModel.stopTarget());
@@ -90,6 +110,15 @@ public class MyNumberFragment extends Fragment {
         }
     }
 
+    private void setupShakeSensor() {
+        sensorManager = (SensorManager) requireContext().getSystemService(Context.SENSOR_SERVICE);
+        if (sensorManager == null) {
+            return;
+        }
+
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+    }
+
     private void bindViews(@NonNull View view) {
         statusView = view.findViewById(R.id.timerText);
         targetNumberView = view.findViewById(R.id.targetNumber);
@@ -104,6 +133,28 @@ public class MyNumberFragment extends Fragment {
         numberViews[3] = view.findViewById(R.id.number4);
         numberViews[4] = view.findViewById(R.id.number5);
         numberViews[5] = view.findViewById(R.id.number6);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        if (sensorManager != null && accelerometer != null) {
+            sensorManager.registerListener(
+                    this,
+                    accelerometer,
+                    SensorManager.SENSOR_DELAY_UI
+            );
+        }
+    }
+
+    @Override
+    public void onPause() {
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
+        }
+
+        super.onPause();
     }
 
     private void setupGameHeader() {
@@ -133,6 +184,9 @@ public class MyNumberFragment extends Fragment {
     }
 
     private void renderState(@NonNull MyNumberUiState state) {
+
+        latestState = state;
+
         updateGameHeader(state);
         handleOnlineGameOver(state);
 
@@ -239,5 +293,68 @@ public class MyNumberFragment extends Fragment {
         submitButton.setOnClickListener(v ->
                 NavHostFragment.findNavController(this).navigateUp()
         );
+    }
+
+    @Override
+    public void onSensorChanged(@NonNull SensorEvent event) {
+        if (event.sensor.getType() != Sensor.TYPE_ACCELEROMETER) {
+            return;
+        }
+
+        float x = event.values[0];
+        float y = event.values[1];
+        float z = event.values[2];
+
+        if (!hasLastAcceleration) {
+            hasLastAcceleration = true;
+            lastX = x;
+            lastY = y;
+            lastZ = z;
+            return;
+        }
+
+        float deltaX = x - lastX;
+        float deltaY = y - lastY;
+        float deltaZ = z - lastZ;
+
+        lastX = x;
+        lastY = y;
+        lastZ = z;
+
+        double accelerationDelta = Math.sqrt(
+                deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ
+        );
+
+        if (accelerationDelta < SHAKE_THRESHOLD) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (now - lastShakeMillis < SHAKE_COOLDOWN_MS) {
+            return;
+        }
+
+        lastShakeMillis = now;
+        handleShake();
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // No-op.
+    }
+
+    private void handleShake() {
+        if (latestState == null) {
+            return;
+        }
+
+        if (latestState.isCanStopTarget()) {
+            viewModel.stopTarget();
+            return;
+        }
+
+        if (latestState.isCanStopNumbers()) {
+            viewModel.stopNumbers();
+        }
     }
 }
