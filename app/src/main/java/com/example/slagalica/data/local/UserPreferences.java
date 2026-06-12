@@ -39,6 +39,7 @@ public final class UserPreferences {
     private static final String KEY_MOJ_BROJ_PCT = "moj_broj_correct_pct";
     private static final String KEY_KPK_STEPS_PCT = "kpk_step_pcts";
     private static final String KEY_KPK_GAMES = "kpk_games_count";
+    private static final String KEY_MOJ_BROJ_GAMES = "moj_broj_games_count";
     private static final String KEY_ASOC_SOLVED = "asoc_solved";
     private static final String KEY_ASOC_UNSOLVED = "asoc_unsolved";
     private static final String KEY_SKOCKO_COMBO_PCT = "skocko_combo_pct";
@@ -239,5 +240,13 @@ public final class UserPreferences {
             sb.append(steps.get(i));
         }
         return sb.toString();
+    }
+
+    public int getMojBrojGamesPlayed() {
+        return prefs.getInt(KEY_MOJ_BROJ_GAMES, 0);
+    }
+
+    public void setMojBrojGamesPlayed(int count) {
+        prefs.edit().putInt(KEY_MOJ_BROJ_GAMES, count).apply();
     }
 }

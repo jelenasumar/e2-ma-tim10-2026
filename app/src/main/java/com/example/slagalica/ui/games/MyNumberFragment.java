@@ -67,6 +67,8 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
     private static final float SHAKE_THRESHOLD = 18f;
     private static final long SHAKE_COOLDOWN_MS = 1_000L;
 
+    private boolean statsRecorded;
+
     public MyNumberFragment() {
         // Required empty public constructor.
     }
@@ -189,6 +191,8 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
 
         updateGameHeader(state);
         handleOnlineGameOver(state);
+
+        recordStatsIfNeeded(state);
 
         targetNumberView.setText(state.isTargetRevealed()
                 ? String.valueOf(state.getTargetNumber())
@@ -356,5 +360,18 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
         if (latestState.isCanStopNumbers()) {
             viewModel.stopNumbers();
         }
+    }
+
+    private void recordStatsIfNeeded(@NonNull MyNumberUiState state) {
+        if (statsRecorded || !state.isGameOver()) {
+            return;
+        }
+
+        statsRecorded = true;
+
+        new UserProfileRepository(requireContext()).recordMojBrojGame(
+                viewModel.getCurrentUserGameScore(),
+                viewModel.didCurrentUserHitExact()
+        );
     }
 }

@@ -535,6 +535,53 @@ public final class UserProfileRepository {
         saveRemoteProfile(updatedProfile);
     }
 
+    public void recordMojBrojGame(int gameScore, boolean exactHit) {
+        if (!isRegisteredPlayer()) {
+            return;
+        }
+
+        UserProfile profile = preferences.loadProfile();
+        PlayerStatistics stats = profile.getStatistics();
+
+        int gamesPlayed = preferences.getMojBrojGamesPlayed();
+
+        float newAvg = gamesPlayed == 0
+                ? gameScore
+                : ((stats.getAvgScoreMojBroj() * gamesPlayed) + gameScore) / (gamesPlayed + 1f);
+
+        float currentExactPercent = exactHit ? 100f : 0f;
+        float newExactPercent = gamesPlayed == 0
+                ? currentExactPercent
+                : ((stats.getMojBrojCorrectPercent() * gamesPlayed) + currentExactPercent) / (gamesPlayed + 1f);
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                stats.getAvgScoreKoZnaZna(),
+                stats.getAvgScoreSpojnice(),
+                newAvg,
+                stats.getAvgScoreKorakPoKorak(),
+                stats.getAvgScoreAsocijacije(),
+                stats.getAvgScoreSkocko(),
+                stats.getKoZnaZnaHits(),
+                stats.getKoZnaZnaMisses(),
+                newExactPercent,
+                stats.getKorakPoKorakStepPercents(),
+                stats.getAsocijacijeSolved(),
+                stats.getAsocijacijeUnsolved(),
+                stats.getSkockoComboPercent(),
+                stats.getSpojniceLinkedPercent(),
+                stats.getTotalMatches(),
+                stats.getMatchesWinPercent(),
+                stats.getMatchesLossPercent(),
+                stats.getMatchesWon(),
+                stats.getMatchesLost()
+        );
+
+        UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);
+        preferences.setMojBrojGamesPlayed(gamesPlayed + 1);
+        preferences.saveProfile(updatedProfile);
+        saveRemoteProfile(updatedProfile);
+    }
+
     public void recordAsocijacijeGame(int gameScore, int solvedRounds, int unsolvedRounds) {
         if (!isRegisteredPlayer()) {
             return;
