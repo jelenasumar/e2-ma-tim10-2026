@@ -38,6 +38,8 @@ public final class UserPreferences {
     private static final String KEY_KZZ_MISSES = "kzz_misses";
     private static final String KEY_MOJ_BROJ_PCT = "moj_broj_correct_pct";
     private static final String KEY_KPK_STEPS_PCT = "kpk_step_pcts";
+    private static final String KEY_KPK_GAMES = "kpk_games_count";
+    private static final String KEY_MOJ_BROJ_GAMES = "moj_broj_games_count";
     private static final String KEY_ASOC_SOLVED = "asoc_solved";
     private static final String KEY_ASOC_UNSOLVED = "asoc_unsolved";
     private static final String KEY_SKOCKO_COMBO_PCT = "skocko_combo_pct";
@@ -125,6 +127,14 @@ public final class UserPreferences {
         prefs.edit().putInt(KEY_SKOCKO_GAMES, count).apply();
     }
 
+    public int getKorakPoKorakGamesPlayed() {
+        return prefs.getInt(KEY_KPK_GAMES, 0);
+    }
+
+    public void setKorakPoKorakGamesPlayed(int count) {
+        prefs.edit().putInt(KEY_KPK_GAMES, count).apply();
+    }
+
     public void saveProfile(@NonNull UserProfile profile) {
         PlayerStatistics stats = profile.getStatistics();
         String stepPercents = stepPercentsToStorage(stats.getKorakPoKorakStepPercents());
@@ -190,7 +200,7 @@ public final class UserPreferences {
             ed.putString(KEY_INVITE_CODE, UUID.randomUUID().toString());
         }
         if (!prefs.contains(KEY_KPK_STEPS_PCT)) {
-            ed.putString(KEY_KPK_STEPS_PCT, "0,0,0,0,0");
+            ed.putString(KEY_KPK_STEPS_PCT, "0,0,0,0,0,0,0");
         }
         ed.apply();
     }
@@ -230,5 +240,13 @@ public final class UserPreferences {
             sb.append(steps.get(i));
         }
         return sb.toString();
+    }
+
+    public int getMojBrojGamesPlayed() {
+        return prefs.getInt(KEY_MOJ_BROJ_GAMES, 0);
+    }
+
+    public void setMojBrojGamesPlayed(int count) {
+        prefs.edit().putInt(KEY_MOJ_BROJ_GAMES, count).apply();
     }
 }

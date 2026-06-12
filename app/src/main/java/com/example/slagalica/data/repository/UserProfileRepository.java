@@ -479,6 +479,109 @@ public final class UserProfileRepository {
         }
     }
 
+    public void recordKorakPoKorakGame(int gameScore, int solvedStepIndex) {
+        if (!isRegisteredPlayer()) {
+            return;
+        }
+
+        UserProfile profile = preferences.loadProfile();
+        PlayerStatistics stats = profile.getStatistics();
+
+        int gamesPlayed = preferences.getKorakPoKorakGamesPlayed();
+
+        float newAvg = gamesPlayed == 0
+                ? gameScore
+                : ((stats.getAvgScoreKorakPoKorak() * gamesPlayed) + gameScore) / (gamesPlayed + 1f);
+
+        java.util.List<Float> oldStepPercents = stats.getKorakPoKorakStepPercents();
+        java.util.List<Float> newStepPercents = new java.util.ArrayList<>();
+
+        for (int i = 0; i < 7; i++) {
+            float oldPercent = i < oldStepPercents.size() ? oldStepPercents.get(i) : 0f;
+            float currentGameValue = solvedStepIndex == i ? 100f : 0f;
+
+            float newPercent = gamesPlayed == 0
+                    ? currentGameValue
+                    : ((oldPercent * gamesPlayed) + currentGameValue) / (gamesPlayed + 1f);
+
+            newStepPercents.add(newPercent);
+        }
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                stats.getAvgScoreKoZnaZna(),
+                stats.getAvgScoreSpojnice(),
+                stats.getAvgScoreMojBroj(),
+                newAvg,
+                stats.getAvgScoreAsocijacije(),
+                stats.getAvgScoreSkocko(),
+                stats.getKoZnaZnaHits(),
+                stats.getKoZnaZnaMisses(),
+                stats.getMojBrojCorrectPercent(),
+                newStepPercents,
+                stats.getAsocijacijeSolved(),
+                stats.getAsocijacijeUnsolved(),
+                stats.getSkockoComboPercent(),
+                stats.getSpojniceLinkedPercent(),
+                stats.getTotalMatches(),
+                stats.getMatchesWinPercent(),
+                stats.getMatchesLossPercent(),
+                stats.getMatchesWon(),
+                stats.getMatchesLost()
+        );
+
+        UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);
+        preferences.setKorakPoKorakGamesPlayed(gamesPlayed + 1);
+        preferences.saveProfile(updatedProfile);
+        saveRemoteProfile(updatedProfile);
+    }
+
+    public void recordMojBrojGame(int gameScore, boolean exactHit) {
+        if (!isRegisteredPlayer()) {
+            return;
+        }
+
+        UserProfile profile = preferences.loadProfile();
+        PlayerStatistics stats = profile.getStatistics();
+
+        int gamesPlayed = preferences.getMojBrojGamesPlayed();
+
+        float newAvg = gamesPlayed == 0
+                ? gameScore
+                : ((stats.getAvgScoreMojBroj() * gamesPlayed) + gameScore) / (gamesPlayed + 1f);
+
+        float currentExactPercent = exactHit ? 100f : 0f;
+        float newExactPercent = gamesPlayed == 0
+                ? currentExactPercent
+                : ((stats.getMojBrojCorrectPercent() * gamesPlayed) + currentExactPercent) / (gamesPlayed + 1f);
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                stats.getAvgScoreKoZnaZna(),
+                stats.getAvgScoreSpojnice(),
+                newAvg,
+                stats.getAvgScoreKorakPoKorak(),
+                stats.getAvgScoreAsocijacije(),
+                stats.getAvgScoreSkocko(),
+                stats.getKoZnaZnaHits(),
+                stats.getKoZnaZnaMisses(),
+                newExactPercent,
+                stats.getKorakPoKorakStepPercents(),
+                stats.getAsocijacijeSolved(),
+                stats.getAsocijacijeUnsolved(),
+                stats.getSkockoComboPercent(),
+                stats.getSpojniceLinkedPercent(),
+                stats.getTotalMatches(),
+                stats.getMatchesWinPercent(),
+                stats.getMatchesLossPercent(),
+                stats.getMatchesWon(),
+                stats.getMatchesLost()
+        );
+
+        UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);
+        preferences.setMojBrojGamesPlayed(gamesPlayed + 1);
+        preferences.saveProfile(updatedProfile);
+        saveRemoteProfile(updatedProfile);
+    }
+
     public void recordAsocijacijeGame(int gameScore, int solvedRounds, int unsolvedRounds) {
         if (!isRegisteredPlayer()) {
             return;

@@ -225,7 +225,7 @@ public final class GameInviteRepository {
             room.put("guestUsername", toUsername);
             room.put("hostTotalScore", 0);
             room.put("guestTotalScore", 0);
-            room.put("currentGame", "KO_ZNA_ZNA");
+            room.put("currentGame", com.example.slagalica.model.RoomGameKeys.DEFAULT_GAME_ORDER.get(0));
             room.put("currentGameIndex", 0);
             room.put("gameOrder", com.example.slagalica.model.RoomGameKeys.DEFAULT_GAME_ORDER);
             room.put("status", "READY");

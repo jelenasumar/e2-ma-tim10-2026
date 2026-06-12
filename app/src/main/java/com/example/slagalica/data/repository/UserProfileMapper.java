@@ -116,7 +116,7 @@ public final class UserProfileMapper {
                 0f, 0f, 0f, 0f, 0f, 0f,
                 0, 0,
                 0f,
-                Arrays.asList(0f, 0f, 0f, 0f, 0f),
+                Arrays.asList(0f, 0f, 0f, 0f, 0f, 0f, 0f),
                 0, 0,
                 0f, 0f,
                 0,
@@ -139,7 +139,7 @@ public final class UserProfileMapper {
 
     @NonNull
     public static List<Float> parseStepPercents(@NonNull String raw) {
-        List<Float> out = new ArrayList<>(Arrays.asList(0f, 0f, 0f, 0f, 0f));
+        List<Float> out = new ArrayList<>(Arrays.asList(0f, 0f, 0f, 0f, 0f, 0f, 0f));
         if (raw.isEmpty()) {
             return out;
         }
