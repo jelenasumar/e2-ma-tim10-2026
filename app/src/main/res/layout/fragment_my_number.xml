@@ -66,13 +66,15 @@
         app:layout_constraintStart_toEndOf="@id/targetNumber"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <LinearLayout
+    <GridLayout
         android:id="@+id/numberButtonsContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:layout_marginTop="48dp"
+        android:layout_marginTop="40dp"
+        android:alignmentMode="alignMargins"
+        android:columnCount="3"
+        android:rowCount="2"
+        android:useDefaultMargins="true"
         app:layout_constraintTop_toBottomOf="@id/targetNumber"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -80,34 +82,52 @@
         <TextView
             android:id="@+id/number1"
             style="@style/MyNumberBox"
-            android:text="1" />
+            android:layout_width="72dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="-" />
 
         <TextView
             android:id="@+id/number2"
             style="@style/MyNumberBox"
-            android:text="2" />
+            android:layout_width="72dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="-" />
 
         <TextView
             android:id="@+id/number3"
             style="@style/MyNumberBox"
-            android:text="3" />
+            android:layout_width="72dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="-" />
 
         <TextView
             android:id="@+id/number4"
             style="@style/MyNumberBox"
-            android:text="4" />
+            android:layout_width="72dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="-" />
 
         <TextView
             android:id="@+id/number5"
             style="@style/MyNumberBox"
-            android:text="25" />
+            android:layout_width="72dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="-" />
 
         <TextView
             android:id="@+id/number6"
             style="@style/MyNumberBox"
-            android:text="50" />
+            android:layout_width="72dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="-" />
 
-    </LinearLayout>
+    </GridLayout>
 
     <Button
         android:id="@+id/stopNumbersButton"
