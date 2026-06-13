@@ -245,6 +245,8 @@ public final class GameInviteRepository {
             senderNotification.put("read", false);
             senderNotification.put("action", "OPEN_ROOM");
             senderNotification.put("actionLabel", "Otvori sobu");
+            senderNotification.put("fromUid", uid);
+            senderNotification.put("inviteId", inviteId);
             senderNotification.put("roomId", roomRef.getId());
             senderNotification.put("createdAt", FieldValue.serverTimestamp());
 
