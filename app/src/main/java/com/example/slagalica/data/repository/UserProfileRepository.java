@@ -311,13 +311,36 @@ public final class UserProfileRepository {
             UserProfile profile = createDefaultProfile(un, em, reg);
 
             remote.saveUserProfile(uid, profile, () -> {
-                preferences.saveProfile(profile);
-                onSuccess.run();
+                remote.saveUsernameLookup(uid, un, em, () -> {
+                    remote.sendEmailVerification(firebaseUser, () -> {
+                        remote.signOut();
+                        preferences.clearSessionFields();
+                        onSuccess.run();
+                    }, onError);
+                }, onError);
             }, onError);
         }, onError);
     }
 
     public void login(
+            @NonNull String identifier,
+            @NonNull String password,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String id = identifier.trim();
+
+        if (id.contains("@")) {
+            loginWithEmail(normalizeEmail(id), password, onSuccess, onError);
+        } else {
+            remote.findEmailByUsername(id, email ->
+                            loginWithEmail(email, password, onSuccess, onError),
+                    onError
+            );
+        }
+    }
+
+    private void loginWithEmail(
             @NonNull String email,
             @NonNull String password,
             @NonNull Runnable onSuccess,
@@ -326,11 +349,14 @@ public final class UserProfileRepository {
         String em = normalizeEmail(email);
 
         remote.signInWithEmailAndPassword(em, password, firebaseUser -> {
-            String uid = firebaseUser.getUid();
-            remote.fetchUserProfile(uid, profile -> {
-                UserProfile merged = mergeWithAuthEmail(profile, em);
-                preferences.saveProfile(merged);
-                onSuccess.run();
+            remote.requireVerifiedEmail(firebaseUser, () -> {
+                String uid = firebaseUser.getUid();
+
+                remote.fetchUserProfile(uid, profile -> {
+                    UserProfile merged = mergeWithAuthEmail(profile, em);
+                    preferences.saveProfile(merged);
+                    onSuccess.run();
+                }, onError);
             }, onError);
         }, onError);
     }

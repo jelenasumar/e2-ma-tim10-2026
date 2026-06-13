@@ -23,6 +23,7 @@ public final class UserProfileMapper {
     public static Map<String, Object> toMap(@NonNull UserProfile profile) {
         Map<String, Object> map = new HashMap<>();
         map.put("username", profile.getUsername());
+        map.put("usernameLower", profile.getUsername().trim().toLowerCase(Locale.ROOT));
         map.put("email", profile.getEmail());
         map.put("avatarUri", profile.getAvatarUri());
         map.put("tokens", profile.getTokens());

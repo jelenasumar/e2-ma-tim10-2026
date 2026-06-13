@@ -87,6 +87,45 @@ public final class FireBaseUserDataSource {
                 .addOnFailureListener(e -> onError.accept(e.getMessage() != null ? e.getMessage() : "Registration failed."));
     }
 
+    public void sendEmailVerification(
+            @NonNull FirebaseUser user,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        user.sendEmailVerification()
+                .addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Email verification failed."
+                ));
+    }
+
+    public void requireVerifiedEmail(
+            @NonNull FirebaseUser user,
+            @NonNull Runnable onVerified,
+            @NonNull Consumer<String> onError
+    ) {
+        user.reload()
+                .addOnSuccessListener(unused -> {
+                    FirebaseUser refreshedUser = auth.getCurrentUser();
+
+                    if (refreshedUser == null) {
+                        onError.accept("NOT_LOGGED_IN");
+                        return;
+                    }
+
+                    if (!refreshedUser.isEmailVerified()) {
+                        auth.signOut();
+                        onError.accept("EMAIL_NOT_VERIFIED");
+                        return;
+                    }
+
+                    onVerified.run();
+                })
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Email verification check failed."
+                ));
+    }
+
     public void signInWithEmailAndPassword(
             @NonNull String email,
             @NonNull String password,
@@ -118,6 +157,29 @@ public final class FireBaseUserDataSource {
                 .addOnFailureListener(e -> onError.accept(e.getMessage() != null ? e.getMessage() : "Save failed."));
     }
 
+    public void saveUsernameLookup(
+            @NonNull String uid,
+            @NonNull String username,
+            @NonNull String email,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String usernameLower = username.trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+
+        Map<String, Object> lookup = new HashMap<>();
+        lookup.put("uid", uid);
+        lookup.put("email", normalizedEmail);
+
+        db.collection("username_lookup")
+                .document(usernameLower)
+                .set(lookup)
+                .addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Username lookup save failed."
+                ));
+    }
+
     public void fetchUserProfile(
             @NonNull String uid,
             @NonNull Consumer<UserProfile> onSuccess,
@@ -134,6 +196,65 @@ public final class FireBaseUserDataSource {
                     onSuccess.accept(UserProfileMapper.fromDocument(document));
                 })
                 .addOnFailureListener(e -> onError.accept(e.getMessage() != null ? e.getMessage() : "Load failed."));
+    }
+
+    public void findEmailByUsername(
+            @NonNull String username,
+            @NonNull Consumer<String> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String usernameLower = username.trim().toLowerCase(Locale.ROOT);
+
+        db.collection("username_lookup")
+                .document(usernameLower)
+                .get()
+                .addOnSuccessListener(document -> {
+                    if (!document.exists()) {
+                        onError.accept("USERNAME_NOT_FOUND");
+                        return;
+                    }
+
+                    String email = document.getString("email");
+
+                    if (email == null || email.trim().isEmpty()) {
+                        onError.accept("EMAIL_NOT_AVAILABLE");
+                        return;
+                    }
+
+                    onSuccess.accept(email.trim().toLowerCase(Locale.ROOT));
+                })
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Username lookup failed."
+                ));
+    }
+
+    private void findEmailByExactUsername(
+            @NonNull String username,
+            @NonNull Consumer<String> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        db.collection("users")
+                .whereEqualTo("username", username)
+                .limit(1)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (querySnapshot.isEmpty()) {
+                        onError.accept("USERNAME_NOT_FOUND");
+                        return;
+                    }
+
+                    String email = querySnapshot.getDocuments().get(0).getString("email");
+
+                    if (email == null || email.trim().isEmpty()) {
+                        onError.accept("EMAIL_NOT_AVAILABLE");
+                        return;
+                    }
+
+                    onSuccess.accept(email.trim().toLowerCase(Locale.ROOT));
+                })
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Username lookup failed."
+                ));
     }
 
     @NonNull
