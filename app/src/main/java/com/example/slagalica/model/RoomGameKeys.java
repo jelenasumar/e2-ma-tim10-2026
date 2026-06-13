@@ -27,12 +27,12 @@ public final class RoomGameKeys {
 
     @NonNull
     public static final List<String> DEFAULT_GAME_ORDER = Collections.unmodifiableList(Arrays.asList(
-            MOJ_BROJ,
-            KORAK_PO_KORAK,
             KO_ZNA_ZNA,
             SPOJNICE,
             ASOCIJACIJE,
-            SKOCKO
+            SKOCKO,
+            KORAK_PO_KORAK,
+            MOJ_BROJ
     ));
 
     private RoomGameKeys() {
