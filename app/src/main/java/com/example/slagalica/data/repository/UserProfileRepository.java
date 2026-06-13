@@ -321,6 +321,24 @@ public final class UserProfileRepository {
     }
 
     public void login(
+            @NonNull String identifier,
+            @NonNull String password,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String id = identifier.trim();
+
+        if (id.contains("@")) {
+            loginWithEmail(normalizeEmail(id), password, onSuccess, onError);
+        } else {
+            remote.findEmailByUsername(id, email ->
+                            loginWithEmail(email, password, onSuccess, onError),
+                    onError
+            );
+        }
+    }
+
+    private void loginWithEmail(
             @NonNull String email,
             @NonNull String password,
             @NonNull Runnable onSuccess,

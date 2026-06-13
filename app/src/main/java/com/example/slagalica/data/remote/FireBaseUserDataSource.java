@@ -175,6 +175,67 @@ public final class FireBaseUserDataSource {
                 .addOnFailureListener(e -> onError.accept(e.getMessage() != null ? e.getMessage() : "Load failed."));
     }
 
+    public void findEmailByUsername(
+            @NonNull String username,
+            @NonNull Consumer<String> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String trimmedUsername = username.trim();
+        String usernameLower = trimmedUsername.toLowerCase(Locale.ROOT);
+
+        db.collection("users")
+                .whereEqualTo("usernameLower", usernameLower)
+                .limit(1)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (!querySnapshot.isEmpty()) {
+                        String email = querySnapshot.getDocuments().get(0).getString("email");
+
+                        if (email == null || email.trim().isEmpty()) {
+                            onError.accept("EMAIL_NOT_AVAILABLE");
+                            return;
+                        }
+
+                        onSuccess.accept(email.trim().toLowerCase(Locale.ROOT));
+                        return;
+                    }
+
+                    findEmailByExactUsername(trimmedUsername, onSuccess, onError);
+                })
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Username lookup failed."
+                ));
+    }
+
+    private void findEmailByExactUsername(
+            @NonNull String username,
+            @NonNull Consumer<String> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        db.collection("users")
+                .whereEqualTo("username", username)
+                .limit(1)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (querySnapshot.isEmpty()) {
+                        onError.accept("USERNAME_NOT_FOUND");
+                        return;
+                    }
+
+                    String email = querySnapshot.getDocuments().get(0).getString("email");
+
+                    if (email == null || email.trim().isEmpty()) {
+                        onError.accept("EMAIL_NOT_AVAILABLE");
+                        return;
+                    }
+
+                    onSuccess.accept(email.trim().toLowerCase(Locale.ROOT));
+                })
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Username lookup failed."
+                ));
+    }
+
     @NonNull
     public ListenerRegistration listenUserProfile(
             @NonNull String uid,

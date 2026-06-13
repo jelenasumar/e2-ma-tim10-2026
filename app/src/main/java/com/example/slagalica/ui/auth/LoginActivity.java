@@ -52,7 +52,7 @@ public class LoginActivity extends AppCompatActivity {
             String password = passwordEt.getText() != null ? passwordEt.getText().toString() : "";
 
             if(email.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Unesite email i lozinku.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Unesite email ili korisničko ime i lozinku.", Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -70,6 +70,8 @@ public class LoginActivity extends AppCompatActivity {
 
                         if ("EMAIL_NOT_VERIFIED".equals(errorMessage)) {
                             message = "Morate potvrditi email pre logovanja.";
+                        } else if ("USERNAME_NOT_FOUND".equals(errorMessage)) {
+                            message = "Korisničko ime ne postoji.";
                         } else {
                             message = errorMessage != null
                                     ? errorMessage
