@@ -7,16 +7,12 @@
 
     <fragment
         android:id="@+id/homeFragment"
-        android:name="com.example.slagalica.fragments.HomeFragment"
+        android:name="com.example.slagalica.ui.home.HomeFragment"
         android:label="Home">
 
         <action
             android:id="@+id/action_home_to_mojBroj"
             app:destination="@id/mojBrojFragment" />
-
-        <action
-            android:id="@+id/action_home_to_stepByStep"
-            app:destination="@id/stepByStepFragment" />
 
         <action
             android:id="@+id/action_home_to_associations"
@@ -35,8 +31,20 @@
             app:destination="@id/profileFragment" />
 
         <action
+            android:id="@+id/action_home_to_inviteFriends"
+            app:destination="@id/inviteFriendsFragment" />
+
+        <action
+            android:id="@+id/action_home_to_onlineMatchmaking"
+            app:destination="@id/onlineMatchmakingFragment" />
+
+        <action
+            android:id="@+id/action_home_to_roomSession"
+            app:destination="@id/roomSessionFragment" />
+
+        <action
             android:id="@+id/action_home_to_koZnaZna"
-            app:destination="@id/koZnaZnaFragment" />
+            app:destination="@id/koZnaZnaMatchmakingFragment" />
 
         <action
             android:id="@+id/action_home_to_spojnice"
@@ -51,47 +59,77 @@
 
     <fragment
         android:id="@+id/mojBrojFragment"
-        android:name="com.example.slagalica.fragments.games.MyNumberFragment"
+        android:name="com.example.slagalica.ui.games.MyNumberFragment"
         android:label="Moj Broj" />
 
     <fragment
         android:id="@+id/stepByStepFragment"
-        android:name="com.example.slagalica.fragments.games.StepByStepFragment"
+        android:name="com.example.slagalica.ui.games.StepByStepFragment"
         android:label="Korak po korak" />
 
     <fragment
         android:id="@+id/associationsFragment"
-        android:name="com.example.slagalica.fragments.games.AssociationsFragment"
+        android:name="com.example.slagalica.ui.games.AssociationsFragment"
         android:label="Asocijacije" />
 
     <fragment
         android:id="@+id/skockoFragment"
-        android:name="com.example.slagalica.fragments.games.SkockoFragment"
+        android:name="com.example.slagalica.ui.games.SkockoFragment"
         android:label="Skočko" />
 
     <fragment
         android:id="@+id/notificationsFragment"
-        android:name="com.example.slagalica.fragments.NotificationsFragment"
+        android:name="com.example.slagalica.ui.notifications.NotificationsFragment"
         android:label="Notifikacije" />
 
     <fragment
+        android:id="@+id/notificationDestinationFragment"
+        android:name="com.example.slagalica.ui.notifications.NotificationDestinationFragment"
+        android:label="@string/notification_destination_default_title" />
+
+    <fragment
         android:id="@+id/profileFragment"
-        android:name="com.example.slagalica.fragments.ProfileFragment"
+        android:name="com.example.slagalica.ui.profile.ProfileFragment"
         android:label="@string/profile_title" />
 
     <fragment
+        android:id="@+id/inviteFriendsFragment"
+        android:name="com.example.slagalica.ui.invites.InviteFriendsFragment"
+        android:label="@string/invite_friends_title" />
+
+    <fragment
+        android:id="@+id/onlineMatchmakingFragment"
+        android:name="com.example.slagalica.ui.matchmaking.OnlineMatchmakingFragment"
+        android:label="@string/online_matchmaking_title" />
+
+    <fragment
+        android:id="@+id/roomSessionFragment"
+        android:name="com.example.slagalica.ui.room.RoomSessionFragment"
+        android:label="@string/room_session_title" />
+
+    <fragment
+        android:id="@+id/koZnaZnaMatchmakingFragment"
+        android:name="com.example.slagalica.ui.games.KoZnaZnaMatchmakingFragment"
+        android:label="@string/kzz_matchmaking_title">
+
+        <action
+            android:id="@+id/action_matchmaking_to_game"
+            app:destination="@id/koZnaZnaFragment" />
+    </fragment>
+
+    <fragment
         android:id="@+id/koZnaZnaFragment"
-        android:name="com.example.slagalica.fragments.games.KoZnaZnaFragment"
+        android:name="com.example.slagalica.ui.games.KoZnaZnaFragment"
         android:label="@string/game_ko_zna_zna" />
 
     <fragment
         android:id="@+id/spojniceFragment"
-        android:name="com.example.slagalica.fragments.games.SpojniceFragment"
+        android:name="com.example.slagalica.ui.games.SpojniceFragment"
         android:label="@string/game_spojnice" />
 
     <fragment
         android:id="@+id/changePassword"
-        android:name="com.example.slagalica.fragments.ChangePasswordFragment"
+        android:name="com.example.slagalica.ui.profile.ChangePasswordFragment"
         android:label="@string/change_password" />
 
 </navigation>

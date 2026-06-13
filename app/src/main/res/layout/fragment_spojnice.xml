@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    tools:context=".fragments.games.SpojniceFragment">
+    tools:context=".ui.games.SpojniceFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -19,47 +19,20 @@
             android:text="@string/spojnice_title"
             android:textAppearance="?attr/textAppearanceHeadlineSmall" />
 
-        <LinearLayout
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/spojniceGameHeader"
+            android:name="com.example.slagalica.ui.games.GameHeaderFragment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:id="@+id/spojniceCriterion"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/spojniceRound"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/spojnice_round_label" />
-
-            <TextView
-                android:id="@+id/spojniceTime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/spojnice_time_label" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/spojniceScoreP1"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/spojnice_score_p1"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/spojniceScoreP2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/spojnice_score_p2"
-                android:textStyle="bold" />
-        </LinearLayout>
+            android:textStyle="italic"
+            tools:text="Poveži izvođače sa pesmama" />
 
         <TextView
             android:layout_width="match_parent"
@@ -67,6 +40,14 @@
             android:layout_marginTop="10dp"
             android:text="@string/spojnice_hint"
             android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/spojniceStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="?attr/colorPrimary"
+            tools:text="Tvoj red — poveži pojam 1/5" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -96,12 +77,14 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
-            <Spinner
+            <TextView
                 android:id="@+id/spojniceLeft1"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:entries="@array/spojnice_left_items" />
+                android:padding="10dp"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="10dp"
@@ -121,12 +104,14 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
-            <Spinner
+            <TextView
                 android:id="@+id/spojniceLeft2"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:entries="@array/spojnice_left_items" />
+                android:padding="10dp"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="10dp"
@@ -146,12 +131,14 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
-            <Spinner
+            <TextView
                 android:id="@+id/spojniceLeft3"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:entries="@array/spojnice_left_items" />
+                android:padding="10dp"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="10dp"
@@ -171,12 +158,14 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
-            <Spinner
+            <TextView
                 android:id="@+id/spojniceLeft4"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:entries="@array/spojnice_left_items" />
+                android:padding="10dp"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="10dp"
@@ -196,12 +185,14 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
-            <Spinner
+            <TextView
                 android:id="@+id/spojniceLeft5"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:entries="@array/spojnice_left_items" />
+                android:padding="10dp"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <Space
                 android:layout_width="10dp"
@@ -228,7 +219,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
-            android:text="@string/spojnice_next_round" />
+            android:text="@string/spojnice_back"
+            android:visibility="gone" />
 
     </LinearLayout>
 

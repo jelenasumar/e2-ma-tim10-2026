@@ -1,6 +1,7 @@
 package com.example.slagalica.model;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Aggregated player statistics persisted locally until backend/game modules write real values.
@@ -16,7 +17,7 @@ public final class PlayerStatistics {
     private final int koZnaZnaHits;
     private final int koZnaZnaMisses;
     private final float mojBrojCorrectPercent;
-    private final float[] korakPoKorakStepPercents;
+    private final List<Float> korakPoKorakStepPercents;
     private final int asocijacijeSolved;
     private final int asocijacijeUnsolved;
     private final float skockoComboPercent;
@@ -24,6 +25,8 @@ public final class PlayerStatistics {
     private final int totalMatches;
     private final float matchesWinPercent;
     private final float matchesLossPercent;
+    private final int matchesWon;
+    private final int matchesLost;
 
     public PlayerStatistics(
             float avgScoreKoZnaZna,
@@ -35,14 +38,16 @@ public final class PlayerStatistics {
             int koZnaZnaHits,
             int koZnaZnaMisses,
             float mojBrojCorrectPercent,
-            float[] korakPoKorakStepPercents,
+            List<Float> korakPoKorakStepPercents,
             int asocijacijeSolved,
             int asocijacijeUnsolved,
             float skockoComboPercent,
             float spojniceLinkedPercent,
             int totalMatches,
             float matchesWinPercent,
-            float matchesLossPercent
+            float matchesLossPercent,
+            int matchesWon,
+            int matchesLost
     ) {
         this.avgScoreKoZnaZna = avgScoreKoZnaZna;
         this.avgScoreSpojnice = avgScoreSpojnice;
@@ -53,10 +58,7 @@ public final class PlayerStatistics {
         this.koZnaZnaHits = koZnaZnaHits;
         this.koZnaZnaMisses = koZnaZnaMisses;
         this.mojBrojCorrectPercent = mojBrojCorrectPercent;
-        this.korakPoKorakStepPercents = Arrays.copyOf(
-                korakPoKorakStepPercents,
-                korakPoKorakStepPercents.length
-        );
+        this.korakPoKorakStepPercents = korakPoKorakStepPercents;
         this.asocijacijeSolved = asocijacijeSolved;
         this.asocijacijeUnsolved = asocijacijeUnsolved;
         this.skockoComboPercent = skockoComboPercent;
@@ -64,6 +66,8 @@ public final class PlayerStatistics {
         this.totalMatches = totalMatches;
         this.matchesWinPercent = matchesWinPercent;
         this.matchesLossPercent = matchesLossPercent;
+        this.matchesWon = matchesWon;
+        this.matchesLost = matchesLost;
     }
 
     public float getAvgScoreKoZnaZna() {
@@ -102,8 +106,8 @@ public final class PlayerStatistics {
         return mojBrojCorrectPercent;
     }
 
-    public float[] getKorakPoKorakStepPercents() {
-        return Arrays.copyOf(korakPoKorakStepPercents, korakPoKorakStepPercents.length);
+    public List<Float> getKorakPoKorakStepPercents() {
+        return korakPoKorakStepPercents;
     }
 
     public int getAsocijacijeSolved() {
@@ -132,5 +136,13 @@ public final class PlayerStatistics {
 
     public float getMatchesLossPercent() {
         return matchesLossPercent;
+    }
+
+    public int getMatchesWon() {
+        return matchesWon;
+    }
+
+    public int getMatchesLost() {
+        return matchesLost;
     }
 }
