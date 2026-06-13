@@ -311,8 +311,11 @@ public final class UserProfileRepository {
             UserProfile profile = createDefaultProfile(un, em, reg);
 
             remote.saveUserProfile(uid, profile, () -> {
-                preferences.saveProfile(profile);
-                onSuccess.run();
+                remote.sendEmailVerification(firebaseUser, () -> {
+                    remote.signOut();
+                    preferences.clearSessionFields();
+                    onSuccess.run();
+                }, onError);
             }, onError);
         }, onError);
     }
@@ -326,11 +329,14 @@ public final class UserProfileRepository {
         String em = normalizeEmail(email);
 
         remote.signInWithEmailAndPassword(em, password, firebaseUser -> {
-            String uid = firebaseUser.getUid();
-            remote.fetchUserProfile(uid, profile -> {
-                UserProfile merged = mergeWithAuthEmail(profile, em);
-                preferences.saveProfile(merged);
-                onSuccess.run();
+            remote.requireVerifiedEmail(firebaseUser, () -> {
+                String uid = firebaseUser.getUid();
+
+                remote.fetchUserProfile(uid, profile -> {
+                    UserProfile merged = mergeWithAuthEmail(profile, em);
+                    preferences.saveProfile(merged);
+                    onSuccess.run();
+                }, onError);
             }, onError);
         }, onError);
     }

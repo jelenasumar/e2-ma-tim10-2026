@@ -69,7 +69,7 @@ public class RegisterActivity extends AppCompatActivity {
                     () -> {
                         Toast.makeText(
                                 RegisterActivity.this,
-                                "Registracija uspešna",
+                                "Registracija uspešna. Proverite email za potvrdu naloga.",
                                 Toast.LENGTH_SHORT
                         ).show();
 

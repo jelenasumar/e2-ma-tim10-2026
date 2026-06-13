@@ -87,6 +87,45 @@ public final class FireBaseUserDataSource {
                 .addOnFailureListener(e -> onError.accept(e.getMessage() != null ? e.getMessage() : "Registration failed."));
     }
 
+    public void sendEmailVerification(
+            @NonNull FirebaseUser user,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        user.sendEmailVerification()
+                .addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Email verification failed."
+                ));
+    }
+
+    public void requireVerifiedEmail(
+            @NonNull FirebaseUser user,
+            @NonNull Runnable onVerified,
+            @NonNull Consumer<String> onError
+    ) {
+        user.reload()
+                .addOnSuccessListener(unused -> {
+                    FirebaseUser refreshedUser = auth.getCurrentUser();
+
+                    if (refreshedUser == null) {
+                        onError.accept("NOT_LOGGED_IN");
+                        return;
+                    }
+
+                    if (!refreshedUser.isEmailVerified()) {
+                        auth.signOut();
+                        onError.accept("EMAIL_NOT_VERIFIED");
+                        return;
+                    }
+
+                    onVerified.run();
+                })
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Email verification check failed."
+                ));
+    }
+
     public void signInWithEmailAndPassword(
             @NonNull String email,
             @NonNull String password,

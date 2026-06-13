@@ -66,9 +66,19 @@ public class LoginActivity extends AppCompatActivity {
                         finish();
                     },
                     errorMessage -> {
+                        String message;
+
+                        if ("EMAIL_NOT_VERIFIED".equals(errorMessage)) {
+                            message = "Morate potvrditi email pre logovanja.";
+                        } else {
+                            message = errorMessage != null
+                                    ? errorMessage
+                                    : getString(R.string.error_login_failed);
+                        }
+
                         Toast.makeText(
                                 LoginActivity.this,
-                                errorMessage != null ? errorMessage : getString(R.string.error_login_failed),
+                                message,
                                 Toast.LENGTH_SHORT
                         ).show();
                     }
