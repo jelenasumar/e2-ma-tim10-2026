@@ -311,10 +311,12 @@ public final class UserProfileRepository {
             UserProfile profile = createDefaultProfile(un, em, reg);
 
             remote.saveUserProfile(uid, profile, () -> {
-                remote.sendEmailVerification(firebaseUser, () -> {
-                    remote.signOut();
-                    preferences.clearSessionFields();
-                    onSuccess.run();
+                remote.saveUsernameLookup(uid, un, em, () -> {
+                    remote.sendEmailVerification(firebaseUser, () -> {
+                        remote.signOut();
+                        preferences.clearSessionFields();
+                        onSuccess.run();
+                    }, onError);
                 }, onError);
             }, onError);
         }, onError);

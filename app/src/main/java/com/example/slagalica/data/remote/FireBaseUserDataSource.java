@@ -157,6 +157,29 @@ public final class FireBaseUserDataSource {
                 .addOnFailureListener(e -> onError.accept(e.getMessage() != null ? e.getMessage() : "Save failed."));
     }
 
+    public void saveUsernameLookup(
+            @NonNull String uid,
+            @NonNull String username,
+            @NonNull String email,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String usernameLower = username.trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+
+        Map<String, Object> lookup = new HashMap<>();
+        lookup.put("uid", uid);
+        lookup.put("email", normalizedEmail);
+
+        db.collection("username_lookup")
+                .document(usernameLower)
+                .set(lookup)
+                .addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Username lookup save failed."
+                ));
+    }
+
     public void fetchUserProfile(
             @NonNull String uid,
             @NonNull Consumer<UserProfile> onSuccess,
@@ -180,27 +203,25 @@ public final class FireBaseUserDataSource {
             @NonNull Consumer<String> onSuccess,
             @NonNull Consumer<String> onError
     ) {
-        String trimmedUsername = username.trim();
-        String usernameLower = trimmedUsername.toLowerCase(Locale.ROOT);
+        String usernameLower = username.trim().toLowerCase(Locale.ROOT);
 
-        db.collection("users")
-                .whereEqualTo("usernameLower", usernameLower)
-                .limit(1)
+        db.collection("username_lookup")
+                .document(usernameLower)
                 .get()
-                .addOnSuccessListener(querySnapshot -> {
-                    if (!querySnapshot.isEmpty()) {
-                        String email = querySnapshot.getDocuments().get(0).getString("email");
-
-                        if (email == null || email.trim().isEmpty()) {
-                            onError.accept("EMAIL_NOT_AVAILABLE");
-                            return;
-                        }
-
-                        onSuccess.accept(email.trim().toLowerCase(Locale.ROOT));
+                .addOnSuccessListener(document -> {
+                    if (!document.exists()) {
+                        onError.accept("USERNAME_NOT_FOUND");
                         return;
                     }
 
-                    findEmailByExactUsername(trimmedUsername, onSuccess, onError);
+                    String email = document.getString("email");
+
+                    if (email == null || email.trim().isEmpty()) {
+                        onError.accept("EMAIL_NOT_AVAILABLE");
+                        return;
+                    }
+
+                    onSuccess.accept(email.trim().toLowerCase(Locale.ROOT));
                 })
                 .addOnFailureListener(e -> onError.accept(
                         e.getMessage() != null ? e.getMessage() : "Username lookup failed."
