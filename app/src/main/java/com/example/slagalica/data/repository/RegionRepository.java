@@ -56,7 +56,9 @@ public final class RegionRepository {
         boolean changed = false;
 
         SerbiaRegion resolved = SerbiaRegion.resolve(profile.getRegionKey(), profile.getRegion());
+        String effectiveRegionKey = profile.getRegionKey();
         if (resolved != null) {
+            effectiveRegionKey = resolved.getKey();
             if (!resolved.getKey().equals(profile.getRegionKey())) {
                 builder.regionKey(resolved.getKey());
                 changed = true;
@@ -79,7 +81,7 @@ public final class RegionRepository {
             changed = true;
         }
 
-        String frame = frameForRegion(profile.getRegionKey());
+        String frame = AvatarFrameHelper.frameForRegionKey(effectiveRegionKey);
         if (!frame.equals(profile.getRegionRankFrame())) {
             builder.regionRankFrame(frame);
             changed = true;
@@ -287,7 +289,7 @@ public final class RegionRepository {
                     regionKey,
                     region.getDisplayName(appContext),
                     monthlyStars,
-                    stringValue(row.get("regionRankFrame")),
+                    frameForLeaderboard(regionKey, stringValue(row.get("regionRankFrame"))),
                     uid.equals(currentUid)
             ));
         }
@@ -404,14 +406,11 @@ public final class RegionRepository {
     }
 
     @NonNull
-    private String frameForRegion(@NonNull String regionKey) {
-        List<String> topRegions = previousTopRegions();
-        if (regionKey.isEmpty() || topRegions.isEmpty()) {
-            return "";
+    private String frameForLeaderboard(@NonNull String regionKey, @NonNull String storedFrame) {
+        if (!storedFrame.isEmpty()) {
+            return storedFrame;
         }
-        int index = topRegions.indexOf(regionKey);
-        String frame = AvatarFrameHelper.frameForRegionRank(index + 1);
-        return frame != null ? frame : "";
+        return AvatarFrameHelper.frameForRegionKey(regionKey);
     }
 
     private void touchActivity(@NonNull UserProfile profile) {

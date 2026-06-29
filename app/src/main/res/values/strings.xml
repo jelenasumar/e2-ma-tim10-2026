@@ -310,6 +310,9 @@
     <string name="region_pick_hint">Region</string>
     <string name="error_pick_region">Izaberi region sa liste.</string>
     <string name="profile_monthly_stars">Zvezde u ciklusu</string>
+    <string name="profile_frame_gold">Zlatni okvir regiona</string>
+    <string name="profile_frame_silver">Srebrni okvir regiona</string>
+    <string name="profile_frame_bronze">Bronzani okvir regiona</string>
 
     <string name="region_beograd">Beograd</string>
     <string name="region_vojvodina">Vojvodina</string>

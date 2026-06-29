@@ -5,8 +5,11 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.slagalica.R;
+import com.example.slagalica.model.SerbiaRegion;
 import com.google.android.material.card.MaterialCardView;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 public final class AvatarFrameHelper {
@@ -39,17 +42,39 @@ public final class AvatarFrameHelper {
         if (frameKey == null || frameKey.isEmpty()) {
             return 3f;
         }
-        return 5f;
+        return 8f;
+    }
+
+    @Nullable
+    public static String resolveRankFrame(@Nullable String regionKey, @Nullable String legacyRegionName) {
+        SerbiaRegion region = SerbiaRegion.resolve(regionKey, legacyRegionName);
+        if (region == null) {
+            return "";
+        }
+        return frameForRegionKey(region.getKey());
+    }
+
+    @NonNull
+    public static String frameForRegionKey(@NonNull String regionKey) {
+        if (regionKey.isEmpty()) {
+            return "";
+        }
+        List<String> topRegions = RegionCycleTestConfig.previousTopRegions(Collections.emptyList());
+        int index = topRegions.indexOf(regionKey);
+        String frame = frameForRegionRank(index + 1);
+        return frame != null ? frame : "";
     }
 
     public static void applyFrame(@NonNull MaterialCardView cardView, @Nullable String frameKey) {
-        if (frameKey == null || frameKey.isEmpty()) {
+        String frame = frameKey != null ? frameKey : "";
+        if (frame.isEmpty()) {
             cardView.setStrokeColor(cardView.getContext().getColor(R.color.black));
             cardView.setStrokeWidth((int) (3f * cardView.getResources().getDisplayMetrics().density));
             return;
         }
-        cardView.setStrokeColor(frameColor(frameKey));
-        cardView.setStrokeWidth((int) (frameStrokeDp(frameKey) * cardView.getResources().getDisplayMetrics().density));
+        cardView.setStrokeColor(frameColor(frame));
+        cardView.setStrokeWidth((int) (frameStrokeDp(frame) * cardView.getResources().getDisplayMetrics().density));
+        cardView.invalidate();
     }
 
     @Nullable

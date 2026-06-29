@@ -167,7 +167,38 @@ public class ProfileFragment extends Fragment {
                 : profile.getRegion());
 
         MaterialCardView avatarCard = root.findViewById(R.id.profile_avatar_card);
-        AvatarFrameHelper.applyFrame(avatarCard, profile.getRegionRankFrame());
+        String frameKey = profile.getRegionRankFrame();
+        if (frameKey == null || frameKey.isEmpty()) {
+            frameKey = AvatarFrameHelper.resolveRankFrame(profile.getRegionKey(), profile.getRegion());
+        }
+        AvatarFrameHelper.applyFrame(avatarCard, frameKey);
+
+        TextView frameLabel = root.findViewById(R.id.profile_avatar_frame_label);
+        if (frameKey != null && !frameKey.isEmpty()) {
+            frameLabel.setVisibility(View.VISIBLE);
+            int labelRes;
+            switch (frameKey) {
+                case AvatarFrameHelper.FRAME_GOLD:
+                    labelRes = R.string.profile_frame_gold;
+                    break;
+                case AvatarFrameHelper.FRAME_SILVER:
+                    labelRes = R.string.profile_frame_silver;
+                    break;
+                case AvatarFrameHelper.FRAME_BRONZE:
+                    labelRes = R.string.profile_frame_bronze;
+                    break;
+                default:
+                    labelRes = 0;
+                    break;
+            }
+            if (labelRes != 0) {
+                frameLabel.setText(labelRes);
+            } else {
+                frameLabel.setVisibility(View.GONE);
+            }
+        } else {
+            frameLabel.setVisibility(View.GONE);
+        }
 
         ImageView avatar = root.findViewById(R.id.profile_avatar);
         AvatarImageLoader.load(avatar, profile.getAvatarUri(), R.drawable.ic_avatar_placeholder);
