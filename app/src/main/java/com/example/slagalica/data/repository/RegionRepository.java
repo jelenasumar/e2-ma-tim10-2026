@@ -16,6 +16,7 @@ import com.example.slagalica.model.SerbiaRegion;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.utils.AvatarFrameHelper;
 import com.example.slagalica.utils.MonthlyCycleHelper;
+import com.example.slagalica.utils.RegionCycleTestConfig;
 import com.google.firebase.firestore.DocumentSnapshot;
 
 import java.util.ArrayList;
@@ -43,6 +44,9 @@ public final class RegionRepository {
         this.preferences = new UserPreferences(appContext);
         this.userRemote = new FireBaseUserDataSource();
         this.regionRemote = new RegionDataSource();
+        if (RegionCycleTestConfig.USE_HARDCODED_PREVIOUS_TOP_REGIONS) {
+            cachedTopRegions = RegionCycleTestConfig.HARDCODED_PREVIOUS_TOP_REGIONS;
+        }
     }
 
     @NonNull
@@ -71,8 +75,13 @@ public final class RegionRepository {
 
         if (!currentCycle.equals(profile.getStarsCycleKey())) {
             builder.monthlyStars(0L)
-                    .starsCycleKey(currentCycle)
-                    .regionRankFrame(frameForRegion(profile.getRegionKey()));
+                    .starsCycleKey(currentCycle);
+            changed = true;
+        }
+
+        String frame = frameForRegion(profile.getRegionKey());
+        if (!frame.equals(profile.getRegionRankFrame())) {
+            builder.regionRankFrame(frame);
             changed = true;
         }
 
@@ -373,6 +382,10 @@ public final class RegionRepository {
     }
 
     public void preloadCycleConfig() {
+        if (RegionCycleTestConfig.USE_HARDCODED_PREVIOUS_TOP_REGIONS) {
+            cachedTopRegions = RegionCycleTestConfig.HARDCODED_PREVIOUS_TOP_REGIONS;
+            return;
+        }
         regionRemote.fetchCycleConfig(document -> {
             if (!document.exists()) {
                 return;
@@ -386,11 +399,17 @@ public final class RegionRepository {
     }
 
     @NonNull
+    private List<String> previousTopRegions() {
+        return RegionCycleTestConfig.previousTopRegions(cachedTopRegions);
+    }
+
+    @NonNull
     private String frameForRegion(@NonNull String regionKey) {
-        if (regionKey.isEmpty() || cachedTopRegions.isEmpty()) {
+        List<String> topRegions = previousTopRegions();
+        if (regionKey.isEmpty() || topRegions.isEmpty()) {
             return "";
         }
-        int index = cachedTopRegions.indexOf(regionKey);
+        int index = topRegions.indexOf(regionKey);
         String frame = AvatarFrameHelper.frameForRegionRank(index + 1);
         return frame != null ? frame : "";
     }
