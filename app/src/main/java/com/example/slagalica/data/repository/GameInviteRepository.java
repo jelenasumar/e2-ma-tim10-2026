@@ -119,6 +119,32 @@ public final class GameInviteRepository {
                 });
     }
 
+    public void loadNotification(
+            @NonNull String notificationId,
+            @NonNull Consumer<SystemNotification> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String uid = getCurrentUid();
+        if (uid == null) {
+            onError.accept("NOT_LOGGED_IN");
+            return;
+        }
+
+        db.collection(USERS)
+                .document(uid)
+                .collection(NOTIFICATIONS)
+                .document(notificationId)
+                .get()
+                .addOnSuccessListener(document -> {
+                    if (document.exists()) {
+                        onSuccess.accept(notificationFromDocument(document));
+                    } else {
+                        onError.accept("NOTIFICATION_NOT_FOUND");
+                    }
+                })
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Notification could not be loaded.")));
+    }
+
     public void markNotificationAsRead(
             @NonNull String notificationId,
             @NonNull Runnable onSuccess,

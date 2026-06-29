@@ -18,11 +18,17 @@ import com.example.slagalica.model.NotificationAction;
 import com.example.slagalica.model.NotificationCategory;
 import com.example.slagalica.model.SystemNotification;
 import com.example.slagalica.ui.main.MainActivity;
+import com.example.slagalica.ui.notifications.NotificationActionReceiver;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class NotificationsRepository {
+
+    public static final String ACTION_ACCEPT_INVITE = "com.example.slagalica.ACTION_ACCEPT_INVITE";
+    public static final String ACTION_DECLINE_INVITE = "com.example.slagalica.ACTION_DECLINE_INVITE";
+    public static final String ACTION_OPEN_ROOM = "com.example.slagalica.ACTION_OPEN_ROOM";
+    public static final String EXTRA_NOTIFICATION_ID = "com.example.slagalica.EXTRA_NOTIFICATION_ID";
 
     private static final String PREFS = "slagalica_notifications";
     private static final String READ_PREFIX = "notification_read_";
@@ -83,7 +89,7 @@ public final class NotificationsRepository {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        android.app.Notification systemNotification = new NotificationCompat.Builder(
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(
                 appContext,
                 notification.getCategory().getChannelId()
         )
@@ -93,11 +99,48 @@ public final class NotificationsRepository {
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(notification.getMessage()))
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .build();
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+
+        if (notification.getAction() == NotificationAction.ACCEPT_INVITE) {
+            builder.addAction(
+                    0,
+                    appContext.getString(R.string.accept_invite),
+                    actionPendingIntent(ACTION_ACCEPT_INVITE, notification)
+            );
+            builder.addAction(
+                    0,
+                    appContext.getString(R.string.decline_invite),
+                    actionPendingIntent(ACTION_DECLINE_INVITE, notification)
+            );
+        } else if (notification.getAction() == NotificationAction.OPEN_ROOM
+                && notification.getRoomId() != null
+                && !notification.getRoomId().isEmpty()) {
+            builder.addAction(
+                    0,
+                    notification.getActionLabel() != null
+                            ? notification.getActionLabel()
+                            : appContext.getString(R.string.room_session_title),
+                    actionPendingIntent(ACTION_OPEN_ROOM, notification)
+            );
+        }
 
         markDelivered(notification.getId());
-        manager.notify(notification.getId().hashCode(), systemNotification);
+        manager.notify(notification.getId().hashCode(), builder.build());
+    }
+
+    private PendingIntent actionPendingIntent(
+            @NonNull String action,
+            @NonNull SystemNotification notification
+    ) {
+        Intent intent = new Intent(appContext, NotificationActionReceiver.class);
+        intent.setAction(action);
+        intent.putExtra(EXTRA_NOTIFICATION_ID, notification.getId());
+        return PendingIntent.getBroadcast(
+                appContext,
+                31 * notification.getId().hashCode() + action.hashCode(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
     }
 
     private boolean canPostNotifications() {

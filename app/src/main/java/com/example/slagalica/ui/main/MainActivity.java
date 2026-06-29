@@ -30,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String EXTRA_GUEST_MODE = "com.example.slagalica.EXTRA_GUEST_MODE";
     public static final String EXTRA_OPEN_NOTIFICATIONS = "com.example.slagalica.EXTRA_OPEN_NOTIFICATIONS";
+    public static final String EXTRA_OPEN_ROOM_ID = "com.example.slagalica.EXTRA_OPEN_ROOM_ID";
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1001;
 
     private final Set<String> knownNotificationIds = new HashSet<>();
@@ -53,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
         inviteRepository = new GameInviteRepository();
         notificationsRepository = new NotificationsRepository(this);
         listenForSystemNotifications();
-        openNotificationsIfRequested(getIntent());
+        openRequestedDestination(getIntent());
     }
 
     @Override
@@ -69,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        openNotificationsIfRequested(intent);
+        openRequestedDestination(intent);
     }
 
     private void requestNotificationPermissionIfNeeded() {
@@ -111,6 +112,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void openRequestedDestination(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+        openRoomIfRequested(intent);
+        openNotificationsIfRequested(intent);
+    }
+
     private void openNotificationsIfRequested(Intent intent) {
         if (intent == null || !intent.getBooleanExtra(EXTRA_OPEN_NOTIFICATIONS, false)) {
             return;
@@ -129,5 +138,23 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         navController.navigate(R.id.notificationsFragment);
+    }
+
+    private void openRoomIfRequested(Intent intent) {
+        String roomId = intent.getStringExtra(EXTRA_OPEN_ROOM_ID);
+        if (roomId == null || roomId.isEmpty()) {
+            return;
+        }
+
+        intent.removeExtra(EXTRA_OPEN_ROOM_ID);
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.nav_host_fragment);
+        if (navHostFragment == null) {
+            return;
+        }
+
+        Bundle args = new Bundle();
+        args.putString("roomId", roomId);
+        navHostFragment.getNavController().navigate(R.id.roomSessionFragment, args);
     }
 }
