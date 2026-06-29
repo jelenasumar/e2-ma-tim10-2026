@@ -92,8 +92,9 @@ public final class UserProfileRepository {
         }
 
         remote.fetchUserProfile(uid, profile -> {
-            preferences.saveProfile(profile);
-            onSuccess.accept(profile);
+            UserProfile synced = new RegionRepository(appContext).ensureRegionState(profile);
+            preferences.saveProfile(synced);
+            onSuccess.accept(synced);
         }, onError);
     }
 
@@ -108,8 +109,9 @@ public final class UserProfileRepository {
             return null;
         }
         return remote.listenUserProfile(uid, profile -> {
-            preferences.saveProfile(profile);
-            onChanged.accept(profile);
+            UserProfile synced = new RegionRepository(appContext).ensureRegionState(profile);
+            preferences.saveProfile(synced);
+            onChanged.accept(synced);
         }, onError);
     }
 
@@ -363,7 +365,8 @@ public final class UserProfileRepository {
 
                 remote.fetchUserProfile(uid, profile -> {
                     UserProfile merged = mergeWithAuthEmail(profile, em);
-                    preferences.saveProfile(merged);
+                    UserProfile synced = new RegionRepository(appContext).ensureRegionState(merged);
+                    preferences.saveProfile(synced);
                     onSuccess.run();
                 }, onError);
             }, onError);

@@ -17,6 +17,7 @@ import com.example.slagalica.R;
 import com.example.slagalica.model.RegionStats;
 import com.example.slagalica.model.SerbiaRegion;
 import com.example.slagalica.model.UserProfile;
+import com.example.slagalica.utils.RegionCycleTestConfig;
 import com.example.slagalica.viewmodel.region.RegionMapViewModel;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
@@ -105,6 +106,7 @@ public class RegionMapFragment extends Fragment {
 
         ImageView icon = content.findViewById(R.id.region_stats_icon);
         TextView title = content.findViewById(R.id.region_stats_title);
+        TextView previousCycle = content.findViewById(R.id.region_stats_previous_cycle);
         TextView first = content.findViewById(R.id.region_stats_first);
         TextView second = content.findViewById(R.id.region_stats_second);
         TextView third = content.findViewById(R.id.region_stats_third);
@@ -113,6 +115,18 @@ public class RegionMapFragment extends Fragment {
 
         icon.setImageResource(stats.getIconRes());
         title.setText(stats.getRegionName());
+        if (stats.getPreviousCycleRank() > 0) {
+            previousCycle.setText(getString(
+                    R.string.region_stats_previous_cycle_rank,
+                    RegionCycleTestConfig.previousCycleLabel(),
+                    stats.getPreviousCycleRank()
+            ));
+        } else {
+            previousCycle.setText(getString(
+                    R.string.region_stats_previous_cycle_none,
+                    RegionCycleTestConfig.previousCycleLabel()
+            ));
+        }
         first.setText(getString(R.string.region_stats_first_value, stats.getPodiumFirst()));
         second.setText(getString(R.string.region_stats_second_value, stats.getPodiumSecond()));
         third.setText(getString(R.string.region_stats_third_value, stats.getPodiumThird()));

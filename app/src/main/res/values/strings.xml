@@ -299,7 +299,9 @@
     <string name="region_leaderboard_players_heading">Igrači po zvezdama u ciklusu</string>
     <string name="region_leaderboard_empty">Još nema igrača sa zvezdama u ovom ciklusu.</string>
     <string name="region_stats_title">Statistika regiona</string>
-    <string name="region_stats_podium_heading">Osvojena mesta u prethodnim ciklusima</string>
+    <string name="region_stats_podium_heading">Ukupno osvojenih mesta (svi ciklusi)</string>
+    <string name="region_stats_previous_cycle_rank">Prethodni ciklus (%1$s): %2$d. mesto</string>
+    <string name="region_stats_previous_cycle_none">Prethodni ciklus (%1$s): nije u top 3</string>
     <string name="region_stats_first_value">Prva mesta: %1$d</string>
     <string name="region_stats_second_value">Druga mesta: %1$d</string>
     <string name="region_stats_third_value">Treća mesta: %1$d</string>

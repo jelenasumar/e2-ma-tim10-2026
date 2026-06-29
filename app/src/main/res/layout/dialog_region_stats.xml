@@ -22,9 +22,16 @@
         android:textAppearance="?attr/textAppearanceTitleLarge" />
 
     <TextView
+        android:id="@+id/region_stats_previous_cycle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="12dp"
+        android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
         android:text="@string/region_stats_podium_heading"
         android:textAppearance="?attr/textAppearanceTitleSmall" />
 

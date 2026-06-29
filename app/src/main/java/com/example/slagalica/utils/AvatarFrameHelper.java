@@ -1,6 +1,10 @@
 package com.example.slagalica.utils;
 
+import android.graphics.Color;
+import android.widget.ImageView;
+
 import androidx.annotation.ColorInt;
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -24,25 +28,18 @@ public final class AvatarFrameHelper {
     @ColorInt
     public static int frameColor(@Nullable String frameKey) {
         if (frameKey == null) {
-            return 0xFF000000;
+            return Color.BLACK;
         }
         switch (frameKey.toLowerCase(Locale.ROOT)) {
             case FRAME_GOLD:
                 return 0xFFFFD700;
             case FRAME_SILVER:
-                return 0xFFC0C0C0;
+                return 0xFFA8A8A8;
             case FRAME_BRONZE:
                 return 0xFFCD7F32;
             default:
-                return 0xFF000000;
+                return Color.BLACK;
         }
-    }
-
-    public static float frameStrokeDp(@Nullable String frameKey) {
-        if (frameKey == null || frameKey.isEmpty()) {
-            return 3f;
-        }
-        return 8f;
     }
 
     @Nullable
@@ -60,21 +57,56 @@ public final class AvatarFrameHelper {
             return "";
         }
         List<String> topRegions = RegionCycleTestConfig.previousTopRegions(Collections.emptyList());
-        int index = topRegions.indexOf(regionKey);
+        int index = topRegions.indexOf(regionKey.toLowerCase(Locale.ROOT));
         String frame = frameForRegionRank(index + 1);
         return frame != null ? frame : "";
     }
 
-    public static void applyFrame(@NonNull MaterialCardView cardView, @Nullable String frameKey) {
+    public static void applyFrame(
+            @Nullable ImageView ringView,
+            @NonNull MaterialCardView cardView,
+            @Nullable String frameKey
+    ) {
         String frame = frameKey != null ? frameKey : "";
-        if (frame.isEmpty()) {
-            cardView.setStrokeColor(cardView.getContext().getColor(R.color.black));
-            cardView.setStrokeWidth((int) (3f * cardView.getResources().getDisplayMetrics().density));
-            return;
+        int drawableRes = ringDrawable(frame);
+
+        if (ringView != null) {
+            if (drawableRes == 0) {
+                ringView.setVisibility(ImageView.GONE);
+                ringView.setImageDrawable(null);
+            } else {
+                ringView.setVisibility(ImageView.VISIBLE);
+                ringView.setImageResource(drawableRes);
+                ringView.bringToFront();
+            }
         }
-        cardView.setStrokeColor(frameColor(frame));
-        cardView.setStrokeWidth((int) (frameStrokeDp(frame) * cardView.getResources().getDisplayMetrics().density));
+
+        float density = cardView.getResources().getDisplayMetrics().density;
+        if (drawableRes == 0) {
+            cardView.setStrokeColor(cardView.getContext().getColor(R.color.black));
+            cardView.setStrokeWidth((int) (3f * density));
+        } else {
+            cardView.setStrokeColor(cardView.getContext().getColor(R.color.white));
+            cardView.setStrokeWidth((int) (2f * density));
+        }
         cardView.invalidate();
+    }
+
+    @DrawableRes
+    private static int ringDrawable(@NonNull String frame) {
+        if (frame.isEmpty()) {
+            return 0;
+        }
+        switch (frame.toLowerCase(Locale.ROOT)) {
+            case FRAME_GOLD:
+                return R.drawable.avatar_frame_ring_gold;
+            case FRAME_SILVER:
+                return R.drawable.avatar_frame_ring_silver;
+            case FRAME_BRONZE:
+                return R.drawable.avatar_frame_ring_bronze;
+            default:
+                return 0;
+        }
     }
 
     @Nullable

@@ -28,25 +28,44 @@
             android:textAppearance="?attr/textAppearanceHeadlineMedium"
             tools:text="Profil" />
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/profile_avatar_card"
-            android:layout_width="132dp"
-            android:layout_height="132dp"
+        <FrameLayout
+            android:id="@+id/profile_avatar_container"
+            android:layout_width="152dp"
+            android:layout_height="152dp"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="8dp"
-            app:cardCornerRadius="66dp"
-            app:cardElevation="2dp"
-            app:strokeColor="@color/black"
-            app:strokeWidth="3dp">
+            android:layout_marginTop="8dp">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/profile_avatar_card"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_gravity="center"
+                app:cardCornerRadius="60dp"
+                app:cardElevation="4dp"
+                app:strokeColor="@color/black"
+                app:strokeWidth="2dp">
+
+                <ImageView
+                    android:id="@+id/profile_avatar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@string/profile_title"
+                    android:scaleType="centerCrop"
+                    tools:src="@drawable/ic_avatar_placeholder" />
+            </com.google.android.material.card.MaterialCardView>
 
             <ImageView
-                android:id="@+id/profile_avatar"
+                android:id="@+id/profile_avatar_ring"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:contentDescription="@string/profile_title"
-                android:scaleType="centerCrop"
-                tools:src="@drawable/ic_avatar_placeholder" />
-        </com.google.android.material.card.MaterialCardView>
+                android:contentDescription="@string/region_rank_frame"
+                android:elevation="6dp"
+                android:importantForAccessibility="no"
+                android:scaleType="fitXY"
+                android:visibility="gone"
+                tools:src="@drawable/avatar_frame_ring_silver"
+                tools:visibility="visible" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/profile_avatar_frame_label"

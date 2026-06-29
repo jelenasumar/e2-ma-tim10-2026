@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -167,11 +168,12 @@ public class ProfileFragment extends Fragment {
                 : profile.getRegion());
 
         MaterialCardView avatarCard = root.findViewById(R.id.profile_avatar_card);
-        String frameKey = profile.getRegionRankFrame();
-        if (frameKey == null || frameKey.isEmpty()) {
-            frameKey = AvatarFrameHelper.resolveRankFrame(profile.getRegionKey(), profile.getRegion());
+        ImageView avatarRing = root.findViewById(R.id.profile_avatar_ring);
+        String frameKey = AvatarFrameHelper.resolveRankFrame(profile.getRegionKey(), profile.getRegion());
+        if (frameKey.isEmpty() && profile.getRegionRankFrame() != null) {
+            frameKey = profile.getRegionRankFrame();
         }
-        AvatarFrameHelper.applyFrame(avatarCard, frameKey);
+        AvatarFrameHelper.applyFrame(avatarRing, avatarCard, frameKey);
 
         TextView frameLabel = root.findViewById(R.id.profile_avatar_frame_label);
         if (frameKey != null && !frameKey.isEmpty()) {

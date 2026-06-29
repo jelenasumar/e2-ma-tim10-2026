@@ -130,6 +130,9 @@ public class RegionLeaderboardFragment extends Fragment {
             }
 
             String frame = entry.getRegionRankFrame();
+            if (frame == null || frame.isEmpty()) {
+                frame = AvatarFrameHelper.resolveRankFrame(entry.getRegionKey(), entry.getRegionName());
+            }
             if (frame != null && !frame.isEmpty()) {
                 frameIcon.setVisibility(View.VISIBLE);
                 frameIcon.setColorFilter(new PorterDuffColorFilter(

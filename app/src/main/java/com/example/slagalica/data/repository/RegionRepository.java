@@ -81,7 +81,7 @@ public final class RegionRepository {
             changed = true;
         }
 
-        String frame = AvatarFrameHelper.frameForRegionKey(effectiveRegionKey);
+        String frame = AvatarFrameHelper.resolveRankFrame(effectiveRegionKey, profile.getRegion());
         if (!frame.equals(profile.getRegionRankFrame())) {
             builder.regionRankFrame(frame);
             changed = true;
@@ -93,14 +93,12 @@ public final class RegionRepository {
             changed = true;
         }
 
-        if (!changed) {
-            return profile;
-        }
-
         UserProfile updated = builder.build();
-        preferences.saveProfile(updated);
-        persistRemote(updated);
-        touchActivity(updated);
+        if (changed) {
+            preferences.saveProfile(updated);
+            persistRemote(updated);
+            touchActivity(updated);
+        }
         return updated;
     }
 
@@ -173,15 +171,28 @@ public final class RegionRepository {
                         intFromDocument(document, "totalRegistered"),
                         countRegisteredPlayers(rows, regionKey)
                 );
+                int podiumFirst = RegionCycleTestConfig.mergePodiumFirst(
+                        regionKey,
+                        intFromDocument(document, "podiumFirst")
+                );
+                int podiumSecond = RegionCycleTestConfig.mergePodiumSecond(
+                        regionKey,
+                        intFromDocument(document, "podiumSecond")
+                );
+                int podiumThird = RegionCycleTestConfig.mergePodiumThird(
+                        regionKey,
+                        intFromDocument(document, "podiumThird")
+                );
                 RegionStats stats = new RegionStats(
                         regionKey,
                         region.getDisplayName(appContext),
                         region.getIconRes(),
-                        intFromDocument(document, "podiumFirst"),
-                        intFromDocument(document, "podiumSecond"),
-                        intFromDocument(document, "podiumThird"),
+                        podiumFirst,
+                        podiumSecond,
+                        podiumThird,
                         active,
-                        registered
+                        registered,
+                        RegionCycleTestConfig.previousCycleRank(regionKey)
                 );
                 onSuccess.accept(stats);
             }, onError);
@@ -289,7 +300,11 @@ public final class RegionRepository {
                     regionKey,
                     region.getDisplayName(appContext),
                     monthlyStars,
-                    frameForLeaderboard(regionKey, stringValue(row.get("regionRankFrame"))),
+                    frameForLeaderboard(
+                            regionKey,
+                            stringValue(row.get("region")),
+                            stringValue(row.get("regionRankFrame"))
+                    ),
                     uid.equals(currentUid)
             ));
         }
@@ -406,11 +421,15 @@ public final class RegionRepository {
     }
 
     @NonNull
-    private String frameForLeaderboard(@NonNull String regionKey, @NonNull String storedFrame) {
+    private String frameForLeaderboard(
+            @NonNull String regionKey,
+            @NonNull String legacyRegion,
+            @NonNull String storedFrame
+    ) {
         if (!storedFrame.isEmpty()) {
             return storedFrame;
         }
-        return AvatarFrameHelper.frameForRegionKey(regionKey);
+        return AvatarFrameHelper.resolveRankFrame(regionKey, legacyRegion);
     }
 
     private void touchActivity(@NonNull UserProfile profile) {

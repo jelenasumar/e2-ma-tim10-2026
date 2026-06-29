@@ -12,6 +12,7 @@ public final class RegionStats {
     private final int podiumThird;
     private final int activePlayers;
     private final int totalRegistered;
+    private final int previousCycleRank;
 
     public RegionStats(
             @NonNull String regionKey,
@@ -21,7 +22,8 @@ public final class RegionStats {
             int podiumSecond,
             int podiumThird,
             int activePlayers,
-            int totalRegistered
+            int totalRegistered,
+            int previousCycleRank
     ) {
         this.regionKey = regionKey;
         this.regionName = regionName;
@@ -31,6 +33,7 @@ public final class RegionStats {
         this.podiumThird = podiumThird;
         this.activePlayers = activePlayers;
         this.totalRegistered = totalRegistered;
+        this.previousCycleRank = previousCycleRank;
     }
 
     @NonNull
@@ -65,5 +68,9 @@ public final class RegionStats {
 
     public int getTotalRegistered() {
         return totalRegistered;
+    }
+
+    public int getPreviousCycleRank() {
+        return previousCycleRank;
     }
 }
