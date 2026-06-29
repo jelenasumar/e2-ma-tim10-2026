@@ -8,6 +8,8 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -15,8 +17,11 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.slagalica.R;
 import com.example.slagalica.data.repository.UserProfileRepository;
+import com.example.slagalica.model.SerbiaRegion;
 
 public class RegisterActivity extends AppCompatActivity {
+
+    private SerbiaRegion selectedRegion;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,15 +42,16 @@ public class RegisterActivity extends AppCompatActivity {
         EditText passwordEt = findViewById(R.id.password);
         EditText confirmEt = findViewById(R.id.confirmPassword);
 
+        regionEt.setOnClickListener(v -> showRegionPicker(regionEt));
+
         registerBtn.setOnClickListener(v -> {
             String email = emailEt.getText() != null ? emailEt.getText().toString() : "";
             String username = usernameEt.getText() != null ? usernameEt.getText().toString() : "";
-            String region = regionEt.getText() != null ? regionEt.getText().toString() : "";
             String password = passwordEt.getText() != null ? passwordEt.getText().toString() : "";
             String confirm = confirmEt.getText() != null ? confirmEt.getText().toString() : "";
 
             if (TextUtils.isEmpty(email) || TextUtils.isEmpty(username)
-                    || TextUtils.isEmpty(region) || TextUtils.isEmpty(password)
+                    || selectedRegion == null || TextUtils.isEmpty(password)
                     || TextUtils.isEmpty(confirm)) {
                 Toast.makeText(this, R.string.error_fill_all_fields, Toast.LENGTH_SHORT).show();
                 return;
@@ -64,7 +70,7 @@ public class RegisterActivity extends AppCompatActivity {
             repo.register(
                     email,
                     username,
-                    region,
+                    selectedRegion.getKey(),
                     password,
                     () -> {
                         Toast.makeText(
@@ -89,5 +95,19 @@ public class RegisterActivity extends AppCompatActivity {
 
         });
 
+    }
+
+    private void showRegionPicker(@NonNull EditText regionEt) {
+        String[] labels = new String[SerbiaRegion.all().size()];
+        for (int i = 0; i < SerbiaRegion.all().size(); i++) {
+            labels[i] = SerbiaRegion.all().get(i).getDisplayName(this);
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.region_pick_title)
+                .setItems(labels, (dialog, which) -> {
+                    selectedRegion = SerbiaRegion.all().get(which);
+                    regionEt.setText(selectedRegion.getDisplayName(this));
+                })
+                .show();
     }
 }

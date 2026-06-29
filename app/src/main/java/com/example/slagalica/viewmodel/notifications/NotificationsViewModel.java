@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.slagalica.R;
 import com.example.slagalica.data.repository.GameInviteRepository;
 import com.example.slagalica.data.repository.NotificationsRepository;
 import com.example.slagalica.model.NotificationAction;
@@ -120,7 +121,7 @@ public class NotificationsViewModel extends AndroidViewModel {
         } else if (notification.getAction() == NotificationAction.OPEN_CHAT) {
             notificationPageTitle.setValue("Čet");
         } else if (notification.getAction() == NotificationAction.OPEN_LEAGUE) {
-            notificationPageTitle.setValue("Liga");
+            notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_ranking));
         } else if (notification.getAction() == NotificationAction.NONE) {
             notificationPageTitle.setValue(destinationTitle(notification));
         } else if (!notification.isRead()) {
@@ -164,7 +165,7 @@ public class NotificationsViewModel extends AndroidViewModel {
                 notificationPageTitle.setValue("Čet");
                 break;
             case OPEN_LEAGUE:
-                notificationPageTitle.setValue("Liga");
+                notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_ranking));
                 break;
             case NONE:
             case ACCEPT_INVITE:

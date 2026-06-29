@@ -51,6 +51,10 @@
             app:destination="@id/spojniceFragment" />
 
         <action
+            android:id="@+id/action_home_to_regionMap"
+            app:destination="@id/regionMapFragment" />
+
+        <action
             android:id="@+id/action_profile_to_changePassword"
             app:destination="@id/changePassword" />
 
@@ -131,5 +135,20 @@
         android:id="@+id/changePassword"
         android:name="com.example.slagalica.ui.profile.ChangePasswordFragment"
         android:label="@string/change_password" />
+
+    <fragment
+        android:id="@+id/regionMapFragment"
+        android:name="com.example.slagalica.ui.region.RegionMapFragment"
+        android:label="@string/region_map_title">
+
+        <action
+            android:id="@+id/action_regionMap_to_leaderboard"
+            app:destination="@id/regionLeaderboardFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/regionLeaderboardFragment"
+        android:name="com.example.slagalica.ui.region.RegionLeaderboardFragment"
+        android:label="@string/region_leaderboard_title" />
 
 </navigation>

@@ -10,6 +10,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.slagalica.R;
+import com.example.slagalica.data.repository.RegionRepository;
 import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.UserProfile;
@@ -22,6 +23,7 @@ import java.util.Locale;
 public class ProfileViewModel extends AndroidViewModel {
 
     private final UserProfileRepository repository;
+    private final RegionRepository regionRepository;
 
     private final MutableLiveData<UserProfile> profile = new MutableLiveData<>();
     private final MutableLiveData<String> statsText = new MutableLiveData<>();
@@ -35,6 +37,12 @@ public class ProfileViewModel extends AndroidViewModel {
     public ProfileViewModel(@NonNull Application application) {
         super(application);
         repository = new UserProfileRepository(application);
+        regionRepository = new RegionRepository(application);
+        regionRepository.preloadCycleConfig();
+    }
+
+    private UserProfile ensureRegionState(@NonNull UserProfile loadedProfile) {
+        return regionRepository.ensureRegionState(loadedProfile);
     }
 
     @NonNull
@@ -79,9 +87,10 @@ public class ProfileViewModel extends AndroidViewModel {
         repository.fetchProfile(
                 loadedProfile -> {
                     isLoading.setValue(false);
-                    profile.setValue(loadedProfile);
-                    statsText.setValue(buildStatsText(loadedProfile));
-                    matchSummaryText.setValue(buildMatchSummaryText(loadedProfile));
+                    UserProfile syncedProfile = ensureRegionState(loadedProfile);
+                    profile.setValue(syncedProfile);
+                    statsText.setValue(buildStatsText(syncedProfile));
+                    matchSummaryText.setValue(buildMatchSummaryText(syncedProfile));
                 },
                 error -> {
                     isLoading.setValue(false);
@@ -101,9 +110,10 @@ public class ProfileViewModel extends AndroidViewModel {
         profileListener = repository.listenCurrentProfile(
                 loadedProfile -> {
                     isLoading.setValue(false);
-                    profile.setValue(loadedProfile);
-                    statsText.setValue(buildStatsText(loadedProfile));
-                    matchSummaryText.setValue(buildMatchSummaryText(loadedProfile));
+                    UserProfile syncedProfile = ensureRegionState(loadedProfile);
+                    profile.setValue(syncedProfile);
+                    statsText.setValue(buildStatsText(syncedProfile));
+                    matchSummaryText.setValue(buildMatchSummaryText(syncedProfile));
                 },
                 error -> {
                     errorMessage.setValue(error);

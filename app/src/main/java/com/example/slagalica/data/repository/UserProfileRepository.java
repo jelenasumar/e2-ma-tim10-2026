@@ -7,8 +7,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.slagalica.data.local.UserPreferences;
+import com.example.slagalica.data.remote.RegionDataSource;
 import com.example.slagalica.data.remote.FireBaseUserDataSource;
 import com.example.slagalica.model.PlayerStatistics;
+import com.example.slagalica.model.SerbiaRegion;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.R;
 import com.example.slagalica.utils.AvatarFileStorage;
@@ -90,8 +92,9 @@ public final class UserProfileRepository {
         }
 
         remote.fetchUserProfile(uid, profile -> {
-            preferences.saveProfile(profile);
-            onSuccess.accept(profile);
+            UserProfile synced = new RegionRepository(appContext).ensureRegionState(profile);
+            preferences.saveProfile(synced);
+            onSuccess.accept(synced);
         }, onError);
     }
 
@@ -106,8 +109,9 @@ public final class UserProfileRepository {
             return null;
         }
         return remote.listenUserProfile(uid, profile -> {
-            preferences.saveProfile(profile);
-            onChanged.accept(profile);
+            UserProfile synced = new RegionRepository(appContext).ensureRegionState(profile);
+            preferences.saveProfile(synced);
+            onChanged.accept(synced);
         }, onError);
     }
 
@@ -274,18 +278,7 @@ public final class UserProfileRepository {
     ) {
         preferences.saveAvatarUri(avatarUri);
         UserProfile cached = preferences.loadProfile();
-        UserProfile updated = new UserProfile(
-                cached.getUsername(),
-                cached.getEmail(),
-                avatarUri,
-                cached.getTokens(),
-                cached.getTotalStars(),
-                cached.getLeagueName(),
-                cached.getLeagueTierKey(),
-                cached.getRegion(),
-                cached.getInvitePayload(),
-                cached.getStatistics()
-        );
+        UserProfile updated = cached.toBuilder().avatarUri(avatarUri).build();
         preferences.saveProfile(updated);
         onSuccess.run();
     }
@@ -297,28 +290,46 @@ public final class UserProfileRepository {
     public void register(
             @NonNull String email,
             @NonNull String username,
-            @NonNull String region,
+            @NonNull String regionKey,
             @NonNull String password,
             @NonNull Runnable onSuccess,
             @NonNull Consumer<String> onError
     ) {
         String em = normalizeEmail(email);
         String un = username.trim();
-        String reg = region.trim();
+        SerbiaRegion region = SerbiaRegion.fromKey(regionKey);
+        if (region == null) {
+            onError.accept("Izaberi region.");
+            return;
+        }
+
+        RegionRepository regionRepository = new RegionRepository(appContext);
+        RegionDataSource regionRemote = new RegionDataSource();
 
         remote.createUserWithEmailAndPassword(em, password, firebaseUser -> {
             String uid = firebaseUser.getUid();
-            UserProfile profile = createDefaultProfile(un, em, reg);
+            String inviteCode = UUID.randomUUID().toString();
+            String invitePayload = String.format(
+                    Locale.US,
+                    "slagalica://invite?user=%s&code=%s",
+                    un,
+                    inviteCode
+            );
+            UserProfile profile = regionRepository.createRegistrationProfile(un, em, region, invitePayload);
 
-            remote.saveUserProfile(uid, profile, () -> {
-                remote.saveUsernameLookup(uid, un, em, () -> {
-                    remote.sendEmailVerification(firebaseUser, () -> {
-                        remote.signOut();
-                        preferences.clearSessionFields();
-                        onSuccess.run();
-                    }, onError);
-                }, onError);
-            }, onError);
+            remote.saveUserProfile(uid, profile, () ->
+                    regionRemote.incrementRegionRegistration(region.getKey(), () ->
+                            remote.saveUsernameLookup(uid, un, em, () -> {
+                                remote.sendEmailVerification(firebaseUser, () -> {
+                                    remote.signOut();
+                                    preferences.clearSessionFields();
+                                    onSuccess.run();
+                                }, onError);
+                            }, onError),
+                            onError
+                    ),
+                    onError
+            );
         }, onError);
     }
 
@@ -354,7 +365,8 @@ public final class UserProfileRepository {
 
                 remote.fetchUserProfile(uid, profile -> {
                     UserProfile merged = mergeWithAuthEmail(profile, em);
-                    preferences.saveProfile(merged);
+                    UserProfile synced = new RegionRepository(appContext).ensureRegionState(merged);
+                    preferences.saveProfile(synced);
                     onSuccess.run();
                 }, onError);
             }, onError);
@@ -418,27 +430,9 @@ public final class UserProfileRepository {
                 stats.getMatchesLost()
         );
 
-        UserProfile updatedProfile = new UserProfile(
-                profile.getUsername(),
-                profile.getEmail(),
-                profile.getAvatarUri(),
-                profile.getTokens(),
-                profile.getTotalStars(),
-                profile.getLeagueName(),
-                profile.getLeagueTierKey(),
-                profile.getRegion(),
-                profile.getInvitePayload(),
-                updatedStats
-        );
-
+        UserProfile updatedProfile = profile.toBuilder().statistics(updatedStats).build();
         preferences.saveProfile(updatedProfile);
-
-        if (remote.isLoggedIn()) {
-            String uid = remote.getCurrentUid();
-            if (uid != null) {
-                remote.saveUserProfile(uid, updatedProfile, () -> { }, error -> { });
-            }
-        }
+        saveRemoteProfile(updatedProfile);
     }
 
     public void recordSpojniceGame(int gameScore, int correctPairs, int totalPairsInGame) {
@@ -481,28 +475,10 @@ public final class UserProfileRepository {
                 stats.getMatchesLost()
         );
 
-        UserProfile updatedProfile = new UserProfile(
-                profile.getUsername(),
-                profile.getEmail(),
-                profile.getAvatarUri(),
-                profile.getTokens(),
-                profile.getTotalStars(),
-                profile.getLeagueName(),
-                profile.getLeagueTierKey(),
-                profile.getRegion(),
-                profile.getInvitePayload(),
-                updatedStats
-        );
-
+        UserProfile updatedProfile = profile.toBuilder().statistics(updatedStats).build();
         preferences.setSpojniceGamesPlayed(gamesPlayed + 1);
         preferences.saveProfile(updatedProfile);
-
-        if (remote.isLoggedIn()) {
-            String uid = remote.getCurrentUid();
-            if (uid != null) {
-                remote.saveUserProfile(uid, updatedProfile, () -> { }, error -> { });
-            }
-        }
+        saveRemoteProfile(updatedProfile);
     }
 
     public void recordKorakPoKorakGame(int gameScore, int solvedStepIndex) {
@@ -691,6 +667,12 @@ public final class UserProfileRepository {
         UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);
         preferences.saveProfile(updatedProfile);
         saveRemoteProfile(updatedProfile);
+
+        if (myTotalScore > opponentTotalScore) {
+            new RegionRepository(appContext).awardMonthlyStars(3);
+        } else if (myTotalScore == opponentTotalScore) {
+            new RegionRepository(appContext).awardMonthlyStars(1);
+        }
     }
 
     public void recordSkockoGame(int gameScore, float comboPercent) {
@@ -741,18 +723,7 @@ public final class UserProfileRepository {
             @NonNull UserProfile profile,
             @NonNull PlayerStatistics statistics
     ) {
-        return new UserProfile(
-                profile.getUsername(),
-                profile.getEmail(),
-                profile.getAvatarUri(),
-                profile.getTokens(),
-                profile.getTotalStars(),
-                profile.getLeagueName(),
-                profile.getLeagueTierKey(),
-                profile.getRegion(),
-                profile.getInvitePayload(),
-                statistics
-        );
+        return profile.toBuilder().statistics(statistics).build();
     }
 
     private void saveRemoteProfile(@NonNull UserProfile profile) {
@@ -765,50 +736,11 @@ public final class UserProfileRepository {
     }
 
     @NonNull
-    private UserProfile createDefaultProfile(
-            @NonNull String username,
-            @NonNull String email,
-            @NonNull String region
-    ) {
-        String inviteCode = UUID.randomUUID().toString();
-        String invitePayload = String.format(
-                Locale.US,
-                "slagalica://invite?user=%s&code=%s",
-                username,
-                inviteCode
-        );
-
-        return new UserProfile(
-                username,
-                email,
-                "",
-                0L,
-                0L,
-                "Liga bronza",
-                "bronze",
-                region,
-                invitePayload,
-                UserProfileMapper.emptyStatistics()
-        );
-    }
-
-    @NonNull
     private static UserProfile mergeWithAuthEmail(@NonNull UserProfile profile, @NonNull String email) {
         if (email.equals(profile.getEmail())) {
             return profile;
         }
-        return new UserProfile(
-                profile.getUsername(),
-                email,
-                profile.getAvatarUri(),
-                profile.getTokens(),
-                profile.getTotalStars(),
-                profile.getLeagueName(),
-                profile.getLeagueTierKey(),
-                profile.getRegion(),
-                profile.getInvitePayload(),
-                profile.getStatistics()
-        );
+        return profile.toBuilder().email(email).build();
     }
 
     @NonNull

@@ -326,6 +326,13 @@ public class NotificationsFragment extends Fragment {
         if (title.isEmpty()) {
             return;
         }
+        if (getString(R.string.notification_destination_league).equals(title)
+                || getString(R.string.notification_destination_ranking).equals(title)
+                || "Liga".equals(title)
+                || "Rang lista".equals(title)) {
+            NavHostFragment.findNavController(this).navigate(R.id.regionLeaderboardFragment);
+            return;
+        }
         Bundle args = new Bundle();
         args.putString(NotificationDestinationFragment.ARG_TITLE, title);
         NavHostFragment.findNavController(this).navigate(R.id.notificationDestinationFragment, args);
