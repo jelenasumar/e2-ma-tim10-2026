@@ -24,6 +24,13 @@ public final class UserPreferences {
     private static final String KEY_LEAGUE_NAME = "league_name";
     private static final String KEY_LEAGUE_TIER = "league_tier";
     private static final String KEY_REGION = "region";
+    private static final String KEY_REGION_KEY = "region_key";
+    private static final String KEY_MAP_POINT_X = "map_point_x";
+    private static final String KEY_MAP_POINT_Y = "map_point_y";
+    private static final String KEY_MONTHLY_STARS = "monthly_stars";
+    private static final String KEY_STARS_CYCLE_KEY = "stars_cycle_key";
+    private static final String KEY_REGION_RANK_FRAME = "region_rank_frame";
+    private static final String KEY_LAST_ACTIVE_AT = "last_active_at";
     private static final String KEY_INVITE_CODE = "invite_code";
     private static final String KEY_INVITE_PAYLOAD = "invite_payload";
 
@@ -89,18 +96,25 @@ public final class UserPreferences {
             invitePayload = buildInvitePayload();
         }
 
-        return new UserProfile(
-                prefs.getString(KEY_USERNAME, ""),
-                prefs.getString(KEY_EMAIL, ""),
-                prefs.getString(KEY_AVATAR_URI, ""),
-                prefs.getLong(KEY_TOKENS, 0L),
-                prefs.getLong(KEY_STARS, 0L),
-                prefs.getString(KEY_LEAGUE_NAME, "Liga bronza"),
-                prefs.getString(KEY_LEAGUE_TIER, "bronze"),
-                prefs.getString(KEY_REGION, ""),
-                invitePayload,
-                stats
-        );
+        return new UserProfile.Builder()
+                .username(prefs.getString(KEY_USERNAME, ""))
+                .email(prefs.getString(KEY_EMAIL, ""))
+                .avatarUri(prefs.getString(KEY_AVATAR_URI, ""))
+                .tokens(prefs.getLong(KEY_TOKENS, 0L))
+                .totalStars(prefs.getLong(KEY_STARS, 0L))
+                .leagueName(prefs.getString(KEY_LEAGUE_NAME, "Liga bronza"))
+                .leagueTierKey(prefs.getString(KEY_LEAGUE_TIER, "bronze"))
+                .region(prefs.getString(KEY_REGION, ""))
+                .regionKey(prefs.getString(KEY_REGION_KEY, ""))
+                .mapPointX(prefs.getFloat(KEY_MAP_POINT_X, 0f))
+                .mapPointY(prefs.getFloat(KEY_MAP_POINT_Y, 0f))
+                .monthlyStars(prefs.getLong(KEY_MONTHLY_STARS, 0L))
+                .starsCycleKey(prefs.getString(KEY_STARS_CYCLE_KEY, ""))
+                .regionRankFrame(prefs.getString(KEY_REGION_RANK_FRAME, ""))
+                .lastActiveAt(prefs.getLong(KEY_LAST_ACTIVE_AT, 0L))
+                .invitePayload(invitePayload)
+                .statistics(stats)
+                .build();
     }
 
     public int getSpojniceGamesPlayed() {
@@ -148,6 +162,13 @@ public final class UserPreferences {
                 .putString(KEY_LEAGUE_NAME, profile.getLeagueName())
                 .putString(KEY_LEAGUE_TIER, profile.getLeagueTierKey())
                 .putString(KEY_REGION, profile.getRegion())
+                .putString(KEY_REGION_KEY, profile.getRegionKey())
+                .putFloat(KEY_MAP_POINT_X, profile.getMapPointX())
+                .putFloat(KEY_MAP_POINT_Y, profile.getMapPointY())
+                .putLong(KEY_MONTHLY_STARS, profile.getMonthlyStars())
+                .putString(KEY_STARS_CYCLE_KEY, profile.getStarsCycleKey())
+                .putString(KEY_REGION_RANK_FRAME, profile.getRegionRankFrame())
+                .putLong(KEY_LAST_ACTIVE_AT, profile.getLastActiveAt())
                 .putString(KEY_INVITE_PAYLOAD, profile.getInvitePayload())
                 .putFloat(KEY_AVG_KZZ, stats.getAvgScoreKoZnaZna())
                 .putFloat(KEY_AVG_SPOJNICE, stats.getAvgScoreSpojnice())
@@ -182,6 +203,13 @@ public final class UserPreferences {
                 .remove(KEY_USERNAME)
                 .remove(KEY_EMAIL)
                 .remove(KEY_REGION)
+                .remove(KEY_REGION_KEY)
+                .remove(KEY_MAP_POINT_X)
+                .remove(KEY_MAP_POINT_Y)
+                .remove(KEY_MONTHLY_STARS)
+                .remove(KEY_STARS_CYCLE_KEY)
+                .remove(KEY_REGION_RANK_FRAME)
+                .remove(KEY_LAST_ACTIVE_AT)
                 .remove(KEY_AVATAR_URI)
                 .remove(KEY_INVITE_PAYLOAD)
                 .apply();

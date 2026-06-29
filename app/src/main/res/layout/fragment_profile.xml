@@ -29,6 +29,7 @@
             tools:text="Profil" />
 
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/profile_avatar_card"
             android:layout_width="132dp"
             android:layout_height="132dp"
             android:layout_gravity="center_horizontal"
@@ -106,6 +107,28 @@
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
                 tools:text="48" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/profile_monthly_stars"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <TextView
+                android:id="@+id/profile_monthly_stars_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                tools:text="12" />
         </LinearLayout>
 
         <LinearLayout

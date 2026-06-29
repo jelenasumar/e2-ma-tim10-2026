@@ -18,12 +18,15 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
+import com.example.slagalica.model.SerbiaRegion;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.ui.auth.LoginActivity;
+import com.example.slagalica.utils.AvatarFrameHelper;
 import com.example.slagalica.utils.AvatarImageLoader;
 import com.example.slagalica.utils.QrBitmapEncoder;
 import com.example.slagalica.viewmodel.profile.ProfileViewModel;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
 import com.google.zxing.WriterException;
 
 import java.util.Locale;
@@ -142,8 +145,10 @@ public class ProfileFragment extends Fragment {
 
         TextView tokens = root.findViewById(R.id.profile_tokens_value);
         TextView stars = root.findViewById(R.id.profile_stars_value);
+        TextView monthlyStars = root.findViewById(R.id.profile_monthly_stars_value);
         tokens.setText(String.format(Locale.getDefault(), "%d", profile.getTokens()));
         stars.setText(String.format(Locale.getDefault(), "%d", profile.getTotalStars()));
+        monthlyStars.setText(String.format(Locale.getDefault(), "%d", profile.getMonthlyStars()));
 
         TextView leagueName = root.findViewById(R.id.profile_league_name);
         leagueName.setText(profile.getLeagueName());
@@ -156,7 +161,13 @@ public class ProfileFragment extends Fragment {
         ));
 
         TextView region = root.findViewById(R.id.profile_region_value);
-        region.setText(profile.getRegion());
+        SerbiaRegion resolvedRegion = SerbiaRegion.resolve(profile.getRegionKey(), profile.getRegion());
+        region.setText(resolvedRegion != null
+                ? resolvedRegion.getDisplayName(requireContext())
+                : profile.getRegion());
+
+        MaterialCardView avatarCard = root.findViewById(R.id.profile_avatar_card);
+        AvatarFrameHelper.applyFrame(avatarCard, profile.getRegionRankFrame());
 
         ImageView avatar = root.findViewById(R.id.profile_avatar);
         AvatarImageLoader.load(avatar, profile.getAvatarUri(), R.drawable.ic_avatar_placeholder);

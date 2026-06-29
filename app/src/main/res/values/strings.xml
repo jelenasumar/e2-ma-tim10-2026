@@ -288,4 +288,33 @@
         <item>Odgovor E</item>
     </string-array>
     <string name="next">Dalje</string>
+
+    <string name="region_map_title">Mapa regiona Srbije</string>
+    <string name="region_map_subtitle">Svaki registrovani igrač je prikazan kao tačka u svom regionu. Dodirni region za statistiku.</string>
+    <string name="region_map_button">Mapa regiona</string>
+    <string name="region_leaderboard_button">Mesečna rang lista po regionima</string>
+    <string name="region_leaderboard_title">Mesečna rang lista</string>
+    <string name="region_leaderboard_cycle">Ciklus: %1$s</string>
+    <string name="region_leaderboard_regions_heading">Rang lista regiona</string>
+    <string name="region_leaderboard_players_heading">Igrači po zvezdama u ciklusu</string>
+    <string name="region_leaderboard_empty">Još nema igrača sa zvezdama u ovom ciklusu.</string>
+    <string name="region_stats_title">Statistika regiona</string>
+    <string name="region_stats_podium_heading">Osvojena mesta u prethodnim ciklusima</string>
+    <string name="region_stats_first_value">Prva mesta: %1$d</string>
+    <string name="region_stats_second_value">Druga mesta: %1$d</string>
+    <string name="region_stats_third_value">Treća mesta: %1$d</string>
+    <string name="region_stats_active">Trenutno aktivnih igrača: %1$d</string>
+    <string name="region_stats_registered">Ukupno registrovanih igrača: %1$d</string>
+    <string name="region_rank_frame">Okvir regiona</string>
+    <string name="region_pick_title">Izaberi region</string>
+    <string name="region_pick_hint">Region</string>
+    <string name="error_pick_region">Izaberi region sa liste.</string>
+    <string name="profile_monthly_stars">Zvezde u ciklusu</string>
+
+    <string name="region_beograd">Beograd</string>
+    <string name="region_vojvodina">Vojvodina</string>
+    <string name="region_sumadija">Šumadija</string>
+    <string name="region_zapad">Zapadna Srbija</string>
+    <string name="region_jug">Južna Srbija</string>
+    <string name="region_istok">Istočna Srbija</string>
 </resources>
