@@ -83,8 +83,14 @@ public final class TournamentRepository {
                     DocumentSnapshot queueDoc = transaction.get(queueRef);
                     if (queueDoc.exists()) {
                         String status = stringOrDefault(queueDoc.getString("status"), "WAITING");
-                        if ("WAITING".equals(status) || "MATCHED".equals(status)) {
+                        if ("WAITING".equals(status)) {
                             return null;
+                        }
+                        if ("MATCHED".equals(status)) {
+                            String tournamentId = stringOrDefault(queueDoc.getString("tournamentId"), "");
+                            if (!canCurrentPlayerStartFresh(transaction, uid, tournamentId)) {
+                                return null;
+                            }
                         }
                     }
 
@@ -105,6 +111,37 @@ public final class TournamentRepository {
                 })
                 .addOnSuccessListener(unused -> findOrCreateTournament(onWaiting, onError))
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Ulazak u turnir nije uspeo.")));
+    }
+
+    private boolean canCurrentPlayerStartFresh(
+            @NonNull com.google.firebase.firestore.Transaction transaction,
+            @NonNull String uid,
+            @NonNull String tournamentId
+    ) throws com.google.firebase.firestore.FirebaseFirestoreException {
+        if (tournamentId.isEmpty()) {
+            return false;
+        }
+        DocumentSnapshot tournamentDoc = transaction.get(db.collection(TOURNAMENTS).document(tournamentId));
+        if (!tournamentDoc.exists()) {
+            return true;
+        }
+        TournamentState state = TournamentState.fromDocument(tournamentDoc);
+        if (TournamentState.STATUS_FINISHED.equals(state.getStatus())) {
+            return true;
+        }
+        if (TournamentState.STATUS_FINAL_READY.equals(state.getStatus())) {
+            return !uid.equals(state.getSemiOneWinnerUid()) && !uid.equals(state.getSemiTwoWinnerUid());
+        }
+        if (TournamentState.STATUS_SEMIS_READY.equals(state.getStatus())) {
+            String roomId = state.roomForPlayer(uid);
+            if (roomId.equals(state.getSemiOneRoomId()) && !state.getSemiOneWinnerUid().isEmpty()) {
+                return !uid.equals(state.getSemiOneWinnerUid());
+            }
+            if (roomId.equals(state.getSemiTwoRoomId()) && !state.getSemiTwoWinnerUid().isEmpty()) {
+                return !uid.equals(state.getSemiTwoWinnerUid());
+            }
+        }
+        return false;
     }
 
     public void cancelWaiting(@NonNull Runnable onDone) {

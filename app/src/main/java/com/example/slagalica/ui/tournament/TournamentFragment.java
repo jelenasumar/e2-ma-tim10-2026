@@ -79,7 +79,7 @@ public class TournamentFragment extends Fragment {
 
     private void renderTournament(@NonNull TournamentState state) {
         bracket.setVisibility(View.VISIBLE);
-        joinButton.setVisibility(View.GONE);
+        joinButton.setVisibility(viewModel.canStartAnotherTournament(state) ? View.VISIBLE : View.GONE);
         cancelButton.setVisibility(View.GONE);
 
         List<TournamentPlayer> players = state.getPlayers();

@@ -53,6 +53,11 @@ public class TournamentViewModel extends AndroidViewModel {
         if (queueListener != null) {
             queueListener.remove();
         }
+        if (tournamentListener != null) {
+            tournamentListener.remove();
+            tournamentListener = null;
+        }
+        activeTournamentId = "";
         queueListener = repository.listenMyQueue(this::listenTournament, this::showError);
         repository.joinTournament(
                 () -> status.setValue("Cekamo da se skupe 4 aktivna igraca..."),
@@ -90,6 +95,29 @@ public class TournamentViewModel extends AndroidViewModel {
             return roomId;
         }
         return "";
+    }
+
+    public boolean canStartAnotherTournament(@NonNull TournamentState state) {
+        String uid = getCurrentUid();
+        if (uid.isEmpty()) {
+            return false;
+        }
+        if (TournamentState.STATUS_FINISHED.equals(state.getStatus())) {
+            return true;
+        }
+        if (TournamentState.STATUS_FINAL_READY.equals(state.getStatus())) {
+            return !uid.equals(state.getSemiOneWinnerUid()) && !uid.equals(state.getSemiTwoWinnerUid());
+        }
+        if (TournamentState.STATUS_SEMIS_READY.equals(state.getStatus())) {
+            String roomId = state.roomForPlayer(uid);
+            if (roomId.equals(state.getSemiOneRoomId()) && !state.getSemiOneWinnerUid().isEmpty()) {
+                return !uid.equals(state.getSemiOneWinnerUid());
+            }
+            if (roomId.equals(state.getSemiTwoRoomId()) && !state.getSemiTwoWinnerUid().isEmpty()) {
+                return !uid.equals(state.getSemiTwoWinnerUid());
+            }
+        }
+        return false;
     }
 
     private void listenTournament(@NonNull String tournamentId) {
