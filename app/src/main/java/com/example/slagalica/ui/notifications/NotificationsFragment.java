@@ -237,8 +237,7 @@ public class NotificationsFragment extends Fragment {
     }
 
     private boolean isRewardNotification(@NonNull SystemNotification notification) {
-        return notification.getCategory() == NotificationCategory.REWARD
-                || notification.getAction() == NotificationAction.OPEN_RANKING;
+        return notification.getCategory() == NotificationCategory.REWARD;
     }
 
     private void showRewardDialog(@NonNull SystemNotification notification) {
