@@ -197,17 +197,9 @@ public class RoomSessionFragment extends Fragment {
             return;
         }
         roomMatchStatsRecorded = true;
-        int myScore;
-        int opponentScore;
-        if (myUid.equals(room.getHostUid())) {
-            myScore = room.getHostTotalScore();
-            opponentScore = room.getGuestTotalScore();
-        } else if (myUid.equals(room.getGuestUid())) {
-            myScore = room.getGuestTotalScore();
-            opponentScore = room.getHostTotalScore();
-        } else {
+        if (!myUid.equals(room.getHostUid()) && !myUid.equals(room.getGuestUid())) {
             return;
         }
-        new UserProfileRepository(requireContext()).recordRoomMatchResult(myScore, opponentScore);
+        new UserProfileRepository(requireContext()).processFinishedRoomResult(room, () -> { }, error -> { });
     }
 }

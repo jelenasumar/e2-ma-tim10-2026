@@ -10,24 +10,35 @@ import com.example.slagalica.data.local.UserPreferences;
 import com.example.slagalica.data.remote.RegionDataSource;
 import com.example.slagalica.data.remote.FireBaseUserDataSource;
 import com.example.slagalica.model.PlayerStatistics;
+import com.example.slagalica.model.RoomSession;
 import com.example.slagalica.model.SerbiaRegion;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.R;
 import com.example.slagalica.utils.AvatarFileStorage;
 import com.example.slagalica.utils.AvatarImageLoader;
+import com.example.slagalica.utils.MonthlyCycleHelper;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.SetOptions;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
 public final class UserProfileRepository {
 
+    private static final String MATCH_RESULTS = "match_results";
+    private static final String MATCH_TYPE_RANDOM = "RANDOM";
+
     private final Context appContext;
     private final UserPreferences preferences;
     private final FireBaseUserDataSource remote;
+    private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
     public UserProfileRepository(@NonNull Context context) {
         this.appContext = context.getApplicationContext();
@@ -673,6 +684,161 @@ public final class UserProfileRepository {
         } else if (myTotalScore == opponentTotalScore) {
             new RegionRepository(appContext).awardMonthlyStars(1);
         }
+    }
+
+    public void processFinishedRoomResult(
+            @NonNull RoomSession room,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (!isRegisteredPlayer()) {
+            onSuccess.run();
+            return;
+        }
+        String uid = remote.getCurrentUid();
+        if (uid == null || (!uid.equals(room.getHostUid()) && !uid.equals(room.getGuestUid()))) {
+            onSuccess.run();
+            return;
+        }
+
+        String winnerUid = winnerUid(room);
+        String loserUid = loserUid(room);
+        boolean randomMatch = MATCH_TYPE_RANDOM.equals(room.getMatchType());
+        int hostStarsDelta = randomMatch ? starsDelta(room.getHostTotalScore(), room.getHostUid().equals(winnerUid)) : 0;
+        int guestStarsDelta = randomMatch ? starsDelta(room.getGuestTotalScore(), room.getGuestUid().equals(winnerUid)) : 0;
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("roomId", room.getRoomId());
+        result.put("hostUid", room.getHostUid());
+        result.put("guestUid", room.getGuestUid());
+        result.put("hostUsername", room.getHostUsername());
+        result.put("guestUsername", room.getGuestUsername());
+        result.put("hostScore", room.getHostTotalScore());
+        result.put("guestScore", room.getGuestTotalScore());
+        result.put("winnerUid", winnerUid);
+        result.put("loserUid", loserUid);
+        result.put("matchType", room.getMatchType());
+        result.put("hostStarsDelta", hostStarsDelta);
+        result.put("guestStarsDelta", guestStarsDelta);
+        result.put("processedBy_" + uid, true);
+        result.put("finishedAt", FieldValue.serverTimestamp());
+        result.put("updatedAt", FieldValue.serverTimestamp());
+
+        db.collection(MATCH_RESULTS)
+                .document(room.getRoomId())
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (snapshot.exists() && Boolean.TRUE.equals(snapshot.getBoolean("processedBy_" + uid))) {
+                        onSuccess.run();
+                        return;
+                    }
+                    db.collection(MATCH_RESULTS)
+                            .document(room.getRoomId())
+                            .set(result, SetOptions.merge())
+                            .addOnSuccessListener(unused -> {
+                                int myScore = uid.equals(room.getHostUid()) ? room.getHostTotalScore() : room.getGuestTotalScore();
+                                int opponentScore = uid.equals(room.getHostUid()) ? room.getGuestTotalScore() : room.getHostTotalScore();
+                                int myStarsDelta = uid.equals(room.getHostUid()) ? hostStarsDelta : guestStarsDelta;
+                                UserProfile updated = profileAfterFinishedMatch(
+                                        preferences.loadProfile(),
+                                        myScore,
+                                        opponentScore,
+                                        myStarsDelta,
+                                        randomMatch
+                                );
+                                preferences.saveProfile(updated);
+                                saveRemoteProfile(updated);
+                                onSuccess.run();
+                            })
+                            .addOnFailureListener(e -> onError.accept(
+                                    e.getMessage() != null ? e.getMessage() : "Match result could not be saved."
+                            ));
+                })
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Match result could not be loaded."
+                ));
+    }
+
+    @NonNull
+    private UserProfile profileAfterFinishedMatch(
+            @NonNull UserProfile profile,
+            int myTotalScore,
+            int opponentTotalScore,
+            int starsDelta,
+            boolean affectsStars
+    ) {
+        PlayerStatistics stats = profile.getStatistics();
+
+        int totalMatches = stats.getTotalMatches() + 1;
+        int matchesWon = stats.getMatchesWon();
+        int matchesLost = stats.getMatchesLost();
+        if (myTotalScore > opponentTotalScore) {
+            matchesWon++;
+        } else if (myTotalScore < opponentTotalScore) {
+            matchesLost++;
+        }
+        float winPercent = totalMatches > 0 ? (matchesWon * 100f) / totalMatches : 0f;
+        float lossPercent = totalMatches > 0 ? (matchesLost * 100f) / totalMatches : 0f;
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                stats.getAvgScoreKoZnaZna(),
+                stats.getAvgScoreSpojnice(),
+                stats.getAvgScoreMojBroj(),
+                stats.getAvgScoreKorakPoKorak(),
+                stats.getAvgScoreAsocijacije(),
+                stats.getAvgScoreSkocko(),
+                stats.getKoZnaZnaHits(),
+                stats.getKoZnaZnaMisses(),
+                stats.getMojBrojCorrectPercent(),
+                stats.getKorakPoKorakStepPercents(),
+                stats.getAsocijacijeSolved(),
+                stats.getAsocijacijeUnsolved(),
+                stats.getSkockoComboPercent(),
+                stats.getSpojniceLinkedPercent(),
+                totalMatches,
+                winPercent,
+                lossPercent,
+                matchesWon,
+                matchesLost
+        );
+
+        UserProfile.Builder builder = profile.toBuilder().statistics(updatedStats);
+        if (affectsStars) {
+            String currentCycle = MonthlyCycleHelper.currentCycleKey();
+            String cycleKey = currentCycle;
+            long monthlyStars = currentCycle.equals(profile.getStarsCycleKey()) ? profile.getMonthlyStars() : 0L;
+            builder.totalStars(Math.max(0L, profile.getTotalStars() + starsDelta))
+                    .monthlyStars(Math.max(0L, monthlyStars + starsDelta))
+                    .starsCycleKey(cycleKey);
+        }
+        return builder.build();
+    }
+
+    @NonNull
+    private static String winnerUid(@NonNull RoomSession room) {
+        if (room.getHostTotalScore() > room.getGuestTotalScore()) {
+            return room.getHostUid();
+        }
+        if (room.getGuestTotalScore() > room.getHostTotalScore()) {
+            return room.getGuestUid();
+        }
+        return "";
+    }
+
+    @NonNull
+    private static String loserUid(@NonNull RoomSession room) {
+        if (room.getHostTotalScore() > room.getGuestTotalScore()) {
+            return room.getGuestUid();
+        }
+        if (room.getGuestTotalScore() > room.getHostTotalScore()) {
+            return room.getHostUid();
+        }
+        return "";
+    }
+
+    private static int starsDelta(int score, boolean won) {
+        int scoreBonus = Math.max(0, score) / 40;
+        return (won ? 10 : -10) + scoreBonus;
     }
 
     public void recordSkockoGame(int gameScore, float comboPercent) {

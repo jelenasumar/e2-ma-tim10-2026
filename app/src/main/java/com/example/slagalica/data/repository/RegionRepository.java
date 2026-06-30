@@ -250,7 +250,7 @@ public final class RegionRepository {
                 .username(username)
                 .email(email)
                 .avatarUri("")
-                .tokens(0L)
+                .tokens(5L)
                 .totalStars(0L)
                 .leagueName("Liga bronza")
                 .leagueTierKey("bronze")
