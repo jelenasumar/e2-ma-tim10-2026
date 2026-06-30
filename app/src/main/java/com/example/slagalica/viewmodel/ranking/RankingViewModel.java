@@ -71,7 +71,7 @@ public class RankingViewModel extends AndroidViewModel {
     }
 
     public void start() {
-        processRewards();
+        processCycleNotifications();
         load();
         handler.removeCallbacks(refreshRunnable);
         handler.postDelayed(refreshRunnable, REFRESH_INTERVAL_MS);
@@ -96,7 +96,17 @@ public class RankingViewModel extends AndroidViewModel {
         );
     }
 
-    public void processRewards() {
+    public void processCycleNotifications() {
+        repository.processFinishedCyclePlacements(
+                RankingRepository.CycleType.WEEKLY,
+                () -> { },
+                errorMessage::setValue
+        );
+        repository.processFinishedCyclePlacements(
+                RankingRepository.CycleType.MONTHLY,
+                () -> { },
+                errorMessage::setValue
+        );
         repository.processFinishedCycleRewards(
                 RankingRepository.CycleType.WEEKLY,
                 () -> { },

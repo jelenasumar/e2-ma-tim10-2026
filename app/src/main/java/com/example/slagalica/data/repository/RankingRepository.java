@@ -119,6 +119,37 @@ public final class RankingRepository {
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Ciklus nagrada nije proveren.")));
     }
 
+    public void processFinishedCyclePlacements(
+            @NonNull CycleType type,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        CycleWindow window = previousWindow(type);
+        String placementDocId = placementDocId(type, window);
+        db.collection(CONFIG)
+                .document(placementDocId)
+                .get()
+                .addOnSuccessListener(config -> {
+                    if (config.exists()) {
+                        onSuccess.run();
+                        return;
+                    }
+                    db.collection(MATCH_RESULTS)
+                            .whereEqualTo("matchType", RANDOM)
+                            .get()
+                            .addOnSuccessListener(snapshot -> distributePlacementNotifications(
+                                    type,
+                                    window,
+                                    placementDocId,
+                                    buildEntries(snapshot.getDocuments(), window),
+                                    onSuccess,
+                                    onError
+                            ))
+                            .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Plasmani nisu obradjeni.")));
+                })
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Ciklus plasmana nije proveren.")));
+    }
+
     private void distributeRewards(
             @NonNull CycleType type,
             @NonNull CycleWindow window,
@@ -150,20 +181,16 @@ public final class RankingRepository {
                 currentRewardMessage = message;
             }
 
-            Map<String, Object> notification = new HashMap<>();
+            Map<String, Object> notification = baseRankingNotification(
+                    type,
+                    window,
+                    currentUid,
+                    winner.getRank()
+            );
             notification.put("type", "RANKING_REWARD");
             notification.put("category", "REWARD");
             notification.put("title", "Nagrada sa rang liste");
             notification.put("message", message);
-            notification.put("read", false);
-            notification.put("action", "OPEN_RANKING");
-            notification.put("actionLabel", "Otvori rang listu");
-            notification.put("fromUid", currentUid);
-            notification.put("createdAt", FieldValue.serverTimestamp());
-            notification.put("cycleType", type.name());
-            notification.put("cycleStart", window.startMillis);
-            notification.put("cycleEnd", window.endMillis);
-            notification.put("rank", winner.getRank());
             notification.put("tokens", tokens);
             batch.set(db.collection(USERS)
                     .document(winner.getUid())
@@ -189,6 +216,52 @@ public final class RankingRepository {
                     onSuccess.run();
                 })
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Nagrade nisu dodeljene.")));
+    }
+
+    private void distributePlacementNotifications(
+            @NonNull CycleType type,
+            @NonNull CycleWindow window,
+            @NonNull String placementDocId,
+            @NonNull List<RankingEntry> entries,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (entries.isEmpty()) {
+            markCycleProcessed(placementDocId, window, 0, onSuccess, onError);
+            return;
+        }
+
+        com.google.firebase.firestore.WriteBatch batch = db.batch();
+        String currentUid = currentUid();
+        for (RankingEntry entry : entries) {
+            Map<String, Object> notification = baseRankingNotification(
+                    type,
+                    window,
+                    currentUid,
+                    entry.getRank()
+            );
+            notification.put("type", "RANKING_PLACEMENT");
+            notification.put("category", "RANKING");
+            notification.put("title", "Plasman na rang listi");
+            notification.put("message", rankingMessage(type, entry.getRank()));
+            batch.set(db.collection(USERS)
+                    .document(entry.getUid())
+                    .collection(NOTIFICATIONS)
+                    .document(), notification);
+        }
+
+        Map<String, Object> processed = new HashMap<>();
+        processed.put("cycleType", type.name());
+        processed.put("cycleStart", window.startMillis);
+        processed.put("cycleEnd", window.endMillis);
+        processed.put("rankedCount", entries.size());
+        processed.put("processedBy", currentUid);
+        processed.put("processedAt", FieldValue.serverTimestamp());
+        batch.set(db.collection(CONFIG).document(placementDocId), processed, SetOptions.merge());
+
+        batch.commit()
+                .addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Plasmani nisu sacuvani.")));
     }
 
     private void markCycleProcessed(
@@ -283,6 +356,32 @@ public final class RankingRepository {
     }
 
     @NonNull
+    private static Map<String, Object> baseRankingNotification(
+            @NonNull CycleType type,
+            @NonNull CycleWindow window,
+            @NonNull String currentUid,
+            int rank
+    ) {
+        Map<String, Object> notification = new HashMap<>();
+        notification.put("read", false);
+        notification.put("action", "OPEN_RANKING");
+        notification.put("actionLabel", "Otvori rang listu");
+        notification.put("fromUid", currentUid);
+        notification.put("createdAt", FieldValue.serverTimestamp());
+        notification.put("cycleType", type.name());
+        notification.put("cycleStart", window.startMillis);
+        notification.put("cycleEnd", window.endMillis);
+        notification.put("rank", rank);
+        return notification;
+    }
+
+    @NonNull
+    private static String rankingMessage(@NonNull CycleType type, int rank) {
+        String cycle = type == CycleType.WEEKLY ? "nedeljnoj" : "mesecnoj";
+        return "Zavrsili ste ciklus na " + rank + ". mestu na " + cycle + " rang listi.";
+    }
+
+    @NonNull
     private static String rewardMessage(@NonNull CycleType type, int rank, int tokens) {
         String cycle = type == CycleType.WEEKLY ? "nedeljnoj" : "mesecnoj";
         return "Osvojili ste " + rank + ". mesto na " + cycle + " rang listi i dobili " + tokens + " tokena.";
@@ -333,6 +432,11 @@ public final class RankingRepository {
     @NonNull
     private static String rewardDocId(@NonNull CycleType type, @NonNull CycleWindow window) {
         return "ranking_reward_" + type.name().toLowerCase(Locale.ROOT) + "_" + window.startMillis;
+    }
+
+    @NonNull
+    private static String placementDocId(@NonNull CycleType type, @NonNull CycleWindow window) {
+        return "ranking_placement_" + type.name().toLowerCase(Locale.ROOT) + "_" + window.startMillis;
     }
 
     @NonNull
