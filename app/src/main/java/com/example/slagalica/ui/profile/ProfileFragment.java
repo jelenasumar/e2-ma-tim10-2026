@@ -1,8 +1,6 @@
 package com.example.slagalica.ui.profile;
 
 import android.graphics.Bitmap;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffColorFilter;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -155,11 +153,8 @@ public class ProfileFragment extends Fragment {
         leagueName.setText(profile.getLeagueName());
 
         ImageView leagueIcon = root.findViewById(R.id.profile_league_icon);
-        leagueIcon.setImageResource(R.drawable.ic_league_badge);
-        leagueIcon.setColorFilter(new PorterDuffColorFilter(
-                ProfileViewModel.leagueColor(profile.getLeagueTierKey()),
-                PorterDuff.Mode.SRC_IN
-        ));
+        leagueIcon.setImageResource(ProfileViewModel.leagueIcon(profile.getLeagueTierKey()));
+        leagueIcon.clearColorFilter();
 
         TextView region = root.findViewById(R.id.profile_region_value);
         SerbiaRegion resolvedRegion = SerbiaRegion.resolve(profile.getRegionKey(), profile.getRegion());

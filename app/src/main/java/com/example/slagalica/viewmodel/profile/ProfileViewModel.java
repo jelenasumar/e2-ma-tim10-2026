@@ -13,6 +13,7 @@ import com.example.slagalica.R;
 import com.example.slagalica.data.repository.RegionRepository;
 import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.PlayerStatistics;
+import com.example.slagalica.model.LeagueTier;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.utils.SingleLiveEvent;
 import com.google.firebase.firestore.ListenerRegistration;
@@ -182,16 +183,12 @@ public class ProfileViewModel extends AndroidViewModel {
         }
     }
 
-    public static int leagueColor(@NonNull String tier) {
-        switch (tier.toLowerCase(Locale.US)) {
-            case "silver":
-                return android.graphics.Color.rgb(192, 192, 192);
-            case "gold":
-                return android.graphics.Color.rgb(255, 215, 0);
-            case "bronze":
-            default:
-                return android.graphics.Color.rgb(205, 127, 50);
-        }
+    public static int leagueColor(@NonNull String tierKey) {
+        return LeagueTier.fromKey(tierKey).getColor();
+    }
+
+    public static int leagueIcon(@NonNull String tierKey) {
+        return LeagueTier.fromKey(tierKey).getIconRes();
     }
 
     @NonNull

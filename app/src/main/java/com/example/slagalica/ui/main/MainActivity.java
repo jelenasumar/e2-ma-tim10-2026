@@ -7,6 +7,8 @@ import android.os.Build;
 import android.content.pm.PackageManager;
 
 import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AlertDialog;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.graphics.Insets;
@@ -19,7 +21,9 @@ import androidx.navigation.fragment.NavHostFragment;
 import com.example.slagalica.R;
 import com.example.slagalica.data.repository.GameInviteRepository;
 import com.example.slagalica.data.repository.NotificationsRepository;
+import com.example.slagalica.model.LeagueChangeEvent;
 import com.example.slagalica.model.SystemNotification;
+import com.example.slagalica.utils.LeagueChangeNotifier;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.HashSet;
@@ -54,7 +58,20 @@ public class MainActivity extends AppCompatActivity {
         inviteRepository = new GameInviteRepository();
         notificationsRepository = new NotificationsRepository(this);
         listenForSystemNotifications();
+        observeLeagueChanges();
         openRequestedDestination(getIntent());
+    }
+
+    private void observeLeagueChanges() {
+        LeagueChangeNotifier.get().observe(this, this::showLeagueChangeDialog);
+    }
+
+    private void showLeagueChangeDialog(@NonNull LeagueChangeEvent event) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.league_dialog_title)
+                .setMessage(event.getMessage())
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
     }
 
     @Override

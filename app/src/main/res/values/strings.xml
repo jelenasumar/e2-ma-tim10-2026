@@ -82,6 +82,17 @@
     <string name="notification_type_other">Ostalo</string>
     <string name="notification_league_title">Promena lige</string>
     <string name="notification_league_message">Prešla si u višu ligu nakon poslednje partije.</string>
+    <string name="league_dialog_title">Promena lige</string>
+    <string name="league_promoted_message">Čestitamo! Napredovao/la si u %1$s. Trenutno imaš %2$d zvezda.</string>
+    <string name="league_demoted_message">Pao/la si u %1$s. Trenutno imaš %2$d zvezda.</string>
+    <string name="league_monthly_penalty_message">Nisi se plasirao/la na mesečnoj rang listi. Zvezde su smanjene sa %1$d na %2$d (−30%%).</string>
+    <string name="league_name_starter">Početnička liga</string>
+    <string name="league_name_bronze">Bronzana liga</string>
+    <string name="league_name_silver">Srebrna liga</string>
+    <string name="league_name_gold">Zlatna liga</string>
+    <string name="league_name_platinum">Platinska liga</string>
+    <string name="league_name_diamond">Dijamantska liga</string>
+    <string name="league_daily_tokens_info">Dnevni tokeni: %1$d (5 osnovnih + %2$d iz lige)</string>
     <string name="notification_league_date">Pre 2 dana, 09:15 - Nepročitano</string>
     <string name="open_chat">Udji u čet</string>
     <string name="open_league">Pogledaj ligu</string>

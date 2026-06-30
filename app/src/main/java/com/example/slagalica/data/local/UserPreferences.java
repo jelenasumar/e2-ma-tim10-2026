@@ -59,6 +59,8 @@ public final class UserPreferences {
     private static final String KEY_LOSS_PCT = "matches_loss_pct";
     private static final String KEY_MATCHES_WON = "matches_won";
     private static final String KEY_MATCHES_LOST = "matches_lost";
+    private static final String KEY_LAST_DAILY_TOKEN_DATE = "last_daily_token_date";
+    private static final String KEY_MONTHLY_PENALTY_PREFIX = "monthly_penalty_";
 
     private final SharedPreferences prefs;
 
@@ -102,8 +104,8 @@ public final class UserPreferences {
                 .avatarUri(prefs.getString(KEY_AVATAR_URI, ""))
                 .tokens(prefs.getLong(KEY_TOKENS, 0L))
                 .totalStars(prefs.getLong(KEY_STARS, 0L))
-                .leagueName(prefs.getString(KEY_LEAGUE_NAME, "Liga bronza"))
-                .leagueTierKey(prefs.getString(KEY_LEAGUE_TIER, "bronze"))
+                .leagueName(prefs.getString(KEY_LEAGUE_NAME, "Početnička liga"))
+                .leagueTierKey(prefs.getString(KEY_LEAGUE_TIER, "starter"))
                 .region(prefs.getString(KEY_REGION, ""))
                 .regionKey(prefs.getString(KEY_REGION_KEY, ""))
                 .mapPointX(prefs.getFloat(KEY_MAP_POINT_X, 0f))
@@ -219,10 +221,10 @@ public final class UserPreferences {
     public void ensureSeedDefaults() {
         SharedPreferences.Editor ed = prefs.edit();
         if (!prefs.contains(KEY_LEAGUE_NAME)) {
-            ed.putString(KEY_LEAGUE_NAME, "Liga bronza");
+            ed.putString(KEY_LEAGUE_NAME, "Početnička liga");
         }
         if (!prefs.contains(KEY_LEAGUE_TIER)) {
-            ed.putString(KEY_LEAGUE_TIER, "bronze");
+            ed.putString(KEY_LEAGUE_TIER, "starter");
         }
         if (!prefs.contains(KEY_INVITE_CODE)) {
             ed.putString(KEY_INVITE_CODE, UUID.randomUUID().toString());
@@ -276,5 +278,26 @@ public final class UserPreferences {
 
     public void setMojBrojGamesPlayed(int count) {
         prefs.edit().putInt(KEY_MOJ_BROJ_GAMES, count).apply();
+    }
+
+    @NonNull
+    public String getLastDailyTokenGrantDate() {
+        return prefs.getString(KEY_LAST_DAILY_TOKEN_DATE, "");
+    }
+
+    public void setLastDailyTokenGrantDate(@NonNull String date) {
+        prefs.edit().putString(KEY_LAST_DAILY_TOKEN_DATE, date).apply();
+    }
+
+    public boolean wasMonthlyPenaltyProcessed(long cycleStartMillis) {
+        return prefs.getBoolean(KEY_MONTHLY_PENALTY_PREFIX + cycleStartMillis, false);
+    }
+
+    public void markMonthlyPenaltyProcessed(long cycleStartMillis) {
+        prefs.edit().putBoolean(KEY_MONTHLY_PENALTY_PREFIX + cycleStartMillis, true).apply();
+    }
+
+    public void clearMonthlyPenaltyProcessed(long cycleStartMillis) {
+        prefs.edit().remove(KEY_MONTHLY_PENALTY_PREFIX + cycleStartMillis).apply();
     }
 }

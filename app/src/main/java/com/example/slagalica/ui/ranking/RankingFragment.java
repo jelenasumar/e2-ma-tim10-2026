@@ -104,7 +104,7 @@ public class RankingFragment extends Fragment {
         });
         viewModel.getInfoMessage().observe(getViewLifecycleOwner(), message -> {
             if (message != null && !message.isEmpty()) {
-                if (message.contains("token")) {
+                if (message.contains("token") || message.contains("zvezd")) {
                     showRewardDialog(message);
                 } else {
                     Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();

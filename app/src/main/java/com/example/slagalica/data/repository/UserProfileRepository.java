@@ -38,12 +38,14 @@ public final class UserProfileRepository {
     private final Context appContext;
     private final UserPreferences preferences;
     private final FireBaseUserDataSource remote;
+    private final LeagueRepository leagueRepository;
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
     public UserProfileRepository(@NonNull Context context) {
         this.appContext = context.getApplicationContext();
         this.preferences = new UserPreferences(appContext);
         this.remote = new FireBaseUserDataSource();
+        this.leagueRepository = new LeagueRepository(appContext);
 
         if (!remote.isLoggedIn()) {
             preferences.clearSessionFields();
@@ -103,8 +105,13 @@ public final class UserProfileRepository {
         }
 
         remote.fetchUserProfile(uid, profile -> {
-            UserProfile synced = new RegionRepository(appContext).ensureRegionState(profile);
+            UserProfile synced = syncProfileState(profile);
             preferences.saveProfile(synced);
+            leagueRepository.processMonthlyPenaltyForCurrentUser(
+                    synced,
+                    message -> { },
+                    error -> { }
+            );
             onSuccess.accept(synced);
         }, onError);
     }
@@ -120,7 +127,7 @@ public final class UserProfileRepository {
             return null;
         }
         return remote.listenUserProfile(uid, profile -> {
-            UserProfile synced = new RegionRepository(appContext).ensureRegionState(profile);
+            UserProfile synced = syncProfileState(profile);
             preferences.saveProfile(synced);
             onChanged.accept(synced);
         }, onError);
@@ -807,11 +814,43 @@ public final class UserProfileRepository {
             String currentCycle = MonthlyCycleHelper.currentCycleKey();
             String cycleKey = currentCycle;
             long monthlyStars = currentCycle.equals(profile.getStarsCycleKey()) ? profile.getMonthlyStars() : 0L;
-            builder.totalStars(Math.max(0L, profile.getTotalStars() + starsDelta))
+            long newTotalStars = Math.max(0L, profile.getTotalStars() + starsDelta);
+            builder.totalStars(newTotalStars)
                     .monthlyStars(Math.max(0L, monthlyStars + starsDelta))
                     .starsCycleKey(cycleKey);
         }
-        return builder.build();
+        UserProfile withStats = builder.build();
+        if (!affectsStars) {
+            return withStats;
+        }
+        LeagueRepository.SyncResult syncResult = leagueRepository.syncProfile(
+                withStats,
+                profile,
+                true
+        );
+        return syncResult.getProfile();
+    }
+
+    @NonNull
+    private UserProfile syncProfileState(@NonNull UserProfile profile) {
+        UserProfile regionSynced = new RegionRepository(appContext).ensureRegionState(profile);
+        LeagueRepository.SyncResult syncResult = leagueRepository.syncProfile(
+                regionSynced,
+                regionSynced,
+                false
+        );
+        UserProfile synced = syncResult.getProfile();
+        if (leagueStateChanged(regionSynced, synced)) {
+            saveRemoteProfile(synced);
+        }
+        return synced;
+    }
+
+    private static boolean leagueStateChanged(@NonNull UserProfile before, @NonNull UserProfile after) {
+        return before.getTokens() != after.getTokens()
+                || before.getTotalStars() != after.getTotalStars()
+                || !before.getLeagueTierKey().equals(after.getLeagueTierKey())
+                || !before.getLeagueName().equals(after.getLeagueName());
     }
 
     @NonNull
