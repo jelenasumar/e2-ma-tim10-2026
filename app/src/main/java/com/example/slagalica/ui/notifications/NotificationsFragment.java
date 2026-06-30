@@ -330,7 +330,7 @@ public class NotificationsFragment extends Fragment {
                 || getString(R.string.notification_destination_ranking).equals(title)
                 || "Liga".equals(title)
                 || "Rang lista".equals(title)) {
-            NavHostFragment.findNavController(this).navigate(R.id.regionLeaderboardFragment);
+            NavHostFragment.findNavController(this).navigate(R.id.rankingFragment);
             return;
         }
         Bundle args = new Bundle();

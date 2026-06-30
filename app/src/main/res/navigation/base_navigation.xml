@@ -55,6 +55,10 @@
             app:destination="@id/regionMapFragment" />
 
         <action
+            android:id="@+id/action_home_to_ranking"
+            app:destination="@id/rankingFragment" />
+
+        <action
             android:id="@+id/action_profile_to_changePassword"
             app:destination="@id/changePassword" />
 
@@ -150,5 +154,10 @@
         android:id="@+id/regionLeaderboardFragment"
         android:name="com.example.slagalica.ui.region.RegionLeaderboardFragment"
         android:label="@string/region_leaderboard_title" />
+
+    <fragment
+        android:id="@+id/rankingFragment"
+        android:name="com.example.slagalica.ui.ranking.RankingFragment"
+        android:label="@string/ranking_title" />
 
 </navigation>
