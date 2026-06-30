@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment;
 
 import com.example.slagalica.R;
 import com.example.slagalica.data.repository.RoomSessionRepository;
+import com.example.slagalica.data.repository.TournamentRepository;
 import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.RoomGameKeys;
 import com.example.slagalica.model.RoomSession;
@@ -200,6 +201,10 @@ public class RoomSessionFragment extends Fragment {
         if (!myUid.equals(room.getHostUid()) && !myUid.equals(room.getGuestUid())) {
             return;
         }
-        new UserProfileRepository(requireContext()).processFinishedRoomResult(room, () -> { }, error -> { });
+        if ("TOURNAMENT".equals(room.getMatchType())) {
+            new TournamentRepository(requireContext()).processFinishedTournamentRoom(room, () -> { }, error -> { });
+        } else {
+            new UserProfileRepository(requireContext()).processFinishedRoomResult(room, () -> { }, error -> { });
+        }
     }
 }
