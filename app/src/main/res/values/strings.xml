@@ -149,6 +149,8 @@
     <string name="tournament_champion">Pobednik turnira: %1$s</string>
     <string name="tournament_enter_match">Udji u partiju</string>
     <string name="tournament_waiting_player">Ceka se igrac</string>
+    <string name="tournament_win_label">POBEDA</string>
+    <string name="tournament_loss_label">PORAZ</string>
     <string name="invite_friends_title">Pozovi prijatelja</string>
     <string name="invite_send">Pozovi</string>
     <string name="invite_pending">Čeka se odgovor</string>

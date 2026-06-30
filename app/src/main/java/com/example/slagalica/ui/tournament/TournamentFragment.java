@@ -16,10 +16,13 @@ import androidx.navigation.fragment.NavHostFragment;
 import com.example.slagalica.R;
 import com.example.slagalica.model.TournamentPlayer;
 import com.example.slagalica.model.TournamentState;
+import com.example.slagalica.ui.ranking.RewardConfettiView;
 import com.example.slagalica.utils.AvatarImageLoader;
 import com.example.slagalica.viewmodel.tournament.TournamentViewModel;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class TournamentFragment extends Fragment {
 
@@ -28,9 +31,13 @@ public class TournamentFragment extends Fragment {
     private View semiOne;
     private View semiTwo;
     private TextView finalStatus;
+    private RewardConfettiView confetti;
     private Button joinButton;
     private Button cancelButton;
     private Button enterRoomButton;
+    private final Set<String> celebratedWins = new HashSet<>();
+    private final Set<String> animatedWins = new HashSet<>();
+    private final Set<String> animatedLosses = new HashSet<>();
     private String currentRoomId = "";
 
     public TournamentFragment() {
@@ -48,6 +55,7 @@ public class TournamentFragment extends Fragment {
         semiOne = view.findViewById(R.id.tournamentSemiOne);
         semiTwo = view.findViewById(R.id.tournamentSemiTwo);
         finalStatus = view.findViewById(R.id.tournamentFinalStatus);
+        confetti = view.findViewById(R.id.tournamentConfetti);
         joinButton = view.findViewById(R.id.tournamentJoin);
         cancelButton = view.findViewById(R.id.tournamentCancel);
         enterRoomButton = view.findViewById(R.id.tournamentEnterRoom);
@@ -75,13 +83,31 @@ public class TournamentFragment extends Fragment {
         cancelButton.setVisibility(View.GONE);
 
         List<TournamentPlayer> players = state.getPlayers();
-        bindPlayer(requireView().findViewById(R.id.tournamentPlayerOne), playerAt(players, 0));
-        bindPlayer(requireView().findViewById(R.id.tournamentPlayerTwo), playerAt(players, 1));
-        bindPlayer(requireView().findViewById(R.id.tournamentPlayerThree), playerAt(players, 2));
-        bindPlayer(requireView().findViewById(R.id.tournamentPlayerFour), playerAt(players, 3));
+        View playerOneRow = requireView().findViewById(R.id.tournamentPlayerOne);
+        View playerTwoRow = requireView().findViewById(R.id.tournamentPlayerTwo);
+        View playerThreeRow = requireView().findViewById(R.id.tournamentPlayerThree);
+        View playerFourRow = requireView().findViewById(R.id.tournamentPlayerFour);
+        TournamentPlayer playerOne = playerAt(players, 0);
+        TournamentPlayer playerTwo = playerAt(players, 1);
+        TournamentPlayer playerThree = playerAt(players, 2);
+        TournamentPlayer playerFour = playerAt(players, 3);
+        bindPlayer(playerOneRow, playerOne);
+        bindPlayer(playerTwoRow, playerTwo);
+        bindPlayer(playerThreeRow, playerThree);
+        bindPlayer(playerFourRow, playerFour);
 
         markSemiResult(semiOne, state.getSemiOneWinnerUid());
         markSemiResult(semiTwo, state.getSemiTwoWinnerUid());
+        markPlayerResult(playerOneRow, playerOne, state.getSemiOneWinnerUid(), "semi_one");
+        markPlayerResult(playerTwoRow, playerTwo, state.getSemiOneWinnerUid(), "semi_one");
+        markPlayerResult(playerThreeRow, playerThree, state.getSemiTwoWinnerUid(), "semi_two");
+        markPlayerResult(playerFourRow, playerFour, state.getSemiTwoWinnerUid(), "semi_two");
+        markFinalistResult(playerOneRow, playerOne, state);
+        markFinalistResult(playerTwoRow, playerTwo, state);
+        markFinalistResult(playerThreeRow, playerThree, state);
+        markFinalistResult(playerFourRow, playerFour, state);
+        celebrateMyWinOnce("semi_one", state.getSemiOneWinnerUid());
+        celebrateMyWinOnce("semi_two", state.getSemiTwoWinnerUid());
 
         if (TournamentState.STATUS_FINAL_READY.equals(state.getStatus())) {
             TournamentPlayer first = state.playerByUid(state.getSemiOneWinnerUid());
@@ -99,6 +125,7 @@ public class TournamentFragment extends Fragment {
                     champion != null ? champion.getUsername() : "?"
             ));
             pulse(finalStatus);
+            celebrateMyWinOnce("final", state.getChampionUid());
         } else {
             finalStatus.setText(R.string.tournament_final_waiting);
         }
@@ -111,6 +138,8 @@ public class TournamentFragment extends Fragment {
         ImageView avatar = row.findViewById(R.id.tournamentPlayerAvatar);
         TextView username = row.findViewById(R.id.tournamentPlayerUsername);
         TextView league = row.findViewById(R.id.tournamentPlayerLeague);
+        TextView result = row.findViewById(R.id.tournamentPlayerResult);
+        resetPlayerResult(row, result);
         if (player.isEmpty()) {
             username.setText(R.string.tournament_waiting_player);
             league.setText("");
@@ -120,6 +149,54 @@ public class TournamentFragment extends Fragment {
         username.setText(player.getUsername());
         league.setText(player.getLeagueName());
         AvatarImageLoader.load(avatar, player.getAvatarUri(), R.drawable.ic_avatar_placeholder);
+    }
+
+    private void markPlayerResult(
+            @NonNull View row,
+            @NonNull TournamentPlayer player,
+            @NonNull String winnerUid,
+            @NonNull String phase
+    ) {
+        if (player.isEmpty() || winnerUid.isEmpty()) {
+            return;
+        }
+        TextView result = row.findViewById(R.id.tournamentPlayerResult);
+        boolean winner = player.getUid().equals(winnerUid);
+        result.setVisibility(View.VISIBLE);
+        result.setText(winner ? R.string.tournament_win_label : R.string.tournament_loss_label);
+        result.setTextColor(winner ? 0xFF1B5E20 : 0xFF8E1B1B);
+        row.setAlpha(winner ? 1f : 0.55f);
+        if (winner) {
+            row.setTranslationX(0f);
+            pulseWinOnce(row, phase, player.getUid());
+        } else {
+            shakeLossOnce(row, phase, player.getUid());
+        }
+    }
+
+    private void markFinalistResult(
+            @NonNull View row,
+            @NonNull TournamentPlayer player,
+            @NonNull TournamentState state
+    ) {
+        if (!TournamentState.STATUS_FINISHED.equals(state.getStatus()) || player.isEmpty()) {
+            return;
+        }
+        boolean finalist = player.getUid().equals(state.getSemiOneWinnerUid())
+                || player.getUid().equals(state.getSemiTwoWinnerUid());
+        if (finalist) {
+            markPlayerResult(row, player, state.getChampionUid(), "final");
+        }
+    }
+
+    private void resetPlayerResult(@NonNull View row, @NonNull TextView result) {
+        row.animate().cancel();
+        row.setAlpha(1f);
+        row.setScaleX(1f);
+        row.setScaleY(1f);
+        row.setTranslationX(0f);
+        result.setVisibility(View.GONE);
+        result.setText("");
     }
 
     private void markSemiResult(@NonNull View matchBlock, @NonNull String winnerUid) {
@@ -142,6 +219,43 @@ public class TournamentFragment extends Fragment {
                         .scaleX(1f)
                         .scaleY(1f)
                         .setDuration(180L)
+                        .start())
+                .start();
+    }
+
+    private void celebrateMyWinOnce(@NonNull String phase, @NonNull String winnerUid) {
+        String myUid = viewModel.getCurrentUid();
+        if (winnerUid.isEmpty() || !winnerUid.equals(myUid)) {
+            return;
+        }
+        String key = phase + ":" + winnerUid;
+        if (celebratedWins.add(key)) {
+            confetti.start();
+        }
+    }
+
+    private void pulseWinOnce(@NonNull View target, @NonNull String phase, @NonNull String playerUid) {
+        String key = phase + ":" + playerUid;
+        if (animatedWins.add(key)) {
+            pulse(target);
+        }
+    }
+
+    private void shakeLossOnce(@NonNull View target, @NonNull String phase, @NonNull String playerUid) {
+        String key = phase + ":" + playerUid;
+        if (!animatedLosses.add(key)) {
+            return;
+        }
+        target.animate()
+                .translationX(-14f)
+                .setDuration(60L)
+                .withEndAction(() -> target.animate()
+                        .translationX(14f)
+                        .setDuration(90L)
+                        .withEndAction(() -> target.animate()
+                                .translationX(0f)
+                                .setDuration(70L)
+                                .start())
                         .start())
                 .start();
     }

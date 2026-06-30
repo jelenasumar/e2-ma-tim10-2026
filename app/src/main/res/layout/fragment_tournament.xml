@@ -1,159 +1,170 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
     tools:context=".ui.tournament.TournamentFragment">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="24dp">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-        <Button
-            android:id="@+id/tournamentBack"
-            android:layout_width="wrap_content"
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/back"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:padding="24dp">
 
-        <TextView
-            android:id="@+id/tournamentTitle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/tournament_title"
-            android:textSize="26sp"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tournamentBack" />
-
-        <TextView
-            android:id="@+id/tournamentStatus"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/tournament_status_ready"
-            android:textSize="16sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tournamentTitle" />
-
-        <ProgressBar
-            android:id="@+id/tournamentProgress"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tournamentStatus" />
-
-        <Button
-            android:id="@+id/tournamentJoin"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="@string/tournament_join"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tournamentProgress" />
-
-        <Button
-            android:id="@+id/tournamentCancel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/tournament_cancel"
-            android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tournamentJoin" />
-
-        <LinearLayout
-            android:id="@+id/tournamentBracket"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:orientation="vertical"
-            android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tournamentCancel">
-
-            <TextView
-                android:layout_width="match_parent"
+            <Button
+                android:id="@+id/tournamentBack"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/tournament_semifinals"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:id="@+id/tournamentSemiOne"
-                style="@style/TournamentMatchBlock">
-
-                <include
-                    android:id="@+id/tournamentPlayerOne"
-                    layout="@layout/item_tournament_player" />
-
-                <TextView
-                    style="@style/TournamentVersus"
-                    android:text="@string/tournament_vs" />
-
-                <include
-                    android:id="@+id/tournamentPlayerTwo"
-                    layout="@layout/item_tournament_player" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/tournamentSemiTwo"
-                style="@style/TournamentMatchBlock">
-
-                <include
-                    android:id="@+id/tournamentPlayerThree"
-                    layout="@layout/item_tournament_player" />
-
-                <TextView
-                    style="@style/TournamentVersus"
-                    android:text="@string/tournament_vs" />
-
-                <include
-                    android:id="@+id/tournamentPlayerFour"
-                    layout="@layout/item_tournament_player" />
-            </LinearLayout>
+                android:text="@string/back"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
-                android:id="@+id/tournamentFinalTitle"
-                android:layout_width="match_parent"
+                android:id="@+id/tournamentTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/tournament_title"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tournamentBack" />
+
+            <TextView
+                android:id="@+id/tournamentStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/tournament_status_ready"
+                android:textSize="16sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tournamentTitle" />
+
+            <ProgressBar
+                android:id="@+id/tournamentProgress"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="@string/tournament_final"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tournamentStatus" />
 
-            <TextView
-                android:id="@+id/tournamentFinalStatus"
-                android:layout_width="match_parent"
+            <Button
+                android:id="@+id/tournamentJoin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/tournament_join"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tournamentProgress" />
+
+            <Button
+                android:id="@+id/tournamentCancel"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/tournament_final_waiting"
-                android:textSize="16sp" />
-        </LinearLayout>
+                android:text="@string/tournament_cancel"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tournamentJoin" />
 
-        <Button
-            android:id="@+id/tournamentEnterRoom"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/tournament_enter_match"
-            android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tournamentBracket" />
+            <LinearLayout
+                android:id="@+id/tournamentBracket"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:orientation="vertical"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tournamentCancel">
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</ScrollView>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/tournament_semifinals"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/tournamentSemiOne"
+                    style="@style/TournamentMatchBlock">
+
+                    <include
+                        android:id="@+id/tournamentPlayerOne"
+                        layout="@layout/item_tournament_player" />
+
+                    <TextView
+                        style="@style/TournamentVersus"
+                        android:text="@string/tournament_vs" />
+
+                    <include
+                        android:id="@+id/tournamentPlayerTwo"
+                        layout="@layout/item_tournament_player" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/tournamentSemiTwo"
+                    style="@style/TournamentMatchBlock">
+
+                    <include
+                        android:id="@+id/tournamentPlayerThree"
+                        layout="@layout/item_tournament_player" />
+
+                    <TextView
+                        style="@style/TournamentVersus"
+                        android:text="@string/tournament_vs" />
+
+                    <include
+                        android:id="@+id/tournamentPlayerFour"
+                        layout="@layout/item_tournament_player" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tournamentFinalTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:text="@string/tournament_final"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tournamentFinalStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/tournament_final_waiting"
+                    android:textSize="16sp" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/tournamentEnterRoom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/tournament_enter_match"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tournamentBracket" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </ScrollView>
+
+    <com.example.slagalica.ui.ranking.RewardConfettiView
+        android:id="@+id/tournamentConfetti"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="invisible" />
+</FrameLayout>
