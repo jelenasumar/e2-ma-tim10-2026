@@ -108,6 +108,7 @@ public final class UserProfileRepository {
             UserProfile synced = syncProfileState(profile);
             preferences.saveProfile(synced);
             leagueRepository.processMonthlyPenaltyForCurrentUser(
+                    synced,
                     message -> { },
                     error -> { }
             );

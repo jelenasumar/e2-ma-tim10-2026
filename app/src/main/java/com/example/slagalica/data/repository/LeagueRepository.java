@@ -103,6 +103,14 @@ public final class LeagueRepository {
             @NonNull Consumer<String> onPenaltyApplied,
             @NonNull Consumer<String> onError
     ) {
+        processMonthlyPenaltyForCurrentUser(null, onPenaltyApplied, onError);
+    }
+
+    public void processMonthlyPenaltyForCurrentUser(
+            @Nullable UserProfile currentProfile,
+            @NonNull Consumer<String> onPenaltyApplied,
+            @NonNull Consumer<String> onError
+    ) {
         if (!remote.isRegisteredUser()) {
             return;
         }
@@ -112,11 +120,53 @@ public final class LeagueRepository {
         }
 
         RankingRepository.CycleWindow window = rankingRepository.previousMonthlyWindow();
-        String penaltyDocId = "league_penalty_monthly_" + window.startMillis;
-        if (preferences.wasMonthlyPenaltyProcessed(window.startMillis)) {
+        String penaltyDocId = penaltyDocId(window.startMillis, uid);
+
+        db.collection(CONFIG)
+                .document(penaltyDocId)
+                .get()
+                .addOnSuccessListener(configDoc -> {
+                    if (configDoc.exists()) {
+                        preferences.markMonthlyPenaltyProcessed(window.startMillis);
+                        return;
+                    }
+                    if (preferences.wasMonthlyPenaltyProcessed(window.startMillis)) {
+                        preferences.clearMonthlyPenaltyProcessed(window.startMillis);
+                    }
+                    loadProfileAndApplyPenalty(uid, window, penaltyDocId, currentProfile, onPenaltyApplied, onError);
+                })
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Provera kazne nije uspela."
+                ));
+    }
+
+    private void loadProfileAndApplyPenalty(
+            @NonNull String uid,
+            @NonNull RankingRepository.CycleWindow window,
+            @NonNull String penaltyDocId,
+            @Nullable UserProfile currentProfile,
+            @NonNull Consumer<String> onPenaltyApplied,
+            @NonNull Consumer<String> onError
+    ) {
+        if (currentProfile != null) {
+            evaluateMonthlyPenalty(uid, window, penaltyDocId, currentProfile, onPenaltyApplied, onError);
             return;
         }
+        remote.fetchUserProfile(
+                uid,
+                profile -> evaluateMonthlyPenalty(uid, window, penaltyDocId, profile, onPenaltyApplied, onError),
+                onError
+        );
+    }
 
+    private void evaluateMonthlyPenalty(
+            @NonNull String uid,
+            @NonNull RankingRepository.CycleWindow window,
+            @NonNull String penaltyDocId,
+            @NonNull UserProfile profile,
+            @NonNull Consumer<String> onPenaltyApplied,
+            @NonNull Consumer<String> onError
+    ) {
         rankingRepository.loadRankingForWindow(
                 RankingRepository.CycleType.MONTHLY,
                 window,
@@ -124,52 +174,60 @@ public final class LeagueRepository {
                     int rank = findRank(result.getEntries(), uid);
                     if (rank > 0 && rank <= 10) {
                         preferences.markMonthlyPenaltyProcessed(window.startMillis);
-                        markPenaltyProcessedRemote(penaltyDocId, uid, window, false);
+                        markPenaltyProcessedRemote(penaltyDocId, uid, window, false, 0L, 0L);
                         return;
                     }
 
-                    UserProfile profile = preferences.loadProfile();
                     long previousStars = profile.getTotalStars();
                     if (previousStars <= 0L) {
-                        preferences.markMonthlyPenaltyProcessed(window.startMillis);
-                        markPenaltyProcessedRemote(penaltyDocId, uid, window, false);
                         return;
                     }
 
                     long newStars = LeagueHelper.starsAfterMonthlyPenalty(previousStars);
                     UserProfile before = profile;
-                    UserProfile updated = applyStarUpdate(
-                            profile.toBuilder().totalStars(newStars).build(),
-                            newStars,
-                            false
+                    UserProfile updated = LeagueHelper.withLeagueForStars(
+                            appContext,
+                            profile.toBuilder().totalStars(newStars).build()
                     );
                     preferences.saveProfile(updated);
                     persistRemote(updated);
                     preferences.markMonthlyPenaltyProcessed(window.startMillis);
-                    markPenaltyProcessedRemote(penaltyDocId, uid, window, true);
+                    markPenaltyProcessedRemote(
+                            penaltyDocId,
+                            uid,
+                            window,
+                            true,
+                            previousStars,
+                            newStars
+                    );
 
-                    LeagueChangeEvent change = LeagueHelper.detectChange(appContext, before, updated);
                     String message = appContext.getString(
                             R.string.league_monthly_penalty_message,
                             previousStars,
                             newStars
                     );
-                    if (change != null) {
-                        publishLeagueChange(change);
-                    } else {
-                        LeagueChangeNotifier.get().notifyChange(new LeagueChangeEvent(
-                                LeagueTier.fromKey(before.getLeagueTierKey()),
-                                LeagueTier.fromKey(updated.getLeagueTierKey()),
-                                LeagueChangeEvent.Direction.DEMOTED,
-                                updated.getTotalStars(),
-                                message
-                        ));
-                    }
+                    LeagueTier previousTier = LeagueTier.fromKey(before.getLeagueTierKey());
+                    LeagueTier newTier = LeagueTier.fromKey(updated.getLeagueTierKey());
+                    LeagueChangeEvent.Direction direction = newTier.getLevel() < previousTier.getLevel()
+                            ? LeagueChangeEvent.Direction.DEMOTED
+                            : LeagueChangeEvent.Direction.PROMOTED;
+                    LeagueChangeNotifier.get().notifyChange(new LeagueChangeEvent(
+                            previousTier,
+                            newTier,
+                            direction,
+                            updated.getTotalStars(),
+                            message
+                    ));
                     createLeagueNotification(message, "OPEN_LEAGUE");
                     onPenaltyApplied.accept(message);
                 },
                 onError
         );
+    }
+
+    @NonNull
+    private static String penaltyDocId(long cycleStartMillis, @NonNull String uid) {
+        return "league_penalty_monthly_" + cycleStartMillis + "_" + uid;
     }
 
     @NonNull
@@ -191,10 +249,7 @@ public final class LeagueRepository {
 
     private void publishLeagueChange(@NonNull LeagueChangeEvent change) {
         LeagueChangeNotifier.get().notifyChange(change);
-        String action = change.getDirection() == LeagueChangeEvent.Direction.PROMOTED
-                ? "OPEN_LEAGUE"
-                : "OPEN_LEAGUE";
-        createLeagueNotification(change.getMessage(), action);
+        createLeagueNotification(change.getMessage(), "OPEN_LEAGUE");
     }
 
     private void createLeagueNotification(@NonNull String message, @NonNull String action) {
@@ -229,16 +284,20 @@ public final class LeagueRepository {
             @NonNull String penaltyDocId,
             @NonNull String uid,
             @NonNull RankingRepository.CycleWindow window,
-            boolean penalized
+            boolean penalized,
+            long starsBefore,
+            long starsAfter
     ) {
         Map<String, Object> data = new HashMap<>();
         data.put("uid", uid);
         data.put("cycleStart", window.startMillis);
         data.put("cycleEnd", window.endMillis);
         data.put("penalized", penalized);
+        data.put("starsBefore", starsBefore);
+        data.put("starsAfter", starsAfter);
         data.put("processedAt", FieldValue.serverTimestamp());
         db.collection(CONFIG)
-                .document(penaltyDocId + "_" + uid)
+                .document(penaltyDocId)
                 .set(data, SetOptions.merge());
     }
 

@@ -109,6 +109,7 @@ public class RankingViewModel extends AndroidViewModel {
         repository.processFinishedCycleRewards(
                 RankingRepository.CycleType.MONTHLY,
                 () -> leagueRepository.processMonthlyPenaltyForCurrentUser(
+                        null,
                         infoMessage::setValue,
                         errorMessage::setValue
                 ),

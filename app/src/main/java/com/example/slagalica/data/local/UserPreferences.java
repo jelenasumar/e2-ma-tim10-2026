@@ -296,4 +296,8 @@ public final class UserPreferences {
     public void markMonthlyPenaltyProcessed(long cycleStartMillis) {
         prefs.edit().putBoolean(KEY_MONTHLY_PENALTY_PREFIX + cycleStartMillis, true).apply();
     }
+
+    public void clearMonthlyPenaltyProcessed(long cycleStartMillis) {
+        prefs.edit().remove(KEY_MONTHLY_PENALTY_PREFIX + cycleStartMillis).apply();
+    }
 }
