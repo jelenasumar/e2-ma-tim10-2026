@@ -20,6 +20,8 @@ public class TournamentViewModel extends AndroidViewModel {
     private ListenerRegistration queueListener;
     private ListenerRegistration tournamentListener;
     private String activeTournamentId = "";
+    private String lastEnteredTournamentId = "";
+    private String lastEnteredRound = "";
 
     public TournamentViewModel(@NonNull Application application) {
         super(application);
@@ -118,6 +120,88 @@ public class TournamentViewModel extends AndroidViewModel {
             }
         }
         return false;
+    }
+
+    @NonNull
+    public String currentRound(@NonNull TournamentState state) {
+        String roomId = currentRoomId(state);
+        if (roomId.isEmpty()) {
+            return "";
+        }
+        if (roomId.equals(state.getSemiOneRoomId())) {
+            return "semi_one";
+        }
+        if (roomId.equals(state.getSemiTwoRoomId())) {
+            return "semi_two";
+        }
+        if (roomId.equals(state.getFinalRoomId())) {
+            return "final";
+        }
+        return "";
+    }
+
+    public void markEnteredRoom(@NonNull TournamentState state) {
+        lastEnteredTournamentId = state.getTournamentId();
+        lastEnteredRound = currentRound(state);
+    }
+
+    public boolean consumeEnteredWinningRoom(@NonNull TournamentState state, @NonNull String phase) {
+        if (!state.getTournamentId().equals(lastEnteredTournamentId) || !phase.equals(lastEnteredRound)) {
+            return false;
+        }
+        String uid = getCurrentUid();
+        if (uid.isEmpty() || !uid.equals(winnerForPhase(state, phase))) {
+            return false;
+        }
+        lastEnteredTournamentId = "";
+        lastEnteredRound = "";
+        return true;
+    }
+
+    public boolean consumeEnteredLosingRoom(@NonNull TournamentState state, @NonNull String phase) {
+        if (!state.getTournamentId().equals(lastEnteredTournamentId) || !phase.equals(lastEnteredRound)) {
+            return false;
+        }
+        String uid = getCurrentUid();
+        String winnerUid = winnerForPhase(state, phase);
+        if (uid.isEmpty() || winnerUid.isEmpty() || uid.equals(winnerUid) || !playerInPhase(state, phase, uid)) {
+            return false;
+        }
+        lastEnteredTournamentId = "";
+        lastEnteredRound = "";
+        return true;
+    }
+
+    @NonNull
+    private static String winnerForPhase(@NonNull TournamentState state, @NonNull String phase) {
+        switch (phase) {
+            case "semi_one":
+                return state.getSemiOneWinnerUid();
+            case "semi_two":
+                return state.getSemiTwoWinnerUid();
+            case "final":
+                return state.getChampionUid();
+            default:
+                return "";
+        }
+    }
+
+    private static boolean playerInPhase(
+            @NonNull TournamentState state,
+            @NonNull String phase,
+            @NonNull String uid
+    ) {
+        String roomId = state.roomForPlayer(uid);
+        switch (phase) {
+            case "semi_one":
+                return roomId.equals(state.getSemiOneRoomId());
+            case "semi_two":
+                return roomId.equals(state.getSemiTwoRoomId());
+            case "final":
+                return uid.equals(state.getSemiOneWinnerUid()) || uid.equals(state.getSemiTwoWinnerUid());
+            default:
+                return false;
+        }
     }
 
     private void listenTournament(@NonNull String tournamentId) {

@@ -167,4 +167,10 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="invisible" />
+
+    <com.example.slagalica.ui.tournament.TournamentRainView
+        android:id="@+id/tournamentRain"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="invisible" />
 </FrameLayout>
