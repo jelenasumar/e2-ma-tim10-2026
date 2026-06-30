@@ -1,11 +1,14 @@
 package com.example.slagalica.ui.ranking;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.os.Bundle;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -150,11 +153,30 @@ public class RankingFragment extends Fragment {
     private void showRewardDialog(@NonNull String message) {
         ToneGenerator tone = new ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80);
         tone.startTone(ToneGenerator.TONE_PROP_ACK, 180);
-        new AlertDialog.Builder(requireContext())
+        View content = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_ranking_reward, null, false);
+        TextView messageView = content.findViewById(R.id.reward_message);
+        ImageView rewardIcon = content.findViewById(R.id.reward_icon);
+        RewardConfettiView confetti = content.findViewById(R.id.reward_confetti);
+        messageView.setText(message);
+        rewardIcon.setImageResource(RewardIconHelper.iconForRank(RewardIconHelper.rankFromMessage(message)));
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.ranking_reward_dialog_title)
-                .setMessage(message)
-                .setPositiveButton(android.R.string.ok, (dialog, which) -> tone.release())
-                .setOnDismissListener(dialog -> tone.release())
+                .setView(content)
+                .setPositiveButton(android.R.string.ok, null)
+                .setOnDismissListener(dismissed -> tone.release())
                 .show();
+        confetti.start();
+        animateRewardIcon(rewardIcon);
+    }
+
+    private void animateRewardIcon(@NonNull View icon) {
+        ObjectAnimator jump = ObjectAnimator.ofFloat(icon, View.TRANSLATION_Y, 0f, -34f, 0f, -16f, 0f);
+        ObjectAnimator scaleX = ObjectAnimator.ofFloat(icon, View.SCALE_X, 0.7f, 1.18f, 1f, 1.08f, 1f);
+        ObjectAnimator scaleY = ObjectAnimator.ofFloat(icon, View.SCALE_Y, 0.7f, 1.18f, 1f, 1.08f, 1f);
+        ObjectAnimator rotation = ObjectAnimator.ofFloat(icon, View.ROTATION, -10f, 10f, -6f, 6f, 0f);
+        AnimatorSet set = new AnimatorSet();
+        set.playTogether(jump, scaleX, scaleY, rotation);
+        set.setDuration(950L);
+        set.start();
     }
 }

@@ -46,6 +46,22 @@ service cloud.firestore {
             || resource.data.toUid == request.auth.uid);
     }
 
+    match /matchmaking_queue/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && (
+        request.resource.data.uid == request.auth.uid
+        || (
+          resource.data.status == "WAITING"
+          && request.resource.data.status == "MATCHED"
+          && request.resource.data.roomId is string
+        )
+      );
+      allow delete: if isSignedIn()
+        && userId == request.auth.uid;
+    }
+
    match /username_lookup/{usernameLower} {
   	allow read: if true;
 

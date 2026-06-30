@@ -18,6 +18,7 @@ public final class SystemNotification {
     private final String roomId;
     private final boolean actionHandled;
     private final String actionResult;
+    private final int rank;
 
     public SystemNotification(
             @NonNull String id,
@@ -30,7 +31,7 @@ public final class SystemNotification {
             @NonNull NotificationAction action,
             @Nullable String actionLabel
     ) {
-        this(id, category, categoryLabel, title, message, dateLabel, read, action, actionLabel, null, null, false, "");
+        this(id, category, categoryLabel, title, message, dateLabel, read, action, actionLabel, null, null, false, "", 0);
     }
 
     public SystemNotification(
@@ -46,7 +47,7 @@ public final class SystemNotification {
             @Nullable String inviteId,
             @Nullable String roomId
     ) {
-        this(id, category, categoryLabel, title, message, dateLabel, read, action, actionLabel, inviteId, roomId, false, "");
+        this(id, category, categoryLabel, title, message, dateLabel, read, action, actionLabel, inviteId, roomId, false, "", 0);
     }
 
     public SystemNotification(
@@ -64,6 +65,25 @@ public final class SystemNotification {
             boolean actionHandled,
             @Nullable String actionResult
     ) {
+        this(id, category, categoryLabel, title, message, dateLabel, read, action, actionLabel, inviteId, roomId, actionHandled, actionResult, 0);
+    }
+
+    public SystemNotification(
+            @NonNull String id,
+            @NonNull NotificationCategory category,
+            @NonNull String categoryLabel,
+            @NonNull String title,
+            @NonNull String message,
+            @NonNull String dateLabel,
+            boolean read,
+            @NonNull NotificationAction action,
+            @Nullable String actionLabel,
+            @Nullable String inviteId,
+            @Nullable String roomId,
+            boolean actionHandled,
+            @Nullable String actionResult,
+            int rank
+    ) {
         this.id = id;
         this.category = category;
         this.categoryLabel = categoryLabel;
@@ -77,6 +97,7 @@ public final class SystemNotification {
         this.roomId = roomId;
         this.actionHandled = actionHandled;
         this.actionResult = actionResult != null ? actionResult : "";
+        this.rank = rank;
     }
 
     @NonNull
@@ -137,6 +158,10 @@ public final class SystemNotification {
         return actionHandled;
     }
 
+    public int getRank() {
+        return rank;
+    }
+
     @NonNull
     public String getActionResult() {
         return actionResult;
@@ -166,7 +191,8 @@ public final class SystemNotification {
                 inviteId,
                 roomId,
                 actionHandled,
-                actionResult
+                actionResult,
+                rank
         );
     }
 
@@ -185,7 +211,8 @@ public final class SystemNotification {
                 inviteId,
                 roomId,
                 true,
-                actionResult
+                actionResult,
+                rank
         );
     }
 }
