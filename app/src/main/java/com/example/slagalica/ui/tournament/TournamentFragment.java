@@ -14,6 +14,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
+import com.example.slagalica.model.LeagueTier;
 import com.example.slagalica.model.TournamentPlayer;
 import com.example.slagalica.model.TournamentState;
 import com.example.slagalica.ui.ranking.RewardConfettiView;
@@ -144,6 +145,7 @@ public class TournamentFragment extends Fragment {
 
     private void bindPlayer(@NonNull View row, @NonNull TournamentPlayer player) {
         ImageView avatar = row.findViewById(R.id.tournamentPlayerAvatar);
+        ImageView leagueIcon = row.findViewById(R.id.tournamentPlayerLeagueIcon);
         TextView username = row.findViewById(R.id.tournamentPlayerUsername);
         TextView league = row.findViewById(R.id.tournamentPlayerLeague);
         TextView result = row.findViewById(R.id.tournamentPlayerResult);
@@ -151,11 +153,13 @@ public class TournamentFragment extends Fragment {
         if (player.isEmpty()) {
             username.setText(R.string.tournament_waiting_player);
             league.setText("");
+            leagueIcon.setImageResource(R.drawable.ic_league_badge);
             avatar.setImageResource(R.drawable.ic_avatar_placeholder);
             return;
         }
         username.setText(player.getUsername());
         league.setText(player.getLeagueName());
+        leagueIcon.setImageResource(LeagueTier.fromKey(player.getLeagueTierKey()).getIconRes());
         AvatarImageLoader.load(avatar, player.getAvatarUri(), R.drawable.ic_avatar_placeholder);
     }
 
