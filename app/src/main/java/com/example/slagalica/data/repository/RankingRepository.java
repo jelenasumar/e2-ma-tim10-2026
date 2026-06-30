@@ -63,6 +63,7 @@ public final class RankingRepository {
     private static final String NOTIFICATIONS = "notifications";
     private static final String CONFIG = "config";
     private static final String RANDOM = "RANDOM";
+    private static final String TOURNAMENT = "TOURNAMENT";
 
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
     private final FirebaseAuth auth = FirebaseAuth.getInstance();
@@ -88,19 +89,18 @@ public final class RankingRepository {
             @NonNull Consumer<RankingResult> onSuccess,
             @NonNull Consumer<String> onError
     ) {
-        db.collection(MATCH_RESULTS)
-                .whereEqualTo("matchType", RANDOM)
-                .get()
-                .addOnSuccessListener(snapshot -> {
-                    List<RankingEntry> entries = buildEntries(snapshot.getDocuments(), window);
+        loadRankedMatchDocuments(
+                documents -> {
+                    List<RankingEntry> entries = buildEntries(documents, window);
                     String cycleLabel = formatRange(window.startMillis, window.endMillis);
                     attachLeagueTiers(
                             entries,
                             entriesWithLeagues -> onSuccess.accept(new RankingResult(entriesWithLeagues, cycleLabel)),
                             onError
                     );
-                })
-                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Rang lista nije ucitana.")));
+                },
+                error -> onError.accept(messageOrDefault(error, "Rang lista nije ucitana."))
+        );
     }
 
     @NonNull
@@ -124,19 +124,18 @@ public final class RankingRepository {
                         onSuccess.run();
                         return;
                     }
-                    db.collection(MATCH_RESULTS)
-                            .whereEqualTo("matchType", RANDOM)
-                            .get()
-                            .addOnSuccessListener(snapshot -> distributeRewards(
+                    loadRankedMatchDocuments(
+                            documents -> distributeRewards(
                                     type,
                                     window,
                                     rewardDocId,
-                                    buildEntries(snapshot.getDocuments(), window),
+                                    buildEntries(documents, window),
                                     onSuccess,
                                     onReward,
                                     onError
-                            ))
-                            .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Nagrade nisu obradjene.")));
+                            ),
+                            error -> onError.accept(messageOrDefault(error, "Nagrade nisu obradjene."))
+                    );
                 })
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Ciklus nagrada nije proveren.")));
     }
@@ -156,18 +155,17 @@ public final class RankingRepository {
                         onSuccess.run();
                         return;
                     }
-                    db.collection(MATCH_RESULTS)
-                            .whereEqualTo("matchType", RANDOM)
-                            .get()
-                            .addOnSuccessListener(snapshot -> distributePlacementNotifications(
+                    loadRankedMatchDocuments(
+                            documents -> distributePlacementNotifications(
                                     type,
                                     window,
                                     placementDocId,
-                                    buildEntries(snapshot.getDocuments(), window),
+                                    buildEntries(documents, window),
                                     onSuccess,
                                     onError
-                            ))
-                            .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Plasmani nisu obradjeni.")));
+                            ),
+                            error -> onError.accept(messageOrDefault(error, "Plasmani nisu obradjeni."))
+                    );
                 })
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Ciklus plasmana nije proveren.")));
     }
@@ -305,6 +303,24 @@ public final class RankingRepository {
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Ciklus nije sacuvan.")));
     }
 
+    private void loadRankedMatchDocuments(
+            @NonNull Consumer<List<DocumentSnapshot>> onSuccess,
+            @NonNull Consumer<Exception> onError
+    ) {
+        db.collection(MATCH_RESULTS)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    List<DocumentSnapshot> ranked = new ArrayList<>();
+                    for (DocumentSnapshot document : snapshot.getDocuments()) {
+                        if (isRankedMatchType(document.getString("matchType"))) {
+                            ranked.add(document);
+                        }
+                    }
+                    onSuccess.accept(ranked);
+                })
+                .addOnFailureListener(onError::accept);
+    }
+
     @NonNull
     private List<RankingEntry> buildEntries(
             @NonNull List<DocumentSnapshot> documents,
@@ -341,6 +357,10 @@ public final class RankingRepository {
             entries.add(new RankingEntry(item.uid, item.username, i + 1, item.stars, item.matchesPlayed));
         }
         return entries;
+    }
+
+    private static boolean isRankedMatchType(@Nullable String matchType) {
+        return RANDOM.equals(matchType) || TOURNAMENT.equals(matchType);
     }
 
     private void attachLeagueTiers(
