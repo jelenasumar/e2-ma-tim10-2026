@@ -312,13 +312,13 @@ public final class RankingRepository {
                     byUser,
                     stringValue(document.get("hostUid")),
                     stringValue(document.get("hostUsername")),
-                    longValue(document.get("hostStarsDelta"))
+                    rankingStars(longValue(document.get("hostStarsDelta")))
             );
             addPlayer(
                     byUser,
                     stringValue(document.get("guestUid")),
                     stringValue(document.get("guestUsername")),
-                    longValue(document.get("guestStarsDelta"))
+                    rankingStars(longValue(document.get("guestStarsDelta")))
             );
         }
 
@@ -474,6 +474,10 @@ public final class RankingRepository {
             return ((Number) value).longValue();
         }
         return 0L;
+    }
+
+    private static long rankingStars(long starsDelta) {
+        return Math.max(0L, starsDelta);
     }
 
     @NonNull
