@@ -122,6 +122,8 @@ public class NotificationsViewModel extends AndroidViewModel {
             notificationPageTitle.setValue("Čet");
         } else if (notification.getAction() == NotificationAction.OPEN_LEAGUE) {
             notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_ranking));
+        } else if (notification.getAction() == NotificationAction.OPEN_RANKING) {
+            notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_ranking));
         } else if (notification.getAction() == NotificationAction.NONE) {
             notificationPageTitle.setValue(destinationTitle(notification));
         } else if (!notification.isRead()) {
@@ -165,6 +167,9 @@ public class NotificationsViewModel extends AndroidViewModel {
                 notificationPageTitle.setValue("Čet");
                 break;
             case OPEN_LEAGUE:
+                notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_ranking));
+                break;
+            case OPEN_RANKING:
                 notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_ranking));
                 break;
             case NONE:

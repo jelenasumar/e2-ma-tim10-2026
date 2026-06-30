@@ -399,7 +399,8 @@ public final class GameInviteRepository {
                 stringValue(document.get("inviteId")),
                 stringValue(document.get("roomId")),
                 boolValue(document.get("actionHandled")),
-                stringOrDefault(stringValue(document.get("actionResult")), "")
+                stringOrDefault(stringValue(document.get("actionResult")), ""),
+                intValue(document.get("rank"))
         );
     }
 
@@ -458,6 +459,20 @@ public final class GameInviteRepository {
             return Boolean.parseBoolean((String) value);
         }
         return false;
+    }
+
+    private static int intValue(@Nullable Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Integer.parseInt((String) value);
+            } catch (NumberFormatException ignored) {
+                return 0;
+            }
+        }
+        return 0;
     }
 
     @NonNull

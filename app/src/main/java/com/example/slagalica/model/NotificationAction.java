@@ -5,5 +5,6 @@ public enum NotificationAction {
     OPEN_CHAT,
     ACCEPT_INVITE,
     OPEN_ROOM,
-    OPEN_LEAGUE
+    OPEN_LEAGUE,
+    OPEN_RANKING
 }

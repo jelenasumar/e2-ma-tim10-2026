@@ -316,6 +316,19 @@
     <string name="profile_frame_silver">Srebrni okvir regiona</string>
     <string name="profile_frame_bronze">Bronzani okvir regiona</string>
 
+    <string name="ranking_title">Rang lista</string>
+    <string name="ranking_button">Rang lista</string>
+    <string name="ranking_weekly">Nedeljna</string>
+    <string name="ranking_monthly">Mesecna</string>
+    <string name="ranking_cycle">Ciklus: %1$s</string>
+    <string name="ranking_cycle_placeholder">Ciklus:</string>
+    <string name="ranking_refresh">Osvezi</string>
+    <string name="ranking_empty">Jos nema igraca sa odigranom partijom u ovom ciklusu.</string>
+    <string name="ranking_matches">Partija u ciklusu: %1$d</string>
+    <string name="ranking_stars">%1$d zvezda</string>
+    <string name="ranking_league_icon">Ikona lige</string>
+    <string name="ranking_reward_dialog_title">Osvojena nagrada</string>
+
     <string name="region_beograd">Beograd</string>
     <string name="region_vojvodina">Vojvodina</string>
     <string name="region_sumadija">Šumadija</string>
