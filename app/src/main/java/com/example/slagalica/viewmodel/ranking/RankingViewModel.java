@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.slagalica.data.repository.LeagueRepository;
 import com.example.slagalica.data.repository.RankingRepository;
 import com.example.slagalica.model.RankingEntry;
 
@@ -19,6 +20,7 @@ public class RankingViewModel extends AndroidViewModel {
     private static final long REFRESH_INTERVAL_MS = 120_000L;
 
     private final RankingRepository repository;
+    private final LeagueRepository leagueRepository;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final MutableLiveData<List<RankingEntry>> weeklyEntries = new MutableLiveData<>();
     private final MutableLiveData<List<RankingEntry>> monthlyEntries = new MutableLiveData<>();
@@ -38,6 +40,7 @@ public class RankingViewModel extends AndroidViewModel {
     public RankingViewModel(@NonNull Application application) {
         super(application);
         repository = new RankingRepository(application);
+        leagueRepository = new LeagueRepository(application);
     }
 
     @NonNull
@@ -105,7 +108,10 @@ public class RankingViewModel extends AndroidViewModel {
         );
         repository.processFinishedCycleRewards(
                 RankingRepository.CycleType.MONTHLY,
-                () -> { },
+                () -> leagueRepository.processMonthlyPenaltyForCurrentUser(
+                        infoMessage::setValue,
+                        errorMessage::setValue
+                ),
                 infoMessage::setValue,
                 errorMessage::setValue
         );

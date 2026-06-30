@@ -76,6 +76,15 @@ public final class RankingRepository {
             @NonNull Consumer<String> onError
     ) {
         CycleWindow window = currentWindow(type);
+        loadRankingForWindow(type, window, onSuccess, onError);
+    }
+
+    public void loadRankingForWindow(
+            @NonNull CycleType type,
+            @NonNull CycleWindow window,
+            @NonNull Consumer<RankingResult> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
         db.collection(MATCH_RESULTS)
                 .whereEqualTo("matchType", RANDOM)
                 .get()
@@ -84,6 +93,11 @@ public final class RankingRepository {
                         formatRange(window.startMillis, window.endMillis)
                 )))
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Rang lista nije ucitana.")));
+    }
+
+    @NonNull
+    public CycleWindow previousMonthlyWindow() {
+        return previousWindow(CycleType.MONTHLY);
     }
 
     public void processFinishedCycleRewards(
@@ -380,11 +394,11 @@ public final class RankingRepository {
         }
     }
 
-    private static final class CycleWindow {
-        final long startMillis;
-        final long endMillis;
+    public static final class CycleWindow {
+        public final long startMillis;
+        public final long endMillis;
 
-        CycleWindow(long startMillis, long endMillis) {
+        public CycleWindow(long startMillis, long endMillis) {
             this.startMillis = startMillis;
             this.endMillis = endMillis;
         }
