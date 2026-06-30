@@ -5,7 +5,10 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.example.slagalica.model.LeagueTier;
 import com.example.slagalica.model.RankingEntry;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -88,10 +91,15 @@ public final class RankingRepository {
         db.collection(MATCH_RESULTS)
                 .whereEqualTo("matchType", RANDOM)
                 .get()
-                .addOnSuccessListener(snapshot -> onSuccess.accept(new RankingResult(
-                        buildEntries(snapshot.getDocuments(), window),
-                        formatRange(window.startMillis, window.endMillis)
-                )))
+                .addOnSuccessListener(snapshot -> {
+                    List<RankingEntry> entries = buildEntries(snapshot.getDocuments(), window);
+                    String cycleLabel = formatRange(window.startMillis, window.endMillis);
+                    attachLeagueTiers(
+                            entries,
+                            entriesWithLeagues -> onSuccess.accept(new RankingResult(entriesWithLeagues, cycleLabel)),
+                            onError
+                    );
+                })
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Rang lista nije ucitana.")));
     }
 
@@ -335,6 +343,50 @@ public final class RankingRepository {
         return entries;
     }
 
+    private void attachLeagueTiers(
+            @NonNull List<RankingEntry> entries,
+            @NonNull Consumer<List<RankingEntry>> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (entries.isEmpty()) {
+            onSuccess.accept(entries);
+            return;
+        }
+
+        List<Task<DocumentSnapshot>> tasks = new ArrayList<>();
+        for (RankingEntry entry : entries) {
+            tasks.add(db.collection(USERS).document(entry.getUid()).get());
+        }
+
+        Tasks.whenAllSuccess(tasks)
+                .addOnSuccessListener(results -> {
+                    Map<String, String> leagueByUid = new HashMap<>();
+                    for (Object result : results) {
+                        if (result instanceof DocumentSnapshot) {
+                            DocumentSnapshot document = (DocumentSnapshot) result;
+                            leagueByUid.put(document.getId(), leagueTierKey(document));
+                        }
+                    }
+
+                    List<RankingEntry> withLeagues = new ArrayList<>();
+                    for (RankingEntry entry : entries) {
+                        String leagueTierKey = leagueByUid.containsKey(entry.getUid())
+                                ? leagueByUid.get(entry.getUid())
+                                : LeagueTier.STARTER.getKey();
+                        withLeagues.add(new RankingEntry(
+                                entry.getUid(),
+                                entry.getUsername(),
+                                entry.getRank(),
+                                entry.getStars(),
+                                entry.getMatchesPlayed(),
+                                leagueTierKey
+                        ));
+                    }
+                    onSuccess.accept(withLeagues);
+                })
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Lige za rang listu nisu ucitane.")));
+    }
+
     private static void addPlayer(
             @NonNull Map<String, MutableRanking> byUser,
             @NonNull String uid,
@@ -478,6 +530,15 @@ public final class RankingRepository {
 
     private static long rankingStars(long starsDelta) {
         return Math.max(0L, starsDelta);
+    }
+
+    @NonNull
+    private static String leagueTierKey(@NonNull DocumentSnapshot document) {
+        String stored = document.getString("leagueTierKey");
+        if (stored != null && !stored.isEmpty()) {
+            return stored;
+        }
+        return LeagueTier.fromStars(longValue(document.get("totalStars"))).getKey();
     }
 
     @NonNull

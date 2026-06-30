@@ -21,6 +21,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
+import com.example.slagalica.model.LeagueTier;
 import com.example.slagalica.model.RankingEntry;
 import com.example.slagalica.viewmodel.ranking.RankingViewModel;
 
@@ -140,11 +141,15 @@ public class RankingFragment extends Fragment {
             TextView username = row.findViewById(R.id.item_ranking_username);
             TextView matches = row.findViewById(R.id.item_ranking_matches);
             TextView stars = row.findViewById(R.id.item_ranking_stars);
+            ImageView leagueIcon = row.findViewById(R.id.item_ranking_league_icon);
+            LeagueTier leagueTier = LeagueTier.fromKey(entry.getLeagueTierKey());
 
             rank.setText(String.format(Locale.getDefault(), "%d.", entry.getRank()));
             username.setText(entry.getUsername());
             matches.setText(getString(R.string.ranking_matches, entry.getMatchesPlayed()));
             stars.setText(getString(R.string.ranking_stars, entry.getStars()));
+            leagueIcon.setImageResource(leagueTier.getIconRes());
+            leagueIcon.setContentDescription(getString(leagueTier.getNameRes()));
 
             listContainer.addView(row);
         }

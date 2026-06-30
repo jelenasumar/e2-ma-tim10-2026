@@ -9,6 +9,7 @@ public final class RankingEntry {
     private final int rank;
     private final long stars;
     private final int matchesPlayed;
+    private final String leagueTierKey;
 
     public RankingEntry(
             @NonNull String uid,
@@ -17,11 +18,23 @@ public final class RankingEntry {
             long stars,
             int matchesPlayed
     ) {
+        this(uid, username, rank, stars, matchesPlayed, LeagueTier.STARTER.getKey());
+    }
+
+    public RankingEntry(
+            @NonNull String uid,
+            @NonNull String username,
+            int rank,
+            long stars,
+            int matchesPlayed,
+            @NonNull String leagueTierKey
+    ) {
         this.uid = uid;
         this.username = username;
         this.rank = rank;
         this.stars = stars;
         this.matchesPlayed = matchesPlayed;
+        this.leagueTierKey = leagueTierKey;
     }
 
     @NonNull
@@ -44,5 +57,10 @@ public final class RankingEntry {
 
     public int getMatchesPlayed() {
         return matchesPlayed;
+    }
+
+    @NonNull
+    public String getLeagueTierKey() {
+        return leagueTierKey;
     }
 }
