@@ -28,6 +28,7 @@ public class HomeFragment extends Fragment {
         Button profileBtn = view.findViewById(R.id.profile_button);
         Button notificationsBtn = view.findViewById(R.id.notifikacije);
         Button startOnlineMatchBtn = view.findViewById(R.id.startOnlineMatch);
+        Button startTournamentBtn = view.findViewById(R.id.startTournament);
         Button inviteFriendsBtn = view.findViewById(R.id.inviteFriends);
         Button regionMapBtn = view.findViewById(R.id.regionMap);
         Button rankingBtn = view.findViewById(R.id.ranking);
@@ -37,6 +38,7 @@ public class HomeFragment extends Fragment {
             profileBtn.setVisibility(View.GONE);
             notificationsBtn.setVisibility(View.GONE);
             startOnlineMatchBtn.setVisibility(View.GONE);
+            startTournamentBtn.setVisibility(View.GONE);
             inviteFriendsBtn.setVisibility(View.GONE);
             regionMapBtn.setVisibility(View.GONE);
             rankingBtn.setVisibility(View.GONE);
@@ -60,6 +62,10 @@ public class HomeFragment extends Fragment {
         startOnlineMatchBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
                     .navigate(R.id.action_home_to_onlineMatchmaking);
+        });
+        startTournamentBtn.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_home_to_tournament);
         });
         inviteFriendsBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)

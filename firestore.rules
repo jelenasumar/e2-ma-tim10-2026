@@ -62,6 +62,17 @@ service cloud.firestore {
         && userId == request.auth.uid;
     }
 
+    match /tournament_queue/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isSignedIn() && userId == request.auth.uid;
+    }
+
+    match /tournaments/{tournamentId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+    }
+
    match /username_lookup/{usernameLower} {
   	allow read: if true;
 

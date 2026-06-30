@@ -23,6 +23,8 @@ public final class RoomSession {
     private final String status;
     private final String matchType;
     private final String koZnaZnaMatchId;
+    private final String tournamentId;
+    private final String tournamentRound;
     private final long breakEndsAtMillis;
 
     public RoomSession(
@@ -39,6 +41,8 @@ public final class RoomSession {
             @NonNull String status,
             @NonNull String matchType,
             @NonNull String koZnaZnaMatchId,
+            @NonNull String tournamentId,
+            @NonNull String tournamentRound,
             long breakEndsAtMillis
     ) {
         this.roomId = roomId;
@@ -54,6 +58,8 @@ public final class RoomSession {
         this.status = status;
         this.matchType = matchType;
         this.koZnaZnaMatchId = koZnaZnaMatchId;
+        this.tournamentId = tournamentId;
+        this.tournamentRound = tournamentRound;
         this.breakEndsAtMillis = breakEndsAtMillis;
     }
 
@@ -73,6 +79,8 @@ public final class RoomSession {
                 stringOrDefault(document.getString("status"), "READY"),
                 stringOrDefault(document.getString("matchType"), "FRIENDLY"),
                 stringOrEmpty(document.getString("koZnaZnaMatchId")),
+                stringOrEmpty(document.getString("tournamentId")),
+                stringOrEmpty(document.getString("tournamentRound")),
                 longOrZero(document.get("breakEndsAtMillis"))
         );
     }
@@ -137,6 +145,16 @@ public final class RoomSession {
     @NonNull
     public String getKoZnaZnaMatchId() {
         return koZnaZnaMatchId;
+    }
+
+    @NonNull
+    public String getTournamentId() {
+        return tournamentId;
+    }
+
+    @NonNull
+    public String getTournamentRound() {
+        return tournamentRound;
     }
 
     public long getBreakEndsAtMillis() {
