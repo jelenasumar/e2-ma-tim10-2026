@@ -126,7 +126,7 @@ public class NotificationsViewModel extends AndroidViewModel {
                 && !notification.getRoomId().isEmpty()) {
             handleOpenRoomNotification(notification);
         } else if (notification.getAction() == NotificationAction.OPEN_CHAT) {
-            notificationPageTitle.setValue("Čet");
+            notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_chat));
         } else if (notification.getAction() == NotificationAction.OPEN_LEAGUE) {
             notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_ranking));
         } else if (notification.getAction() == NotificationAction.OPEN_RANKING) {
@@ -171,7 +171,7 @@ public class NotificationsViewModel extends AndroidViewModel {
                 }
                 break;
             case OPEN_CHAT:
-                notificationPageTitle.setValue("Čet");
+                notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_chat));
                 break;
             case OPEN_LEAGUE:
                 notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_ranking));

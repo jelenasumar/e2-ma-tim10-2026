@@ -78,6 +78,13 @@
             android:text="@string/region_map_button" />
 
         <Button
+            android:id="@+id/regionChat"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/region_chat_button" />
+
+        <Button
             android:id="@+id/ranking"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

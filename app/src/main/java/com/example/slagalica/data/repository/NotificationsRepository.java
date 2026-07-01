@@ -39,11 +39,14 @@ public final class NotificationsRepository {
     private final Context appContext;
     private final SharedPreferences prefs;
 
+
     public NotificationsRepository(@NonNull Context context) {
         appContext = context.getApplicationContext();
         prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         createNotificationChannels();
     }
+
+
 
     @NonNull
     public List<SystemNotification> loadNotifications() {
@@ -88,7 +91,11 @@ public final class NotificationsRepository {
 
         Intent intent = new Intent(appContext, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        intent.putExtra(MainActivity.EXTRA_OPEN_NOTIFICATIONS, true);
+        if (notification.getCategory() == NotificationCategory.CHAT) {
+            intent.putExtra(MainActivity.EXTRA_OPEN_CHAT, true);
+        } else {
+            intent.putExtra(MainActivity.EXTRA_OPEN_NOTIFICATIONS, true);
+        }
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 appContext,
                 notification.getId().hashCode(),
@@ -165,6 +172,7 @@ public final class NotificationsRepository {
     private void markDelivered(@NonNull String notificationId) {
         prefs.edit().putBoolean(DELIVERED_PREFIX + notificationId, true).apply();
     }
+
 
     private SystemNotification createNotification(
             @NonNull String id,

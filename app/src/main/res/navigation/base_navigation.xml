@@ -66,6 +66,10 @@
             android:id="@+id/action_profile_to_changePassword"
             app:destination="@id/changePassword" />
 
+        <action
+            android:id="@+id/action_home_to_regionChat"
+            app:destination="@id/regionChatFragment" />
+
 
     </fragment>
 
@@ -168,5 +172,10 @@
         android:id="@+id/rankingFragment"
         android:name="com.example.slagalica.ui.ranking.RankingFragment"
         android:label="@string/ranking_title" />
+
+    <fragment
+        android:id="@+id/regionChatFragment"
+        android:name="com.example.slagalica.ui.chat.RegionChatFragment"
+        android:label="@string/region_chat_title" />
 
 </navigation>

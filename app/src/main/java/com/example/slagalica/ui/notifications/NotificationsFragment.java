@@ -390,6 +390,13 @@ public class NotificationsFragment extends Fragment {
             NavHostFragment.findNavController(this).navigate(R.id.rankingFragment);
             return;
         }
+        if (getString(R.string.notification_destination_chat).equals(title)
+                || "Čet".equals(title)
+                || "Cet".equals(title)
+                || "ÄŒet".equals(title)) {
+            NavHostFragment.findNavController(this).navigate(R.id.regionChatFragment);
+            return;
+        }
         Bundle args = new Bundle();
         args.putString(NotificationDestinationFragment.ARG_TITLE, title);
         NavHostFragment.findNavController(this).navigate(R.id.notificationDestinationFragment, args);

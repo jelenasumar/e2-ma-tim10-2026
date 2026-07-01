@@ -41,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
     public static final String EXTRA_GUEST_MODE = "com.example.slagalica.EXTRA_GUEST_MODE";
     public static final String EXTRA_OPEN_NOTIFICATIONS = "com.example.slagalica.EXTRA_OPEN_NOTIFICATIONS";
     public static final String EXTRA_OPEN_ROOM_ID = "com.example.slagalica.EXTRA_OPEN_ROOM_ID";
+    public static final String EXTRA_OPEN_CHAT = "com.example.slagalica.EXTRA_OPEN_CHAT";
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1001;
 
     private final Set<String> knownNotificationIds = new HashSet<>();
@@ -51,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
     private NotificationsRepository notificationsRepository;
     private ListenerRegistration notificationsListener;
     private boolean initialNotificationsLoaded;
+    private boolean appInForeground;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,6 +71,18 @@ public class MainActivity extends AppCompatActivity {
         listenForSystemNotifications();
         observeLeagueChanges();
         openRequestedDestination(getIntent());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        appInForeground = true;
+    }
+
+    @Override
+    protected void onPause() {
+        appInForeground = false;
+        super.onPause();
     }
 
     private void observeLeagueChanges() {
@@ -137,10 +151,13 @@ public class MainActivity extends AppCompatActivity {
             SystemNotification previous = knownNotifications.get(notification.getId());
             if (previous == null) {
                 if (knownNotificationIds.add(notification.getId())) {
-                    notificationsRepository.showSystemNotification(notification);
+                    if (!appInForeground || notification.getAction() == NotificationAction.ACCEPT_INVITE) {
+                        notificationsRepository.showSystemNotification(notification);
+                    }
                     scheduleInviteExpiration(notification);
                 }
-            } else if (shouldDismissNotification(previous, notification)) {
+            }
+            else if (shouldDismissNotification(previous, notification)) {
                 notificationsRepository.cancelSystemNotification(notification.getId());
                 String inviteId = notification.getInviteId();
                 if (inviteId != null && !inviteId.isEmpty()) {
@@ -192,6 +209,27 @@ public class MainActivity extends AppCompatActivity {
         }
         openRoomIfRequested(intent);
         openNotificationsIfRequested(intent);
+        openChatIfRequested(intent);
+    }
+
+    private void openChatIfRequested(Intent intent) {
+        if (intent == null || !intent.getBooleanExtra(EXTRA_OPEN_CHAT, false)) {
+            return;
+        }
+
+        intent.removeExtra(EXTRA_OPEN_CHAT);
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.nav_host_fragment);
+        if (navHostFragment == null) {
+            return;
+        }
+
+        NavController navController = navHostFragment.getNavController();
+        if (navController.getCurrentDestination() == null
+                || navController.getCurrentDestination().getId() == R.id.regionChatFragment) {
+            return;
+        }
+        navController.navigate(R.id.regionChatFragment);
     }
 
     private void openNotificationsIfRequested(Intent intent) {
