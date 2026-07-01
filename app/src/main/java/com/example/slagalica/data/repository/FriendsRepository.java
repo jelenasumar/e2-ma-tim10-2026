@@ -16,8 +16,10 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
+import com.google.firebase.firestore.Source;
 import com.google.android.gms.tasks.Tasks;
 
 import java.util.ArrayList;
@@ -67,16 +69,24 @@ public final class FriendsRepository {
             return;
         }
 
-        db.collection(USERS).document(uid).get()
-                .addOnSuccessListener(userDocument -> {
-                    List<String> friendUids = readFriendIds(userDocument);
-                    if (friendUids.isEmpty()) {
-                        onSuccess.accept(Collections.emptyList());
-                        return;
-                    }
-                    loadFriendProfiles(friendUids, onSuccess, onError);
-                })
-                .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Prijatelji nisu ucitani.")));
+        db.collection(USERS).document(uid).get(Source.SERVER)
+                .addOnSuccessListener(userDocument -> handleLoadedFriendIds(userDocument, onSuccess, onError))
+                .addOnFailureListener(serverError -> db.collection(USERS).document(uid).get()
+                        .addOnSuccessListener(userDocument -> handleLoadedFriendIds(userDocument, onSuccess, onError))
+                        .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Prijatelji nisu ucitani."))));
+    }
+
+    private void handleLoadedFriendIds(
+            @NonNull DocumentSnapshot userDocument,
+            @NonNull Consumer<List<Friend>> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        List<String> friendUids = readFriendIds(userDocument);
+        if (friendUids.isEmpty()) {
+            onSuccess.accept(Collections.emptyList());
+            return;
+        }
+        loadFriendProfiles(friendUids, onSuccess, onError);
     }
 
     public void searchByUsername(
@@ -134,18 +144,41 @@ public final class FriendsRepository {
             return;
         }
 
-        db.collection(USERS).document(uid).get()
+        db.collection(USERS).document(uid).get(Source.SERVER)
                 .addOnSuccessListener(userDocument -> {
-                    List<String> existing = readFriendIds(userDocument);
-                    if (!existing.contains(friendUid)) {
-                        existing = new ArrayList<>(existing);
-                        existing.add(friendUid);
+                    if (readFriendIds(userDocument).contains(friendUid)) {
+                        addSelfToFriendList(friendUid, uid, onSuccess, onError);
+                        return;
                     }
-                    writeFriendIds(uid, existing, () ->
-                            addSelfToFriendList(friendUid, uid, onSuccess, onError)
-                    , onError);
+                    appendFriendId(uid, friendUid, () ->
+                            addSelfToFriendList(friendUid, uid, onSuccess, onError),
+                            onError
+                    );
                 })
-                .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Dodavanje nije uspelo.")));
+                .addOnFailureListener(e -> appendFriendId(uid, friendUid, () ->
+                        addSelfToFriendList(friendUid, uid, onSuccess, onError),
+                        onError
+                ));
+    }
+
+    private void appendFriendId(
+            @NonNull String userId,
+            @NonNull String friendUid,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        db.collection(USERS).document(userId)
+                .update(FRIEND_IDS_FIELD, FieldValue.arrayUnion(friendUid))
+                .addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> {
+                    Map<String, Object> update = new HashMap<>();
+                    update.put(FRIEND_IDS_FIELD, Collections.singletonList(friendUid));
+                    db.collection(USERS).document(userId)
+                            .set(update, SetOptions.merge())
+                            .addOnSuccessListener(unused -> onSuccess.run())
+                            .addOnFailureListener(setError ->
+                                    onError.accept(mapFirestoreError(setError, "Cuvanje prijatelja nije uspelo.")));
+                });
     }
 
     private void addSelfToFriendList(
@@ -154,30 +187,15 @@ public final class FriendsRepository {
             @NonNull Runnable onSuccess,
             @NonNull Consumer<String> onError
     ) {
-        db.collection(USERS).document(friendUid).get()
+        db.collection(USERS).document(friendUid).get(Source.SERVER)
                 .addOnSuccessListener(friendDocument -> {
-                    List<String> theirFriends = readFriendIds(friendDocument);
-                    if (!theirFriends.contains(myUid)) {
-                        theirFriends = new ArrayList<>(theirFriends);
-                        theirFriends.add(myUid);
+                    if (readFriendIds(friendDocument).contains(myUid)) {
+                        onSuccess.run();
+                        return;
                     }
-                    writeFriendIds(friendUid, theirFriends, onSuccess, onError);
+                    appendFriendId(friendUid, myUid, onSuccess, onError);
                 })
-                .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Sinhronizacija nije uspela.")));
-    }
-
-    private void writeFriendIds(
-            @NonNull String userId,
-            @NonNull List<String> friendIds,
-            @NonNull Runnable onSuccess,
-            @NonNull Consumer<String> onError
-    ) {
-        Map<String, Object> update = new HashMap<>();
-        update.put(FRIEND_IDS_FIELD, friendIds);
-        db.collection(USERS).document(userId)
-                .set(update, SetOptions.merge())
-                .addOnSuccessListener(unused -> onSuccess.run())
-                .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Cuvanje prijatelja nije uspelo.")));
+                .addOnFailureListener(e -> appendFriendId(friendUid, myUid, onSuccess, onError));
     }
 
     public void addFriendFromQr(
