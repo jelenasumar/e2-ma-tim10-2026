@@ -258,9 +258,26 @@ public class NotificationsViewModel extends AndroidViewModel {
         }
     }
 
+    private void dismissHandledNotifications(@NonNull List<SystemNotification> notifications) {
+        for (SystemNotification notification : notifications) {
+            for (SystemNotification previous : allNotifications) {
+                if (!previous.getId().equals(notification.getId())) {
+                    continue;
+                }
+                if (!previous.isActionHandled()
+                        && notification.isActionHandled()
+                        && notification.getAction() == NotificationAction.ACCEPT_INVITE) {
+                    repository.cancelSystemNotification(notification.getId());
+                }
+                break;
+            }
+        }
+    }
+
     private void listenNotifications() {
         notificationsListener = inviteRepository.listenNotifications(
                 notifications -> {
+                    dismissHandledNotifications(notifications);
                     allNotifications = notifications;
                     applyFilters();
                 },

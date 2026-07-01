@@ -83,7 +83,7 @@ public final class GameInviteRepository {
 
     public void sendInvite(
             @NonNull InviteUser receiver,
-            @NonNull Runnable onSuccess,
+            @NonNull Consumer<SentGameInvite> onSuccess,
             @NonNull Consumer<String> onError
     ) {
         FirebaseUser currentUser = auth.getCurrentUser();
@@ -194,6 +194,7 @@ public final class GameInviteRepository {
             }
 
             String toUid = stringOrDefault(invite.getString("toUid"), "");
+            String fromUsername = stringOrDefault(invite.getString("fromUsername"), "Igrac");
             String notificationId = stringOrDefault(invite.getString("notificationId"), "");
             DocumentReference receiverNotificationRef = notificationId.isEmpty() || toUid.isEmpty()
                     ? null
@@ -206,12 +207,15 @@ public final class GameInviteRepository {
                 }
                 transaction.update(inviteRef, "status", "CANCELLED", "cancelledAt", FieldValue.serverTimestamp());
                 if (receiverNotificationRef != null) {
-                    transaction.update(
-                            receiverNotificationRef,
-                            "read", true,
-                            "actionHandled", true,
-                            "actionResult", "Poziv je otkazan"
+                    Map<String, Object> notificationUpdate = new HashMap<>();
+                    notificationUpdate.put("read", true);
+                    notificationUpdate.put("actionHandled", true);
+                    notificationUpdate.put("actionResult", "Poziv je otkazan");
+                    notificationUpdate.put(
+                            "message",
+                            fromUsername + " je otkazao/la poziv za partiju."
                     );
+                    transaction.update(receiverNotificationRef, notificationUpdate);
                 }
                 return null;
             }).addOnSuccessListener(unused -> onSuccess.run())
@@ -511,7 +515,7 @@ public final class GameInviteRepository {
     private void createInvite(
             @NonNull InviteUser receiver,
             @NonNull DocumentSnapshot senderDocument,
-            @NonNull Runnable onSuccess,
+            @NonNull Consumer<SentGameInvite> onSuccess,
             @NonNull Consumer<String> onError
     ) {
         FirebaseUser currentUser = auth.getCurrentUser();
@@ -562,8 +566,12 @@ public final class GameInviteRepository {
         db.runBatch(batch -> {
             batch.set(inviteRef, invite);
             batch.set(notificationRef, notification);
-        }).addOnSuccessListener(unused -> onSuccess.run())
-                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Invite could not be sent.")));
+        }).addOnSuccessListener(unused -> onSuccess.accept(new SentGameInvite(
+                inviteRef.getId(),
+                receiver.getUid(),
+                receiver.getUsername(),
+                notificationRef.getId()
+        ))).addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Invite could not be sent.")));
     }
 
     private void expireInviteDocument(@NonNull String inviteId, @Nullable String notificationId) {
@@ -601,12 +609,12 @@ public final class GameInviteRepository {
                 }
                 transaction.update(inviteRef, "status", "EXPIRED", "expiredAt", FieldValue.serverTimestamp());
                 if (notificationRef != null) {
-                    transaction.update(
-                            notificationRef,
-                            "read", true,
-                            "actionHandled", true,
-                            "actionResult", "Poziv je istekao"
-                    );
+                    Map<String, Object> notificationUpdate = new HashMap<>();
+                    notificationUpdate.put("read", true);
+                    notificationUpdate.put("actionHandled", true);
+                    notificationUpdate.put("actionResult", "Poziv je istekao");
+                    notificationUpdate.put("message", "Poziv za partiju je istekao.");
+                    transaction.update(notificationRef, notificationUpdate);
                 }
                 return null;
             }).addOnCompleteListener(task -> onComplete.run());

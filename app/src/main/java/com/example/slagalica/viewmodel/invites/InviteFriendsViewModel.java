@@ -58,7 +58,7 @@ public class InviteFriendsViewModel extends ViewModel {
         loading.setValue(true);
         repository.sendInvite(
                 user,
-                () -> {
+                sentInvite -> {
                     pendingInviteUserIds.add(user.getUid());
                     users.setValue(users.getValue());
                     loading.setValue(false);

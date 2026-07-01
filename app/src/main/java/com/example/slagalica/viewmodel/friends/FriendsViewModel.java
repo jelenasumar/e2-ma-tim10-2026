@@ -1,6 +1,8 @@
 package com.example.slagalica.viewmodel.friends;
 
 import android.app.Application;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
@@ -13,7 +15,10 @@ import com.example.slagalica.model.Friend;
 import com.example.slagalica.model.SentGameInvite;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class FriendsViewModel extends AndroidViewModel {
 
@@ -22,6 +27,8 @@ public class FriendsViewModel extends AndroidViewModel {
     private final MutableLiveData<List<Friend>> friends = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<String> message = new MutableLiveData<>();
     private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
+    private final Handler inviteExpireHandler = new Handler(Looper.getMainLooper());
+    private final Map<String, Runnable> scheduledInviteExpirations = new HashMap<>();
 
     public FriendsViewModel(@NonNull Application application) {
         super(application);
@@ -114,9 +121,10 @@ public class FriendsViewModel extends AndroidViewModel {
         loading.setValue(true);
         inviteRepository.sendInvite(
                 friend.toInviteUser(),
-                () -> {
+                sentInvite -> {
                     loading.setValue(false);
                     message.setValue("Poziv je poslat.");
+                    scheduleSentInviteExpiry(sentInvite);
                     loadFriends();
                 },
                 error -> {
@@ -140,10 +148,12 @@ public class FriendsViewModel extends AndroidViewModel {
                 loadFriends();
                 return;
             }
+            final SentGameInvite inviteToCancel = target;
             loading.setValue(true);
             inviteRepository.cancelInvite(
-                    target.getInviteId(),
+                    inviteToCancel.getInviteId(),
                     () -> {
+                        cancelScheduledExpiry(inviteToCancel.getInviteId());
                         loading.setValue(false);
                         message.setValue("Poziv je otkazan.");
                         loadFriends();
@@ -156,11 +166,43 @@ public class FriendsViewModel extends AndroidViewModel {
         }, error -> message.setValue(mapError(error)));
     }
 
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        inviteExpireHandler.removeCallbacksAndMessages(null);
+        scheduledInviteExpirations.clear();
+    }
+
+    private void scheduleSentInviteExpiry(@NonNull SentGameInvite invite) {
+        cancelScheduledExpiry(invite.getInviteId());
+        Runnable expiryRunnable = () -> {
+            scheduledInviteExpirations.remove(invite.getInviteId());
+            inviteRepository.expireInviteIfPending(
+                    invite.getInviteId(),
+                    invite.getNotificationId(),
+                    () -> {
+                    }
+            );
+        };
+        scheduledInviteExpirations.put(invite.getInviteId(), expiryRunnable);
+        inviteExpireHandler.postDelayed(expiryRunnable, GameInviteRepository.INVITE_EXPIRE_MS);
+    }
+
+    private void cancelScheduledExpiry(@NonNull String inviteId) {
+        Runnable expiryRunnable = scheduledInviteExpirations.remove(inviteId);
+        if (expiryRunnable != null) {
+            inviteExpireHandler.removeCallbacks(expiryRunnable);
+        }
+    }
+
     @NonNull
     private String mapError(@NonNull String error) {
-        if (error.toLowerCase(java.util.Locale.ROOT).contains("permission")
-                || error.toLowerCase(java.util.Locale.ROOT).contains("insufficient")) {
-            return mapError("PERMISSION_DENIED");
+        if ("PERMISSION_DENIED".equals(error)) {
+            return "Nemate dozvolu za ovu akciju. Proverite da ste prijavljeni registrovanim nalogom.";
+        }
+        String lower = error.toLowerCase(Locale.ROOT);
+        if (lower.contains("permission") || lower.contains("insufficient")) {
+            return "Nemate dozvolu za ovu akciju. Proverite da ste prijavljeni registrovanim nalogom.";
         }
         switch (error) {
             case "USERNAME_NOT_FOUND":
@@ -175,8 +217,6 @@ public class FriendsViewModel extends AndroidViewModel {
                 return "Prijatelj trenutno igra partiju.";
             case "NOT_LOGGED_IN":
                 return "Morate biti prijavljeni.";
-            case "PERMISSION_DENIED":
-                return "Nemate dozvolu za ovu akciju. Proverite da ste prijavljeni registrovanim nalogom.";
             default:
                 return error;
         }

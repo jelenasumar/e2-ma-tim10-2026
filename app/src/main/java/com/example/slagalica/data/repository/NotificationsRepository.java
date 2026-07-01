@@ -69,6 +69,13 @@ public final class NotificationsRepository {
                 .apply();
     }
 
+    public void cancelSystemNotification(@NonNull String notificationId) {
+        NotificationManager manager = appContext.getSystemService(NotificationManager.class);
+        if (manager != null) {
+            manager.cancel(notificationId.hashCode());
+        }
+    }
+
     public void showSystemNotification(@NonNull SystemNotification notification) {
         if (notification.isRead() || wasDelivered(notification.getId()) || !canPostNotifications()) {
             return;
