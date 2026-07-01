@@ -14,9 +14,11 @@ import com.example.slagalica.utils.MonthlyCycleHelper;
 import com.example.slagalica.utils.QrInviteParser;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
+import com.google.android.gms.tasks.Tasks;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,6 +35,7 @@ public final class FriendsRepository {
 
     private static final String USERS = "users";
     private static final String FRIEND_IDS_FIELD = "friendIds";
+    private static final String ACTIVE_ROOM_ID_FIELD = "activeRoomId";
     private static final String USERNAME_LOOKUP = "username_lookup";
     private static final String ROOMS = "rooms";
 
@@ -210,7 +213,7 @@ public final class FriendsRepository {
                     }
 
                     Map<String, Integer> monthlyRanks = computeMonthlyRanks(usersSnapshot.getDocuments());
-                    loadBusyUids(friendUids, busyUids -> loadPendingInviteTargets(targets -> {
+                    loadBusyUids(friendUids, usersById, busyUids -> loadPendingInviteTargets(targets -> {
                         List<Friend> friends = new ArrayList<>();
                         for (String friendUid : friendUids) {
                             DocumentSnapshot document = usersById.get(friendUid);
@@ -233,6 +236,7 @@ public final class FriendsRepository {
 
     private void loadBusyUids(
             @NonNull List<String> friendUids,
+            @NonNull Map<String, DocumentSnapshot> usersById,
             @NonNull Consumer<Set<String>> onResult
     ) {
         if (friendUids.isEmpty()) {
@@ -240,21 +244,48 @@ public final class FriendsRepository {
             return;
         }
 
-        Set<String> friendIdSet = new HashSet<>(friendUids);
-        db.collection(ROOMS).get()
-                .addOnSuccessListener(roomsSnapshot -> {
+        Map<String, String> friendRoomIds = new HashMap<>();
+        List<DocumentReference> roomRefs = new ArrayList<>();
+        for (String friendUid : friendUids) {
+            DocumentSnapshot userDocument = usersById.get(friendUid);
+            if (userDocument == null || !userDocument.exists()) {
+                continue;
+            }
+            String activeRoomId = stringOrDefault(userDocument.getString(ACTIVE_ROOM_ID_FIELD), "");
+            if (activeRoomId.isEmpty()) {
+                continue;
+            }
+            friendRoomIds.put(friendUid, activeRoomId);
+            DocumentReference roomRef = db.collection(ROOMS).document(activeRoomId);
+            if (!roomRefs.contains(roomRef)) {
+                roomRefs.add(roomRef);
+            }
+        }
+
+        if (roomRefs.isEmpty()) {
+            onResult.accept(Collections.emptySet());
+            return;
+        }
+
+        List<com.google.android.gms.tasks.Task<DocumentSnapshot>> roomTasks = new ArrayList<>();
+        for (DocumentReference roomRef : roomRefs) {
+            roomTasks.add(roomRef.get());
+        }
+
+        Tasks.whenAllSuccess(roomTasks)
+                .addOnSuccessListener(results -> {
+                    Map<String, DocumentSnapshot> roomsById = new HashMap<>();
+                    for (Object result : results) {
+                        DocumentSnapshot roomDocument = (DocumentSnapshot) result;
+                        roomsById.put(roomDocument.getId(), roomDocument);
+                    }
+
                     Set<String> busyUids = new HashSet<>();
-                    for (DocumentSnapshot room : roomsSnapshot.getDocuments()) {
-                        if (!ActiveRoomHelper.isRoomActivelyBlocking(room)) {
-                            continue;
-                        }
-                        String hostUid = stringOrDefault(room.getString("hostUid"), "");
-                        String guestUid = stringOrDefault(room.getString("guestUid"), "");
-                        if (friendIdSet.contains(hostUid)) {
-                            busyUids.add(hostUid);
-                        }
-                        if (friendIdSet.contains(guestUid)) {
-                            busyUids.add(guestUid);
+                    for (Map.Entry<String, String> entry : friendRoomIds.entrySet()) {
+                        DocumentSnapshot roomDocument = roomsById.get(entry.getValue());
+                        if (roomDocument != null
+                                && ActiveRoomHelper.isUserInActiveRoom(roomDocument, entry.getKey())) {
+                            busyUids.add(entry.getKey());
                         }
                     }
                     onResult.accept(busyUids);

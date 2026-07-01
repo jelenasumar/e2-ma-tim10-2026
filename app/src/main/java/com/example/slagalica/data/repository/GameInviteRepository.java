@@ -246,15 +246,18 @@ public final class GameInviteRepository {
             return;
         }
 
-        db.collection(ROOMS).get()
-                .addOnSuccessListener(snapshot -> {
-                    for (DocumentSnapshot document : snapshot.getDocuments()) {
-                        if (ActiveRoomHelper.isUserInActiveRoom(document, uid)) {
-                            onResult.accept(true);
-                            return;
-                        }
+        db.collection(USERS).document(uid).get()
+                .addOnSuccessListener(userDocument -> {
+                    String activeRoomId = stringOrDefault(userDocument.getString("activeRoomId"), "");
+                    if (activeRoomId.isEmpty()) {
+                        onResult.accept(false);
+                        return;
                     }
-                    onResult.accept(false);
+                    db.collection(ROOMS).document(activeRoomId).get()
+                            .addOnSuccessListener(roomDocument -> onResult.accept(
+                                    ActiveRoomHelper.isUserInActiveRoom(roomDocument, uid)
+                            ))
+                            .addOnFailureListener(e -> onResult.accept(false));
                 })
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Status nije proveren.")));
     }

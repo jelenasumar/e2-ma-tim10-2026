@@ -14,6 +14,7 @@ import androidx.fragment.app.Fragment;
 import com.example.slagalica.R;
 import com.example.slagalica.data.repository.RoomSessionRepository;
 import com.example.slagalica.data.repository.TournamentRepository;
+import com.example.slagalica.data.repository.UserActiveSessionRepository;
 import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.RoomGameKeys;
 import com.example.slagalica.model.RoomSession;
@@ -25,6 +26,7 @@ public class RoomSessionFragment extends Fragment {
 
     private RoomSessionViewModel viewModel;
     private RoomSessionRepository repository;
+    private UserActiveSessionRepository activeSessionRepository;
     private String roomId = "";
     private String myUid = "";
     private TextView roomIdView;
@@ -46,6 +48,7 @@ public class RoomSessionFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         repository = new RoomSessionRepository();
+        activeSessionRepository = new UserActiveSessionRepository();
         viewModel = new ViewModelProvider(this).get(RoomSessionViewModel.class);
         roomIdView = view.findViewById(R.id.roomSessionId);
         playersView = view.findViewById(R.id.roomSessionPlayers);
@@ -64,6 +67,9 @@ public class RoomSessionFragment extends Fragment {
         Bundle args = getArguments();
         roomId = args != null ? args.getString("roomId", "") : "";
         myUid = repository.getCurrentUid() != null ? repository.getCurrentUid() : "";
+        if (!roomId.isEmpty()) {
+            activeSessionRepository.bindActiveRoom(roomId);
+        }
         viewModel.start(roomId);
     }
 
@@ -91,6 +97,7 @@ public class RoomSessionFragment extends Fragment {
         if (RoomGameKeys.STATUS_FINISHED.equals(room.getStatus())) {
             stopBreakTimer();
             navigatedToCurrentGame = false;
+            activeSessionRepository.clearActiveRoomIfMatches(room.getRoomId());
             recordRoomMatchStatsIfNeeded(room);
             currentGameView.setVisibility(View.VISIBLE);
             currentGameView.setText(getString(

@@ -165,7 +165,7 @@
     <string name="friends_empty">Jos nemate prijatelja. Pretragom ili QR kodom dodajte igrace.</string>
     <string name="friends_monthly_rank_value">Mesecni rang: #%1$d</string>
     <string name="friends_total_stars_value">Ukupno zvezda: %1$d</string>
-    <string name="friends_status_available">Dostupan za partiju</string>
+    <string name="friends_status_available">Nije u partiji</string>
     <string name="friends_status_in_game">Trenutno u partiji</string>
     <string name="friends_status_invite_pending">Poziv je poslat</string>
     <string name="friends_invite_button">Pozovi na partiju</string>
