@@ -152,7 +152,7 @@ public final class FireBaseUserDataSource {
     ) {
         db.collection("users")
                 .document(uid)
-                .set(UserProfileMapper.toMap(profile))
+                .set(UserProfileMapper.toMap(profile), SetOptions.merge())
                 .addOnSuccessListener(unused -> onSuccess.run())
                 .addOnFailureListener(e -> onError.accept(e.getMessage() != null ? e.getMessage() : "Save failed."));
     }

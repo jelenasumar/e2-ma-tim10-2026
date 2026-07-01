@@ -106,8 +106,8 @@
 
     <fragment
         android:id="@+id/inviteFriendsFragment"
-        android:name="com.example.slagalica.ui.invites.InviteFriendsFragment"
-        android:label="@string/invite_friends_title" />
+        android:name="com.example.slagalica.ui.friends.FriendsFragment"
+        android:label="@string/friends_title" />
 
     <fragment
         android:id="@+id/onlineMatchmakingFragment"

@@ -133,7 +133,7 @@
 
     <string name="profile_title">Profil</string>
     <string name="profile_button">Profil</string>
-    <string name="invite_friends_button">Pozovi</string>
+    <string name="invite_friends_button">Prijatelji</string>
     <string name="play_section_title">Pokreni partiju:</string>
     <string name="start_online_match">Započni partiju</string>
     <string name="start_tournament">Turnir</string>
@@ -155,6 +155,22 @@
     <string name="invite_send">Pozovi</string>
     <string name="invite_pending">Čeka se odgovor</string>
     <string name="invite_no_users">Nema drugih korisnika za pozivanje.</string>
+    <string name="friends_title">Prijatelji</string>
+    <string name="friends_search_hint">Pretraga po korisnickom imenu</string>
+    <string name="friends_add_button">Dodaj prijatelja</string>
+    <string name="friends_scan_qr_button">Skeniraj QR</string>
+    <string name="friends_scan_prompt">Usmerite kameru na QR kod sa profila</string>
+    <string name="friends_camera_denied">Potrebna je dozvola za kameru.</string>
+    <string name="friends_list_title">Lista prijatelja</string>
+    <string name="friends_empty">Jos nemate prijatelja. Pretragom ili QR kodom dodajte igrace.</string>
+    <string name="friends_monthly_rank_value">Mesecni rang: #%1$d</string>
+    <string name="friends_total_stars_value">Ukupno zvezda: %1$d</string>
+    <string name="friends_status_available">Nije u partiji</string>
+    <string name="friends_status_in_game">Trenutno u partiji</string>
+    <string name="friends_status_invite_pending">Poziv je poslat</string>
+    <string name="friends_invite_button">Pozovi na partiju</string>
+    <string name="friends_cancel_invite">Otkazi poziv</string>
+    <string name="friends_invite_unavailable">Nije dostupan</string>
     <string name="online_matchmaking_title">Online partija</string>
     <string name="online_matchmaking_searching">Traži se protivnik...</string>
     <string name="online_matchmaking_cancel">Prekini traženje</string>
@@ -178,7 +194,7 @@
     <string name="profile_stars">Ukupno zvezda</string>
     <string name="profile_league">Liga</string>
     <string name="profile_region_label">Region</string>
-    <string name="profile_qr_hint">QR za poziv prijatelja</string>
+    <string name="profile_qr_hint">QR za dodavanje prijatelja</string>
     <string name="profile_change_avatar">Promeni avatar</string>
     <string name="profile_statistics_heading">Statistika igrača</string>
     <string name="profile_stat_avg_points">Prosek bodova (%1$s): %2$.1f</string>

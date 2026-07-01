@@ -6,7 +6,10 @@ import androidx.annotation.Nullable;
 import com.example.slagalica.model.InviteUser;
 import com.example.slagalica.model.NotificationAction;
 import com.example.slagalica.model.NotificationCategory;
+import com.example.slagalica.model.RoomGameKeys;
+import com.example.slagalica.model.SentGameInvite;
 import com.example.slagalica.model.SystemNotification;
+import com.example.slagalica.util.ActiveRoomHelper;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -19,14 +22,20 @@ import com.google.firebase.firestore.Query;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public final class GameInviteRepository {
+
+    public static final long INVITE_EXPIRE_MS = 10_000L;
 
     private static final String USERS = "users";
     private static final String GAME_INVITES = "game_invites";
@@ -74,7 +83,7 @@ public final class GameInviteRepository {
 
     public void sendInvite(
             @NonNull InviteUser receiver,
-            @NonNull Runnable onSuccess,
+            @NonNull Consumer<SentGameInvite> onSuccess,
             @NonNull Consumer<String> onError
     ) {
         FirebaseUser currentUser = auth.getCurrentUser();
@@ -84,9 +93,195 @@ public final class GameInviteRepository {
         }
 
         String fromUid = currentUser.getUid();
-        db.collection(USERS).document(fromUid).get()
-                .addOnSuccessListener(senderDocument -> createInvite(receiver, senderDocument, onSuccess, onError))
-                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Invite could not be sent.")));
+        isUserInActiveGame(receiver.getUid(), inGame -> {
+            if (inGame) {
+                onError.accept("FRIEND_IN_GAME");
+                return;
+            }
+            db.collection(USERS).document(fromUid).get()
+                    .addOnSuccessListener(senderDocument -> createInvite(receiver, senderDocument, onSuccess, onError))
+                    .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Invite could not be sent.")));
+        }, error -> onError.accept(error));
+    }
+
+    public void loadPendingSentInviteTargets(
+            @NonNull Consumer<Set<String>> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String uid = getCurrentUid();
+        if (uid == null) {
+            onSuccess.accept(Collections.emptySet());
+            return;
+        }
+
+        db.collection(GAME_INVITES)
+                .whereEqualTo("fromUid", uid)
+                .whereEqualTo("status", "PENDING")
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    Set<String> targets = new HashSet<>();
+                    long now = System.currentTimeMillis();
+                    for (DocumentSnapshot document : snapshot.getDocuments()) {
+                        if (isExpired(document, now)) {
+                            expireInviteDocument(document.getId(), null);
+                            continue;
+                        }
+                        targets.add(stringOrDefault(document.getString("toUid"), ""));
+                    }
+                    onSuccess.accept(targets);
+                })
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Pozivi nisu ucitani.")));
+    }
+
+    public void loadPendingSentInvites(
+            @NonNull Consumer<List<SentGameInvite>> onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String uid = getCurrentUid();
+        if (uid == null) {
+            onSuccess.accept(new ArrayList<>());
+            return;
+        }
+
+        db.collection(GAME_INVITES)
+                .whereEqualTo("fromUid", uid)
+                .whereEqualTo("status", "PENDING")
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    List<SentGameInvite> invites = new ArrayList<>();
+                    long now = System.currentTimeMillis();
+                    for (DocumentSnapshot document : snapshot.getDocuments()) {
+                        if (isExpired(document, now)) {
+                            expireInviteDocument(document.getId(), stringValue(document.get("notificationId")));
+                            continue;
+                        }
+                        invites.add(new SentGameInvite(
+                                document.getId(),
+                                stringOrDefault(document.getString("toUid"), ""),
+                                stringOrDefault(document.getString("toUsername"), "Korisnik"),
+                                stringOrDefault(document.getString("notificationId"), "")
+                        ));
+                    }
+                    onSuccess.accept(invites);
+                })
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Pozivi nisu ucitani.")));
+    }
+
+    @Nullable
+    public ListenerRegistration listenPendingSentInvitesChanged(@NonNull Runnable onChanged) {
+        String uid = getCurrentUid();
+        if (uid == null) {
+            return null;
+        }
+
+        return db.collection(GAME_INVITES)
+                .whereEqualTo("fromUid", uid)
+                .whereEqualTo("status", "PENDING")
+                .addSnapshotListener((snapshot, error) -> {
+                    if (error != null || snapshot == null) {
+                        return;
+                    }
+                    onChanged.run();
+                });
+    }
+
+    public void cancelInvite(
+            @NonNull String inviteId,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        String uid = getCurrentUid();
+        if (uid == null) {
+            onError.accept("NOT_LOGGED_IN");
+            return;
+        }
+
+        DocumentReference inviteRef = db.collection(GAME_INVITES).document(inviteId);
+        inviteRef.get().addOnSuccessListener(invite -> {
+            if (!invite.exists()) {
+                onError.accept("INVITE_NOT_AVAILABLE");
+                return;
+            }
+            if (!uid.equals(invite.getString("fromUid"))) {
+                onError.accept("INVITE_NOT_AVAILABLE");
+                return;
+            }
+            if (!"PENDING".equals(stringOrDefault(invite.getString("status"), ""))) {
+                onError.accept("INVITE_NOT_AVAILABLE");
+                return;
+            }
+
+            String toUid = stringOrDefault(invite.getString("toUid"), "");
+            String fromUsername = stringOrDefault(invite.getString("fromUsername"), "Igrac");
+            String notificationId = stringOrDefault(invite.getString("notificationId"), "");
+            DocumentReference receiverNotificationRef = notificationId.isEmpty() || toUid.isEmpty()
+                    ? null
+                    : db.collection(USERS).document(toUid).collection(NOTIFICATIONS).document(notificationId);
+
+            db.runTransaction(transaction -> {
+                DocumentSnapshot freshInvite = transaction.get(inviteRef);
+                if (!freshInvite.exists() || !"PENDING".equals(stringOrDefault(freshInvite.getString("status"), ""))) {
+                    throw new IllegalStateException("Invite is no longer pending.");
+                }
+                transaction.update(inviteRef, "status", "CANCELLED", "cancelledAt", FieldValue.serverTimestamp());
+                if (receiverNotificationRef != null) {
+                    Map<String, Object> notificationUpdate = new HashMap<>();
+                    notificationUpdate.put("read", true);
+                    notificationUpdate.put("actionHandled", true);
+                    notificationUpdate.put("actionResult", "Poziv je otkazan");
+                    notificationUpdate.put(
+                            "message",
+                            fromUsername + " je otkazao/la poziv za partiju."
+                    );
+                    transaction.update(receiverNotificationRef, notificationUpdate);
+                }
+                return null;
+            }).addOnSuccessListener(unused -> onSuccess.run())
+                    .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Poziv nije otkazan.")));
+        }).addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Poziv nije otkazan.")));
+    }
+
+    public void expireInviteIfPending(
+            @NonNull String inviteId,
+            @Nullable String notificationId,
+            @NonNull Runnable onComplete
+    ) {
+        expireInviteDocument(inviteId, notificationId, onComplete);
+    }
+
+    public void expireInviteForNotification(@NonNull SystemNotification notification) {
+        String inviteId = notification.getInviteId();
+        if (inviteId == null || inviteId.isEmpty()) {
+            return;
+        }
+        expireInviteDocument(inviteId, notification.getId(), () -> {
+        });
+    }
+
+    public void isUserInActiveGame(
+            @NonNull String uid,
+            @NonNull Consumer<Boolean> onResult,
+            @NonNull Consumer<String> onError
+    ) {
+        if (uid.isEmpty()) {
+            onResult.accept(false);
+            return;
+        }
+
+        db.collection(USERS).document(uid).get()
+                .addOnSuccessListener(userDocument -> {
+                    String activeRoomId = stringOrDefault(userDocument.getString("activeRoomId"), "");
+                    if (activeRoomId.isEmpty()) {
+                        onResult.accept(false);
+                        return;
+                    }
+                    db.collection(ROOMS).document(activeRoomId).get()
+                            .addOnSuccessListener(roomDocument -> onResult.accept(
+                                    ActiveRoomHelper.isUserInActiveRoom(roomDocument, uid)
+                            ))
+                            .addOnFailureListener(e -> onResult.accept(false));
+                })
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Status nije proveren.")));
     }
 
     public ListenerRegistration listenNotifications(
@@ -239,6 +434,9 @@ public final class GameInviteRepository {
                 String existingRoomId = invite.getString("roomId");
                 return existingRoomId != null ? existingRoomId : "";
             }
+            if (isExpired(invite, System.currentTimeMillis())) {
+                throw new IllegalStateException("Invite expired.");
+            }
 
             String fromUid = stringOrDefault(invite.getString("fromUid"), "");
             String fromUsername = stringOrDefault(invite.getString("fromUsername"), "Igrac");
@@ -316,7 +514,34 @@ public final class GameInviteRepository {
             }
             String status = stringOrDefault(invite.getString("status"), "PENDING");
             if ("PENDING".equals(status)) {
+                if (isExpired(invite, System.currentTimeMillis())) {
+                    throw new IllegalStateException("Invite expired.");
+                }
+                String fromUid = stringOrDefault(invite.getString("fromUid"), "");
+                String toUsername = stringOrDefault(invite.getString("toUsername"), "Protivnik");
                 transaction.update(inviteRef, "status", "DECLINED", "declinedAt", FieldValue.serverTimestamp());
+                if (!fromUid.isEmpty()) {
+                    DocumentReference senderNotificationRef = db.collection(USERS)
+                            .document(fromUid)
+                            .collection(NOTIFICATIONS)
+                            .document();
+                    Map<String, Object> senderNotification = new HashMap<>();
+                    senderNotification.put("type", "INVITE_DECLINED");
+                    senderNotification.put("category", "OTHER");
+                    senderNotification.put("title", "Poziv odbijen");
+                    senderNotification.put(
+                            "message",
+                            toUsername + " je odbio/la poziv za partiju."
+                    );
+                    senderNotification.put("read", false);
+                    senderNotification.put("action", "NONE");
+                    senderNotification.put("actionHandled", false);
+                    senderNotification.put("actionResult", "");
+                    senderNotification.put("inviteId", inviteId);
+                    senderNotification.put("fromUid", uid);
+                    senderNotification.put("createdAt", FieldValue.serverTimestamp());
+                    transaction.set(senderNotificationRef, senderNotification);
+                }
             }
             transaction.update(
                     notificationRef,
@@ -332,7 +557,7 @@ public final class GameInviteRepository {
     private void createInvite(
             @NonNull InviteUser receiver,
             @NonNull DocumentSnapshot senderDocument,
-            @NonNull Runnable onSuccess,
+            @NonNull Consumer<SentGameInvite> onSuccess,
             @NonNull Consumer<String> onError
     ) {
         FirebaseUser currentUser = auth.getCurrentUser();
@@ -350,6 +575,8 @@ public final class GameInviteRepository {
                 .collection(NOTIFICATIONS)
                 .document();
 
+        Timestamp expiresAt = new Timestamp(new Date(System.currentTimeMillis() + INVITE_EXPIRE_MS));
+
         Map<String, Object> invite = new HashMap<>();
         invite.put("fromUid", fromUid);
         invite.put("fromUsername", fromUsername);
@@ -359,13 +586,15 @@ public final class GameInviteRepository {
         invite.put("toEmail", receiver.getEmail());
         invite.put("status", "PENDING");
         invite.put("roomId", "");
+        invite.put("notificationId", notificationRef.getId());
+        invite.put("expiresAt", expiresAt);
         invite.put("createdAt", FieldValue.serverTimestamp());
 
         Map<String, Object> notification = new HashMap<>();
         notification.put("type", "GAME_INVITE");
         notification.put("category", "OTHER");
         notification.put("title", "Poziv za partiju");
-        notification.put("message", fromUsername + " te je pozvao/la na partiju.");
+        notification.put("message", fromUsername + " te je pozvao/la na partiju. Imate 10 sekundi da odgovorite.");
         notification.put("read", false);
         notification.put("action", "ACCEPT_INVITE");
         notification.put("actionLabel", "Prihvati poziv");
@@ -373,13 +602,77 @@ public final class GameInviteRepository {
         notification.put("actionResult", "");
         notification.put("inviteId", inviteRef.getId());
         notification.put("fromUid", fromUid);
+        notification.put("expiresAt", expiresAt);
         notification.put("createdAt", FieldValue.serverTimestamp());
 
         db.runBatch(batch -> {
             batch.set(inviteRef, invite);
             batch.set(notificationRef, notification);
-        }).addOnSuccessListener(unused -> onSuccess.run())
-                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Invite could not be sent.")));
+        }).addOnSuccessListener(unused -> onSuccess.accept(new SentGameInvite(
+                inviteRef.getId(),
+                receiver.getUid(),
+                receiver.getUsername(),
+                notificationRef.getId()
+        ))).addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Invite could not be sent.")));
+    }
+
+    private void expireInviteDocument(@NonNull String inviteId, @Nullable String notificationId) {
+        expireInviteDocument(inviteId, notificationId, () -> {
+        });
+    }
+
+    private void expireInviteDocument(
+            @NonNull String inviteId,
+            @Nullable String notificationId,
+            @NonNull Runnable onComplete
+    ) {
+        DocumentReference inviteRef = db.collection(GAME_INVITES).document(inviteId);
+        inviteRef.get().addOnSuccessListener(invite -> {
+            if (!invite.exists()) {
+                onComplete.run();
+                return;
+            }
+            if (!"PENDING".equals(stringOrDefault(invite.getString("status"), ""))) {
+                onComplete.run();
+                return;
+            }
+            String toUid = stringOrDefault(invite.getString("toUid"), "");
+            String effectiveNotificationId = notificationId != null && !notificationId.isEmpty()
+                    ? notificationId
+                    : stringOrDefault(invite.getString("notificationId"), "");
+            DocumentReference notificationRef = effectiveNotificationId.isEmpty() || toUid.isEmpty()
+                    ? null
+                    : db.collection(USERS).document(toUid).collection(NOTIFICATIONS).document(effectiveNotificationId);
+
+            db.runTransaction(transaction -> {
+                DocumentSnapshot freshInvite = transaction.get(inviteRef);
+                if (!freshInvite.exists() || !"PENDING".equals(stringOrDefault(freshInvite.getString("status"), ""))) {
+                    return null;
+                }
+                transaction.update(inviteRef, "status", "EXPIRED", "expiredAt", FieldValue.serverTimestamp());
+                if (notificationRef != null) {
+                    Map<String, Object> notificationUpdate = new HashMap<>();
+                    notificationUpdate.put("read", true);
+                    notificationUpdate.put("actionHandled", true);
+                    notificationUpdate.put("actionResult", "Poziv je istekao");
+                    notificationUpdate.put("message", "Poziv za partiju je istekao.");
+                    transaction.update(notificationRef, notificationUpdate);
+                }
+                return null;
+            }).addOnCompleteListener(task -> onComplete.run());
+        }).addOnFailureListener(e -> onComplete.run());
+    }
+
+    private static boolean isExpired(@NonNull DocumentSnapshot invite, long nowMillis) {
+        Object expiresAt = invite.get("expiresAt");
+        if (expiresAt instanceof Timestamp) {
+            return ((Timestamp) expiresAt).toDate().getTime() <= nowMillis;
+        }
+        Object createdAt = invite.get("createdAt");
+        if (createdAt instanceof Timestamp) {
+            return ((Timestamp) createdAt).toDate().getTime() + INVITE_EXPIRE_MS <= nowMillis;
+        }
+        return false;
     }
 
     @NonNull

@@ -254,7 +254,7 @@ public final class TournamentRepository {
                             currentIsHost ? hostStarsDelta : guestStarsDelta,
                             currentIsHost ? hostTokensDelta : guestTokensDelta,
                             shouldUpdateStats(room, uid)
-                    )));
+                    )), SetOptions.merge());
 
                     Map<String, Object> result = matchResult(room, winnerUid, loserUid, hostStarsDelta, guestStarsDelta);
                     result.put("processedBy_" + uid, true);

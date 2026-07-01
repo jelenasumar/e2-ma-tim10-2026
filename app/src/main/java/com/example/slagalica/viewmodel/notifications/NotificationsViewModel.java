@@ -17,8 +17,13 @@ import com.example.slagalica.model.SystemNotification;
 import com.example.slagalica.utils.SingleLiveEvent;
 import com.google.firebase.firestore.ListenerRegistration;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class NotificationsViewModel extends AndroidViewModel {
 
@@ -34,6 +39,8 @@ public class NotificationsViewModel extends AndroidViewModel {
     private NotificationCategory selectedCategory = NotificationCategory.ALL;
     private NotificationStatus selectedStatus = NotificationStatus.ALL;
     private ListenerRegistration notificationsListener;
+    private final Handler inviteExpireHandler = new Handler(Looper.getMainLooper());
+    private final Set<String> scheduledInviteExpirations = new HashSet<>();
 
     public NotificationsViewModel(@NonNull Application application) {
         super(application);
@@ -244,15 +251,33 @@ public class NotificationsViewModel extends AndroidViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
+        inviteExpireHandler.removeCallbacksAndMessages(null);
         if (notificationsListener != null) {
             notificationsListener.remove();
             notificationsListener = null;
         }
     }
 
+    private void dismissHandledNotifications(@NonNull List<SystemNotification> notifications) {
+        for (SystemNotification notification : notifications) {
+            for (SystemNotification previous : allNotifications) {
+                if (!previous.getId().equals(notification.getId())) {
+                    continue;
+                }
+                if (!previous.isActionHandled()
+                        && notification.isActionHandled()
+                        && notification.getAction() == NotificationAction.ACCEPT_INVITE) {
+                    repository.cancelSystemNotification(notification.getId());
+                }
+                break;
+            }
+        }
+    }
+
     private void listenNotifications() {
         notificationsListener = inviteRepository.listenNotifications(
                 notifications -> {
+                    dismissHandledNotifications(notifications);
                     allNotifications = notifications;
                     applyFilters();
                 },
@@ -306,6 +331,36 @@ public class NotificationsViewModel extends AndroidViewModel {
             }
         }
         visibleNotifications.setValue(filtered);
+        scheduleInviteExpirations(filtered);
+    }
+
+    private void scheduleInviteExpirations(@NonNull List<SystemNotification> notifications) {
+        for (SystemNotification notification : notifications) {
+            if (notification.getAction() != NotificationAction.ACCEPT_INVITE) {
+                continue;
+            }
+            if (notification.isActionHandled()) {
+                continue;
+            }
+            String inviteId = notification.getInviteId();
+            if (inviteId == null || inviteId.isEmpty()) {
+                continue;
+            }
+            if (!scheduledInviteExpirations.add(inviteId)) {
+                continue;
+            }
+            inviteExpireHandler.postDelayed(() -> {
+                inviteRepository.expireInviteIfPending(
+                        inviteId,
+                        notification.getId(),
+                        () -> {
+                            scheduledInviteExpirations.remove(inviteId);
+                            updateLocalActionHandled(notification.getId(), "Poziv je istekao");
+                            message.postValue("Poziv za partiju je automatski odbijen.");
+                        }
+                );
+            }, GameInviteRepository.INVITE_EXPIRE_MS);
+        }
     }
 
     private boolean matchesCategory(@NonNull SystemNotification notification) {
