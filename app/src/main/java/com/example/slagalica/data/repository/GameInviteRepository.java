@@ -167,6 +167,24 @@ public final class GameInviteRepository {
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Pozivi nisu ucitani.")));
     }
 
+    @Nullable
+    public ListenerRegistration listenPendingSentInvitesChanged(@NonNull Runnable onChanged) {
+        String uid = getCurrentUid();
+        if (uid == null) {
+            return null;
+        }
+
+        return db.collection(GAME_INVITES)
+                .whereEqualTo("fromUid", uid)
+                .whereEqualTo("status", "PENDING")
+                .addSnapshotListener((snapshot, error) -> {
+                    if (error != null || snapshot == null) {
+                        return;
+                    }
+                    onChanged.run();
+                });
+    }
+
     public void cancelInvite(
             @NonNull String inviteId,
             @NonNull Runnable onSuccess,
@@ -499,7 +517,31 @@ public final class GameInviteRepository {
                 if (isExpired(invite, System.currentTimeMillis())) {
                     throw new IllegalStateException("Invite expired.");
                 }
+                String fromUid = stringOrDefault(invite.getString("fromUid"), "");
+                String toUsername = stringOrDefault(invite.getString("toUsername"), "Protivnik");
                 transaction.update(inviteRef, "status", "DECLINED", "declinedAt", FieldValue.serverTimestamp());
+                if (!fromUid.isEmpty()) {
+                    DocumentReference senderNotificationRef = db.collection(USERS)
+                            .document(fromUid)
+                            .collection(NOTIFICATIONS)
+                            .document();
+                    Map<String, Object> senderNotification = new HashMap<>();
+                    senderNotification.put("type", "INVITE_DECLINED");
+                    senderNotification.put("category", "OTHER");
+                    senderNotification.put("title", "Poziv odbijen");
+                    senderNotification.put(
+                            "message",
+                            toUsername + " je odbio/la poziv za partiju."
+                    );
+                    senderNotification.put("read", false);
+                    senderNotification.put("action", "NONE");
+                    senderNotification.put("actionHandled", false);
+                    senderNotification.put("actionResult", "");
+                    senderNotification.put("inviteId", inviteId);
+                    senderNotification.put("fromUid", uid);
+                    senderNotification.put("createdAt", FieldValue.serverTimestamp());
+                    transaction.set(senderNotificationRef, senderNotification);
+                }
             }
             transaction.update(
                     notificationRef,

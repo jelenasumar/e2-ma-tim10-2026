@@ -13,6 +13,7 @@ import com.example.slagalica.data.repository.FriendsRepository;
 import com.example.slagalica.data.repository.GameInviteRepository;
 import com.example.slagalica.model.Friend;
 import com.example.slagalica.model.SentGameInvite;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,11 +30,13 @@ public class FriendsViewModel extends AndroidViewModel {
     private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
     private final Handler inviteExpireHandler = new Handler(Looper.getMainLooper());
     private final Map<String, Runnable> scheduledInviteExpirations = new HashMap<>();
+    private ListenerRegistration pendingInvitesListener;
 
     public FriendsViewModel(@NonNull Application application) {
         super(application);
         friendsRepository = new FriendsRepository(application);
         inviteRepository = new GameInviteRepository();
+        pendingInvitesListener = inviteRepository.listenPendingSentInvitesChanged(this::refreshFriendsQuietly);
     }
 
     @NonNull
@@ -169,8 +172,20 @@ public class FriendsViewModel extends AndroidViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
+        if (pendingInvitesListener != null) {
+            pendingInvitesListener.remove();
+            pendingInvitesListener = null;
+        }
         inviteExpireHandler.removeCallbacksAndMessages(null);
         scheduledInviteExpirations.clear();
+    }
+
+    private void refreshFriendsQuietly() {
+        friendsRepository.loadFriends(
+                loadedFriends -> friends.postValue(loadedFriends),
+                error -> {
+                }
+        );
     }
 
     private void scheduleSentInviteExpiry(@NonNull SentGameInvite invite) {
