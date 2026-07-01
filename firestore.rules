@@ -14,10 +14,18 @@ service cloud.firestore {
             || resource.data.guestUid == request.auth.uid);
     }
 
+    function isMutualFriendAdd(userId) {
+      return isSignedIn()
+        && request.auth.uid != userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['friendIds'])
+        && request.auth.uid in request.resource.data.friendIds;
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow update, delete: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isMutualFriendAdd(userId);
       allow update: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tokens']);

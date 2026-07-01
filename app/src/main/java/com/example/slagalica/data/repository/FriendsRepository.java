@@ -17,6 +17,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
+import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -134,14 +135,24 @@ public final class FriendsRepository {
         db.collection(USERS).document(uid).get()
                 .addOnSuccessListener(userDocument -> {
                     List<String> existing = readFriendIds(userDocument);
+                    Map<String, Object> theirUpdate = new HashMap<>();
+                    theirUpdate.put(FRIEND_IDS_FIELD, FieldValue.arrayUnion(uid));
+
                     if (existing.contains(friendUid)) {
-                        onError.accept("ALREADY_FRIEND");
+                        db.collection(USERS).document(friendUid)
+                                .set(theirUpdate, SetOptions.merge())
+                                .addOnSuccessListener(unused -> onSuccess.run())
+                                .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Sinhronizacija nije uspela.")));
                         return;
                     }
-                    Map<String, Object> updates = new HashMap<>();
-                    updates.put(FRIEND_IDS_FIELD, FieldValue.arrayUnion(friendUid));
-                    db.collection(USERS).document(uid)
-                            .set(updates, SetOptions.merge())
+
+                    Map<String, Object> myUpdate = new HashMap<>();
+                    myUpdate.put(FRIEND_IDS_FIELD, FieldValue.arrayUnion(friendUid));
+
+                    WriteBatch batch = db.batch();
+                    batch.set(db.collection(USERS).document(uid), myUpdate, SetOptions.merge());
+                    batch.set(db.collection(USERS).document(friendUid), theirUpdate, SetOptions.merge());
+                    batch.commit()
                             .addOnSuccessListener(unused -> onSuccess.run())
                             .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Dodavanje nije uspelo.")));
                 })
