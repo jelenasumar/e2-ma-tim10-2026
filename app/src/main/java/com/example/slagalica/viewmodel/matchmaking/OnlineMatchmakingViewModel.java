@@ -39,11 +39,18 @@ public class OnlineMatchmakingViewModel extends ViewModel {
         status.setValue("Trazi se protivnik...");
         if (queueListener != null) {
             queueListener.remove();
+            queueListener = null;
         }
-        queueListener = repository.listenMyQueue(this::onMatched, error -> status.setValue(mapError(error)));
+
         repository.startLooking(
                 this::onMatched,
-                () -> status.setValue("Ceka se protivnik..."),
+                () -> {
+                    status.setValue("Ceka se protivnik...");
+                    queueListener = repository.listenMyQueue(
+                            this::onMatched,
+                            error -> status.setValue(mapError(error))
+                    );
+                },
                 error -> {
                     searching.setValue(false);
                     status.setValue(mapError(error));

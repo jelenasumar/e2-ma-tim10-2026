@@ -127,22 +127,26 @@ public final class OnlineMatchmakingRepository {
 
         db.runTransaction(transaction -> {
                     DocumentSnapshot queueDoc = transaction.get(queueRef);
+                    DocumentSnapshot userDoc = transaction.get(userRef);
+
                     if (queueDoc.exists()) {
                         String status = stringOrDefault(queueDoc.getString("status"), "");
-                        String roomId = stringOrDefault(queueDoc.getString("roomId"), "");
 
-                        if ("MATCHED".equals(status) && !roomId.isEmpty()) {
-                            return ReservationResult.alreadyMatched(roomId);
-                        }
                         if ("WAITING".equals(status)) {
                             return ReservationResult.alreadyWaiting();
                         }
                     }
 
-                    DocumentSnapshot userDoc = transaction.get(userRef);
                     long tokens = longOrZero(userDoc.get("tokens"));
                     if (tokens < MATCH_ENTRY_FEE) {
                         throw new IllegalStateException(NO_TOKENS);
+                    }
+
+                    if (queueDoc.exists()) {
+                        String status = stringOrDefault(queueDoc.getString("status"), "");
+                        if ("MATCHED".equals(status)) {
+                            transaction.delete(queueRef);
+                        }
                     }
 
                     transaction.update(userRef, "tokens", FieldValue.increment(-MATCH_ENTRY_FEE));
@@ -239,10 +243,10 @@ public final class OnlineMatchmakingRepository {
         DocumentReference opponentQueueRef = db.collection(QUEUE).document(opponentUid);
 
         Map<String, Object> room = new HashMap<>();
-        room.put("hostUid", opponentUid);
-        room.put("guestUid", uid);
-        room.put("hostUsername", opponentUsername);
-        room.put("guestUsername", myUsername);
+        room.put("hostUid", uid);
+        room.put("guestUid", opponentUid);
+        room.put("hostUsername", myUsername);
+        room.put("guestUsername", opponentUsername);
         room.put("hostTotalScore", 0);
         room.put("guestTotalScore", 0);
         room.put("currentGame", com.example.slagalica.model.RoomGameKeys.DEFAULT_GAME_ORDER.get(0));
