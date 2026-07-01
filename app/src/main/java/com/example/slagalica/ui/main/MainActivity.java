@@ -22,9 +22,13 @@ import com.example.slagalica.R;
 import com.example.slagalica.data.repository.GameInviteRepository;
 import com.example.slagalica.data.repository.NotificationsRepository;
 import com.example.slagalica.model.LeagueChangeEvent;
+import com.example.slagalica.model.NotificationAction;
 import com.example.slagalica.model.SystemNotification;
 import com.example.slagalica.utils.LeagueChangeNotifier;
 import com.google.firebase.firestore.ListenerRegistration;
+
+import android.os.Handler;
+import android.os.Looper;
 
 import java.util.HashSet;
 import java.util.List;
@@ -38,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1001;
 
     private final Set<String> knownNotificationIds = new HashSet<>();
+    private final Set<String> scheduledInviteExpirations = new HashSet<>();
+    private final Handler inviteExpireHandler = new Handler(Looper.getMainLooper());
     private GameInviteRepository inviteRepository;
     private NotificationsRepository notificationsRepository;
     private ListenerRegistration notificationsListener;
@@ -77,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        inviteExpireHandler.removeCallbacksAndMessages(null);
         if (notificationsListener != null) {
             notificationsListener.remove();
             notificationsListener = null;
@@ -125,8 +132,30 @@ public class MainActivity extends AppCompatActivity {
         for (SystemNotification notification : notifications) {
             if (knownNotificationIds.add(notification.getId())) {
                 notificationsRepository.showSystemNotification(notification);
+                scheduleInviteExpiration(notification);
             }
         }
+    }
+
+    private void scheduleInviteExpiration(@NonNull SystemNotification notification) {
+        if (notification.getAction() != NotificationAction.ACCEPT_INVITE) {
+            return;
+        }
+        if (notification.isActionHandled()) {
+            return;
+        }
+        String inviteId = notification.getInviteId();
+        if (inviteId == null || inviteId.isEmpty()) {
+            return;
+        }
+        if (!scheduledInviteExpirations.add(inviteId)) {
+            return;
+        }
+        inviteExpireHandler.postDelayed(() -> {
+            scheduledInviteExpirations.remove(inviteId);
+            inviteRepository.expireInviteIfPending(inviteId, notification.getId(), () -> {
+            });
+        }, GameInviteRepository.INVITE_EXPIRE_MS);
     }
 
     private void openRequestedDestination(Intent intent) {

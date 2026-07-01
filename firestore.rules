@@ -30,6 +30,11 @@ service cloud.firestore {
           )
         );
       }
+
+      match /friends/{friendId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create, delete: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     match /game_invites/{inviteId} {
