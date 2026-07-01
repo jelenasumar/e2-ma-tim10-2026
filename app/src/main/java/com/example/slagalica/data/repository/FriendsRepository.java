@@ -14,10 +14,8 @@ import com.example.slagalica.utils.QrInviteParser;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
-import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -135,28 +133,47 @@ public final class FriendsRepository {
         db.collection(USERS).document(uid).get()
                 .addOnSuccessListener(userDocument -> {
                     List<String> existing = readFriendIds(userDocument);
-                    Map<String, Object> theirUpdate = new HashMap<>();
-                    theirUpdate.put(FRIEND_IDS_FIELD, FieldValue.arrayUnion(uid));
-
-                    if (existing.contains(friendUid)) {
-                        db.collection(USERS).document(friendUid)
-                                .set(theirUpdate, SetOptions.merge())
-                                .addOnSuccessListener(unused -> onSuccess.run())
-                                .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Sinhronizacija nije uspela.")));
-                        return;
+                    if (!existing.contains(friendUid)) {
+                        existing = new ArrayList<>(existing);
+                        existing.add(friendUid);
                     }
-
-                    Map<String, Object> myUpdate = new HashMap<>();
-                    myUpdate.put(FRIEND_IDS_FIELD, FieldValue.arrayUnion(friendUid));
-
-                    WriteBatch batch = db.batch();
-                    batch.set(db.collection(USERS).document(uid), myUpdate, SetOptions.merge());
-                    batch.set(db.collection(USERS).document(friendUid), theirUpdate, SetOptions.merge());
-                    batch.commit()
-                            .addOnSuccessListener(unused -> onSuccess.run())
-                            .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Dodavanje nije uspelo.")));
+                    writeFriendIds(uid, existing, () ->
+                            addSelfToFriendList(friendUid, uid, onSuccess, onError)
+                    , onError);
                 })
                 .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Dodavanje nije uspelo.")));
+    }
+
+    private void addSelfToFriendList(
+            @NonNull String friendUid,
+            @NonNull String myUid,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        db.collection(USERS).document(friendUid).get()
+                .addOnSuccessListener(friendDocument -> {
+                    List<String> theirFriends = readFriendIds(friendDocument);
+                    if (!theirFriends.contains(myUid)) {
+                        theirFriends = new ArrayList<>(theirFriends);
+                        theirFriends.add(myUid);
+                    }
+                    writeFriendIds(friendUid, theirFriends, onSuccess, onError);
+                })
+                .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Sinhronizacija nije uspela.")));
+    }
+
+    private void writeFriendIds(
+            @NonNull String userId,
+            @NonNull List<String> friendIds,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        Map<String, Object> update = new HashMap<>();
+        update.put(FRIEND_IDS_FIELD, friendIds);
+        db.collection(USERS).document(userId)
+                .set(update, SetOptions.merge())
+                .addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Cuvanje prijatelja nije uspelo.")));
     }
 
     public void addFriendFromQr(

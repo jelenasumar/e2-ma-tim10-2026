@@ -56,7 +56,7 @@ public class FriendsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        viewModel = new ViewModelProvider(this).get(FriendsViewModel.class);
+        viewModel = new ViewModelProvider(requireActivity()).get(FriendsViewModel.class);
         friendsContainer = view.findViewById(R.id.friends_container);
         progressBar = view.findViewById(R.id.friends_progress);
         searchInput = view.findViewById(R.id.friends_search_input);
@@ -95,6 +95,14 @@ public class FriendsFragment extends Fragment {
         );
 
         viewModel.loadFriends();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (viewModel != null) {
+            viewModel.loadFriends();
+        }
     }
 
     private void startQrScan() {
