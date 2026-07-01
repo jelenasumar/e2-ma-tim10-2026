@@ -9,6 +9,7 @@ import com.example.slagalica.model.NotificationCategory;
 import com.example.slagalica.model.RoomGameKeys;
 import com.example.slagalica.model.SentGameInvite;
 import com.example.slagalica.model.SystemNotification;
+import com.example.slagalica.util.ActiveRoomHelper;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -248,13 +249,7 @@ public final class GameInviteRepository {
         db.collection(ROOMS).get()
                 .addOnSuccessListener(snapshot -> {
                     for (DocumentSnapshot document : snapshot.getDocuments()) {
-                        String status = stringOrDefault(document.getString("status"), "");
-                        if (!isActiveRoomStatus(status)) {
-                            continue;
-                        }
-                        String hostUid = stringOrDefault(document.getString("hostUid"), "");
-                        String guestUid = stringOrDefault(document.getString("guestUid"), "");
-                        if (uid.equals(hostUid) || uid.equals(guestUid)) {
+                        if (ActiveRoomHelper.isUserInActiveRoom(document, uid)) {
                             onResult.accept(true);
                             return;
                         }
@@ -625,12 +620,6 @@ public final class GameInviteRepository {
             return ((Timestamp) createdAt).toDate().getTime() + INVITE_EXPIRE_MS <= nowMillis;
         }
         return false;
-    }
-
-    private static boolean isActiveRoomStatus(@NonNull String status) {
-        return RoomGameKeys.STATUS_READY.equals(status)
-                || RoomGameKeys.STATUS_PLAYING.equals(status)
-                || RoomGameKeys.STATUS_BREAK.equals(status);
     }
 
     @NonNull

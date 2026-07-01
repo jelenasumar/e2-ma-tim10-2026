@@ -7,6 +7,7 @@ import androidx.annotation.Nullable;
 
 import com.example.slagalica.data.remote.FireBaseUserDataSource;
 import com.example.slagalica.model.Friend;
+import com.example.slagalica.util.ActiveRoomHelper;
 import com.example.slagalica.model.LeagueTier;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.utils.MonthlyCycleHelper;
@@ -209,7 +210,7 @@ public final class FriendsRepository {
                     }
 
                     Map<String, Integer> monthlyRanks = computeMonthlyRanks(usersSnapshot.getDocuments());
-                    loadBusyUids(busyUids -> loadPendingInviteTargets(targets -> {
+                    loadBusyUids(friendUids, busyUids -> loadPendingInviteTargets(targets -> {
                         List<Friend> friends = new ArrayList<>();
                         for (String friendUid : friendUids) {
                             DocumentSnapshot document = usersById.get(friendUid);
@@ -230,15 +231,30 @@ public final class FriendsRepository {
                 .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Prijatelji nisu ucitani.")));
     }
 
-    private void loadBusyUids(@NonNull Consumer<Set<String>> onResult) {
+    private void loadBusyUids(
+            @NonNull List<String> friendUids,
+            @NonNull Consumer<Set<String>> onResult
+    ) {
+        if (friendUids.isEmpty()) {
+            onResult.accept(Collections.emptySet());
+            return;
+        }
+
+        Set<String> friendIdSet = new HashSet<>(friendUids);
         db.collection(ROOMS).get()
                 .addOnSuccessListener(roomsSnapshot -> {
                     Set<String> busyUids = new HashSet<>();
                     for (DocumentSnapshot room : roomsSnapshot.getDocuments()) {
-                        String status = stringOrDefault(room.getString("status"), "");
-                        if (isActiveRoomStatus(status)) {
-                            busyUids.add(stringOrDefault(room.getString("hostUid"), ""));
-                            busyUids.add(stringOrDefault(room.getString("guestUid"), ""));
+                        if (!ActiveRoomHelper.isRoomActivelyBlocking(room)) {
+                            continue;
+                        }
+                        String hostUid = stringOrDefault(room.getString("hostUid"), "");
+                        String guestUid = stringOrDefault(room.getString("guestUid"), "");
+                        if (friendIdSet.contains(hostUid)) {
+                            busyUids.add(hostUid);
+                        }
+                        if (friendIdSet.contains(guestUid)) {
+                            busyUids.add(guestUid);
                         }
                     }
                     onResult.accept(busyUids);
@@ -322,10 +338,6 @@ public final class FriendsRepository {
             ranks.put(rows.get(i).uid, i + 1);
         }
         return ranks;
-    }
-
-    private static boolean isActiveRoomStatus(@NonNull String status) {
-        return "READY".equals(status) || "PLAYING".equals(status) || "BREAK".equals(status);
     }
 
     private static boolean inviteCodeMatches(@NonNull UserProfile profile, @NonNull String code) {
