@@ -10,6 +10,9 @@ import com.google.firebase.firestore.ListenerRegistration;
 
 public class OnlineMatchmakingViewModel extends ViewModel {
 
+    private static final String NO_TOKENS = "NO_TOKENS";
+    private static final String NOT_LOGGED_IN = "NOT_LOGGED_IN";
+
     private final OnlineMatchmakingRepository repository = new OnlineMatchmakingRepository();
     private final MutableLiveData<String> status = new MutableLiveData<>("Trazenje protivnika...");
     private final MutableLiveData<String> roomId = new MutableLiveData<>();
@@ -37,13 +40,13 @@ public class OnlineMatchmakingViewModel extends ViewModel {
         if (queueListener != null) {
             queueListener.remove();
         }
-        queueListener = repository.listenMyQueue(this::onMatched, error -> status.setValue(error));
+        queueListener = repository.listenMyQueue(this::onMatched, error -> status.setValue(mapError(error)));
         repository.startLooking(
                 this::onMatched,
                 () -> status.setValue("Ceka se protivnik..."),
                 error -> {
                     searching.setValue(false);
-                    status.setValue(error);
+                    status.setValue(mapError(error));
                 }
         );
     }
@@ -51,7 +54,7 @@ public class OnlineMatchmakingViewModel extends ViewModel {
     public void cancelLooking() {
         repository.cancelLooking(() -> {
             searching.setValue(false);
-            status.setValue("Trazenje je prekinuto.");
+            status.setValue("Trazenje je prekinuto. Token je vracen ako partija jos nije pocela.");
         });
     }
 
@@ -68,5 +71,16 @@ public class OnlineMatchmakingViewModel extends ViewModel {
         searching.setValue(false);
         roomId.setValue(matchedRoomId);
         status.setValue("Protivnik je pronadjen. Soba: " + matchedRoomId);
+    }
+
+    @NonNull
+    private static String mapError(@NonNull String error) {
+        if (NO_TOKENS.equals(error)) {
+            return "Nemas dovoljno tokena za partiju.";
+        }
+        if (NOT_LOGGED_IN.equals(error)) {
+            return "Moras biti prijavljen/a za online partiju.";
+        }
+        return error;
     }
 }

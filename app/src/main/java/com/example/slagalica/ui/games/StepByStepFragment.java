@@ -93,6 +93,7 @@ public class StepByStepFragment extends Fragment {
 
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
+            RoomGameFlow.registerRoomBackHandler(this, roomId);
         } else {
             statusView.setVisibility(View.VISIBLE);
             statusView.setText("Korak po korak se pokrece iz online partije.");
@@ -242,7 +243,7 @@ public class StepByStepFragment extends Fragment {
     }
 
     private void recordStatsIfNeeded(@NonNull KorakPoKorakUiState state) {
-        if (statsRecorded || !state.isGameOver()) {
+        if (statsRecorded || !state.isGameOver() || !viewModel.shouldRecordGameStats()) {
             return;
         }
 

@@ -64,6 +64,10 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private String displayedQuestionKey = "";
     private long displayedQuestionStartedAtMs = 0L;
     private long displayedQuestionEndsAtMs = 0L;
+    private boolean friendlyRoom;
+    private String roomAbandonedByUid = "";
+    private String abandonHandledMatchKey = "";
+    private boolean abandonHandleInFlight;
     @Nullable
     private KoZnaZnaMatch latestMatch;
 
@@ -89,8 +93,16 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         this.isHost = false;
         this.iHaveAnswered = false;
         this.statsRecorded = false;
+        if (activeRoomId.isEmpty()) {
+            this.friendlyRoom = false;
+        }
         this.resolveInFlight = false;
         this.presenceMarkInFlight = false;
+        if (activeRoomId.isEmpty()) {
+            this.roomAbandonedByUid = "";
+            this.abandonHandledMatchKey = "";
+            this.abandonHandleInFlight = false;
+        }
         this.selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
         this.myHits = 0;
         this.myMisses = 0;
@@ -128,6 +140,10 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         activeRoomId = roomId;
         localStatusMessage = getApplication().getString(R.string.kzz_waiting_sync);
 
+        roomAbandonedByUid = "";
+        abandonHandledMatchKey = "";
+        abandonHandleInFlight = false;
+
         profileRepository.ensureAuthenticated(
                 () -> {
                     String uid = matchRepository.getCurrentUid();
@@ -150,17 +166,16 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     private void onRoomSessionUpdated(@NonNull RoomSession room) {
+        friendlyRoom = "FRIENDLY".equals(room.getMatchType());
         roomBaseHostScore = room.getHostTotalScore();
         roomBaseGuestScore = room.getGuestTotalScore();
+        roomAbandonedByUid = room.getAbandonedByUid();
         String existingMatchId = room.getKoZnaZnaMatchId();
         if (!existingMatchId.isEmpty()) {
-            if (roomListener != null) {
-                roomListener.remove();
-                roomListener = null;
-            }
             if (matchListener == null || !existingMatchId.equals(matchId)) {
                 startOnlineMatch(existingMatchId, myUid);
             }
+            handleRoomAbandonIfNeeded(room, existingMatchId);
             return;
         }
 
@@ -190,6 +205,56 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                     errorMessage.setValue(error);
                 }
         );
+    }
+
+    private void handleRoomAbandonIfNeeded(
+            @NonNull RoomSession room,
+            @NonNull String existingMatchId
+    ) {
+        String abandonedUid = room.getAbandonedByUid();
+        if (existingMatchId.isEmpty()
+                || abandonedUid.isEmpty()
+                || myUid.isEmpty()
+                || myUid.equals(abandonedUid)) {
+            return;
+        }
+
+        boolean iAmRoomPlayer = myUid.equals(room.getHostUid()) || myUid.equals(room.getGuestUid());
+        if (!iAmRoomPlayer) {
+            return;
+        }
+
+        String handleKey = existingMatchId + "|" + abandonedUid;
+        if (abandonHandleInFlight || handleKey.equals(abandonHandledMatchKey)) {
+            return;
+        }
+
+        abandonHandleInFlight = true;
+        matchRepository.handleAbandonedPlayer(
+                existingMatchId,
+                abandonedUid,
+                () -> {
+                    abandonHandleInFlight = false;
+                    abandonHandledMatchKey = handleKey;
+                },
+                error -> {
+                    abandonHandleInFlight = false;
+                    errorMessage.setValue(error);
+                }
+        );
+    }
+
+    private boolean canControlKzzProgress() {
+        if (latestMatch == null || myUid.isEmpty()) {
+            return false;
+        }
+        if (isHost) {
+            return true;
+        }
+        boolean iAmSurvivor = !roomAbandonedByUid.isEmpty()
+                && !myUid.equals(roomAbandonedByUid)
+                && (myUid.equals(latestMatch.getHostUid()) || myUid.equals(latestMatch.getGuestUid()));
+        return iAmSurvivor;
     }
 
     private void publishWaitingState(@NonNull RoomSession room) {
@@ -251,7 +316,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 () -> {
                     if (latestMatch != null) {
                         publishFromMatch(latestMatch);
-                        if (isHost) {
+                        if (canControlKzzProgress()) {
                             maybeResolveQuestion(latestMatch);
                         }
                     }
@@ -276,7 +341,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 () -> {
                     if (latestMatch != null) {
                         publishFromMatch(latestMatch);
-                        if (isHost) {
+                        if (canControlKzzProgress()) {
                             maybeResolveQuestion(latestMatch);
                         }
                     }
@@ -343,13 +408,15 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
 
-        if (isHost) {
+        if (canControlKzzProgress()) {
             maybeResolveQuestion(match);
         }
     }
 
     private void maybeResolveQuestion(@NonNull KoZnaZnaMatch match) {
-        if (!isHost || resolveInFlight || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
+        if (!canControlKzzProgress()
+                || resolveInFlight
+                || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
             return;
         }
 
@@ -402,7 +469,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         if (latestMatch != null) {
             markPlayerPresentIfNeeded(latestMatch);
             publishFromMatch(latestMatch);
-            if (isHost && KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())) {
+            if (canControlKzzProgress() && KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())) {
                 maybeResolveQuestion(latestMatch);
             }
         }
@@ -745,7 +812,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     private void recordStatsIfNeeded(@NonNull KoZnaZnaMatch match) {
-        if (statsRecorded || !profileRepository.isRegisteredPlayer()) {
+        if (statsRecorded || friendlyRoom || !profileRepository.isRegisteredPlayer()) {
             return;
         }
         statsRecorded = true;

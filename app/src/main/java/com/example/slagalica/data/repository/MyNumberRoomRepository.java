@@ -196,6 +196,14 @@ public final class MyNumberRoomRepository {
             boolean playerTwoSubmitted = boolOrFalse(snapshot.get("playerTwoSubmitted"))
                     || myUid.equals(playerTwoUid);
 
+            String abandonedByUid = stringOrEmpty(snapshot.getString("abandonedByUid"));
+            if (playerOneUid.equals(abandonedByUid)) {
+                playerOneSubmitted = true;
+            }
+            if (playerTwoUid.equals(abandonedByUid)) {
+                playerTwoSubmitted = true;
+            }
+
             if (playerOneSubmitted && playerTwoSubmitted) {
                 applyRoundScoring(snapshot, updates);
             }
@@ -231,7 +239,12 @@ public final class MyNumberRoomRepository {
                 return null;
             }
 
-            if (PHASE_NUMBERS.equals(phase)) {
+            if (PHASE_TARGET.equals(phase)) {
+                long roundEndsAt = longOrZero(snapshot.get("roundEndsAtMillis"));
+                if (roundEndsAt > 0L && roundEndsAt <= System.currentTimeMillis()) {
+                    applyRoundScoring(snapshot, updates);
+                }
+            } else if (PHASE_NUMBERS.equals(phase)) {
                 long autoRevealAt = longOrZero(snapshot.get("numbersAutoRevealAtMillis"));
                 if (autoRevealAt > 0L && autoRevealAt <= System.currentTimeMillis()) {
                     revealNumbers(updates);
@@ -251,11 +264,12 @@ public final class MyNumberRoomRepository {
                         updates.put("phaseEndsAtMillis", 0L);
                     } else {
                         int nextRoundNumber = currentRound + 1;
+                        String nextActiveUid = startingPlayerUid(snapshot, nextRoundNumber);
                         updates.putAll(nextRoundState(
                                 snapshot,
                                 nextRoundNumber,
-                                startingPlayerUid(snapshot, nextRoundNumber),
-                                startingPlayerNumber(nextRoundNumber)
+                                nextActiveUid,
+                                playerNumberForUid(snapshot, nextActiveUid)
                         ));
                     }
                 }
@@ -342,7 +356,88 @@ public final class MyNumberRoomRepository {
         fields.put("playerTwoExpressionValid", false);
         fields.put("roundWinnerUid", "");
         fields.put("roundWinnerPoints", 0);
+        fields.put("abandonedByUid", "");
         return fields;
+    }
+
+    public void handleAbandonedPlayer(
+            @NonNull RoomSession room,
+            @NonNull Consumer<String> onError
+    ) {
+        String abandonedUid = room.getAbandonedByUid();
+        if (abandonedUid.isEmpty()) {
+            return;
+        }
+
+        DocumentReference ref = stateRef(room.getRoomId());
+
+        db.runTransaction(transaction -> {
+            DocumentSnapshot snapshot = transaction.get(ref);
+            if (!snapshot.exists()) {
+                return null;
+            }
+
+            String phase = stringOrDefault(snapshot.getString("phase"), PHASE_TARGET);
+            if (PHASE_GAME_OVER.equals(phase)) {
+                return null;
+            }
+
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("abandonedByUid", abandonedUid);
+
+            String activeUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
+            if ((PHASE_TARGET.equals(phase) || PHASE_NUMBERS.equals(phase))
+                    && abandonedUid.equals(activeUid)) {
+                applyRoundScoring(snapshot, updates);
+            } else if (PHASE_SOLVING.equals(phase)) {
+                markAbandonedPlayerSubmitted(snapshot, updates, abandonedUid);
+
+                boolean playerOneSubmitted = boolOrFalse(snapshot.get("playerOneSubmitted"))
+                        || Boolean.TRUE.equals(updates.get("playerOneSubmitted"));
+                boolean playerTwoSubmitted = boolOrFalse(snapshot.get("playerTwoSubmitted"))
+                        || Boolean.TRUE.equals(updates.get("playerTwoSubmitted"));
+
+                if (playerOneSubmitted && playerTwoSubmitted) {
+                    applyRoundScoring(snapshot, updates);
+                }
+            }
+
+            if (!updates.isEmpty()) {
+                transaction.update(ref, updates);
+            }
+
+            return null;
+        }).addOnFailureListener(error ->
+                onError.accept(error.getMessage() != null
+                        ? error.getMessage()
+                        : "Napušteni igrač nije obrađen.")
+        );
+    }
+
+    private static void markAbandonedPlayerSubmitted(
+            @NonNull DocumentSnapshot snapshot,
+            @NonNull Map<String, Object> updates,
+            @NonNull String abandonedUid
+    ) {
+        if (abandonedUid.equals(snapshot.getString("playerOneUid"))) {
+            updates.put("playerOneSubmitted", true);
+            updates.put("playerOneExpressionValid", false);
+            updates.put("playerOneResult", 0d);
+        } else if (abandonedUid.equals(snapshot.getString("playerTwoUid"))) {
+            updates.put("playerTwoSubmitted", true);
+            updates.put("playerTwoExpressionValid", false);
+            updates.put("playerTwoResult", 0d);
+        }
+    }
+
+    private static int playerNumberForUid(@NonNull DocumentSnapshot snapshot, @NonNull String uid) {
+        if (uid.equals(snapshot.getString("playerOneUid"))) {
+            return 1;
+        }
+        if (uid.equals(snapshot.getString("playerTwoUid"))) {
+            return 2;
+        }
+        return 1;
     }
 
     private static boolean canActivePlayerAct(
@@ -520,9 +615,16 @@ public final class MyNumberRoomRepository {
 
     @NonNull
     private static String startingPlayerUid(@NonNull DocumentSnapshot snapshot, int round) {
-        return startingPlayerNumber(round) == 1
-                ? stringOrEmpty(snapshot.getString("playerOneUid"))
-                : stringOrEmpty(snapshot.getString("playerTwoUid"));
+        String playerOneUid = stringOrEmpty(snapshot.getString("playerOneUid"));
+        String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
+        String abandonedByUid = stringOrEmpty(snapshot.getString("abandonedByUid"));
+
+        String preferred = startingPlayerNumber(round) == 1 ? playerOneUid : playerTwoUid;
+        if (!preferred.equals(abandonedByUid)) {
+            return preferred;
+        }
+
+        return preferred.equals(playerOneUid) ? playerTwoUid : playerOneUid;
     }
 
     private static int startingPlayerNumber(int round) {

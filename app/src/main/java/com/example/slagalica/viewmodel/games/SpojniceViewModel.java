@@ -250,6 +250,20 @@ public class SpojniceViewModel extends AndroidViewModel {
         if (myUid.equals(room.getHostUid())) {
             initializeRoomGameIfNeeded(room);
         }
+        if (!room.getAbandonedByUid().isEmpty()
+                && !myUid.isEmpty()
+                && !myUid.equals(room.getAbandonedByUid())) {
+            loadRoundPuzzles(() -> {
+                SpojnicePuzzle puzzle = puzzleForRound(Math.min(currentRound + 1, TOTAL_ROUNDS));
+                SpojnicePuzzle.ShuffledRound shuffled = puzzle.shuffled(random);
+                spojniceRepository.handleAbandonedPlayer(
+                        room,
+                        shuffled,
+                        puzzle.getCriterion(),
+                        errorMessage::setValue
+                );
+            });
+        }
     }
 
     private void initializeRoomGameIfNeeded(@NonNull RoomSession room) {
@@ -437,7 +451,7 @@ public class SpojniceViewModel extends AndroidViewModel {
     }
 
     private void recordStatsIfNeeded() {
-        if (statsRecorded || roomSession == null) {
+        if (statsRecorded || roomSession == null || isFriendlyRoom()) {
             return;
         }
         statsRecorded = true;
@@ -446,6 +460,10 @@ public class SpojniceViewModel extends AndroidViewModel {
                 : playerTwoScore - basePlayerTwoScore;
         int correctPairs = myScore / 2;
         profileRepository.recordSpojniceGame(myScore, correctPairs, TOTAL_PAIRS_PER_GAME);
+    }
+
+    private boolean isFriendlyRoom() {
+        return roomSession != null && "FRIENDLY".equals(roomSession.getMatchType());
     }
 
     @NonNull
@@ -558,26 +576,42 @@ public class SpojniceViewModel extends AndroidViewModel {
         return 2;
     }
 
-    @NonNull
     private String startingPlayerUid(int round) {
+        String preferred;
         if (!playerOneUid.isEmpty() || !playerTwoUid.isEmpty()) {
-            return startingPlayerNumber(round) == 1 ? playerOneUid : playerTwoUid;
-        }
-        if (roomSession != null) {
-            return startingPlayerNumber(round) == 1
+            preferred = startingPlayerNumber(round) == 1 ? playerOneUid : playerTwoUid;
+        } else if (roomSession != null) {
+            preferred = startingPlayerNumber(round) == 1
                     ? roomSession.getHostUid()
                     : roomSession.getGuestUid();
+        } else {
+            return activePlayerUid;
         }
-        return activePlayerUid;
+
+        if (roomSession == null || !preferred.equals(roomSession.getAbandonedByUid())) {
+            return preferred;
+        }
+
+        if (!playerOneUid.isEmpty() || !playerTwoUid.isEmpty()) {
+            return preferred.equals(playerOneUid) ? playerTwoUid : playerOneUid;
+        }
+
+        return preferred.equals(roomSession.getHostUid())
+                ? roomSession.getGuestUid()
+                : roomSession.getHostUid();
     }
 
     private static int startingPlayerNumber(int round) {
         return round % 2 == 0 ? 2 : 1;
     }
 
-    @NonNull
     private String followupPlayerUidForRound(int round) {
-        return startingPlayerNumber(round) == 1 ? playerTwoUid : playerOneUid;
+        String preferred = startingPlayerNumber(round) == 1 ? playerTwoUid : playerOneUid;
+        if (roomSession == null || !preferred.equals(roomSession.getAbandonedByUid())) {
+            return preferred;
+        }
+
+        return preferred.equals(playerOneUid) ? playerTwoUid : playerOneUid;
     }
 
     private boolean canCurrentUserPlay() {

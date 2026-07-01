@@ -107,6 +107,7 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
 
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
+            RoomGameFlow.registerRoomBackHandler(this, roomId);
         } else {
             showUnavailableState();
         }
@@ -363,7 +364,7 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
     }
 
     private void recordStatsIfNeeded(@NonNull MyNumberUiState state) {
-        if (statsRecorded || !state.isGameOver()) {
+        if (statsRecorded || !state.isGameOver() || !viewModel.shouldRecordGameStats()) {
             return;
         }
 

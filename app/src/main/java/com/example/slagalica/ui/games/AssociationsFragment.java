@@ -65,6 +65,7 @@ public class AssociationsFragment extends Fragment {
         }
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
+            RoomGameFlow.registerRoomBackHandler(this, roomId);
         } else {
             viewModel.startGame(createPlayerOneState(), createPlayerTwoState());
         }
@@ -186,7 +187,7 @@ public class AssociationsFragment extends Fragment {
     }
 
     private void recordStatsIfNeeded(@NonNull AssociationsGameState state) {
-        if (statsRecorded || !state.isGameOver()) {
+        if (statsRecorded || !state.isGameOver() || !viewModel.shouldRecordGameStats()) {
             return;
         }
         statsRecorded = true;

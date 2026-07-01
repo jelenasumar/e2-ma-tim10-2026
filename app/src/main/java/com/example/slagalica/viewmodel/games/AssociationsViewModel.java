@@ -94,6 +94,10 @@ public class AssociationsViewModel extends GameViewModel {
         return errorMessage;
     }
 
+    public boolean shouldRecordGameStats() {
+        return roomSession == null || !"FRIENDLY".equals(roomSession.getMatchType());
+    }
+
     public void startGame(
             @NonNull GameHeaderPlayerState playerOne,
             @NonNull GameHeaderPlayerState playerTwo
@@ -323,6 +327,14 @@ public class AssociationsViewModel extends GameViewModel {
             );
         }
         initializeRoomGameIfNeeded(room);
+        if (!room.getAbandonedByUid().isEmpty()
+                && !myUid.isEmpty()
+                && !myUid.equals(room.getAbandonedByUid())) {
+            associationsRoomRepository.handleAbandonedPlayer(
+                    room,
+                    errorMessage::setValue
+            );
+        }
     }
 
     private void initializeRoomGameIfNeeded(@NonNull RoomSession room) {

@@ -68,6 +68,10 @@ public class MyNumberViewModel extends AndroidViewModel {
         return uiState;
     }
 
+    public boolean shouldRecordGameStats() {
+        return roomSession == null || !"FRIENDLY".equals(roomSession.getMatchType());
+    }
+
     public void startRoomGame(@NonNull String roomId) {
         if (roomId.isEmpty() || roomId.equals(this.roomId)) {
             return;
@@ -144,6 +148,15 @@ public class MyNumberViewModel extends AndroidViewModel {
         if (myUid.equals(room.getHostUid())) {
             initializeRoomGameIfNeeded(room);
         }
+
+        if (!room.getAbandonedByUid().isEmpty()
+                && !myUid.isEmpty()
+                && !myUid.equals(room.getAbandonedByUid())) {
+            myNumberRepository.handleAbandonedPlayer(
+                    room,
+                    error -> publishState(secondsLeft, error)
+            );
+        }
     }
 
     private void initializeRoomGameIfNeeded(@NonNull RoomSession room) {
@@ -205,6 +218,10 @@ public class MyNumberViewModel extends AndroidViewModel {
     }
 
     private long currentDeadline(@NonNull DocumentSnapshot snapshot) {
+        if (MyNumberRoomRepository.PHASE_TARGET.equals(phase)) {
+            return longOrZero(snapshot.get("roundEndsAtMillis"));
+        }
+
         if (MyNumberRoomRepository.PHASE_NUMBERS.equals(phase)) {
             return longOrZero(snapshot.get("numbersAutoRevealAtMillis"));
         }

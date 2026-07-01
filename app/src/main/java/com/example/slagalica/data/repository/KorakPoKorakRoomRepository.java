@@ -203,11 +203,12 @@ public final class KorakPoKorakRoomRepository {
                     updates.put("phaseEndsAtMillis", 0L);
                 } else {
                     int nextRoundNumber = currentRound + 1;
+                    String nextActiveUid = startingPlayerUid(snapshot, nextRoundNumber);
                     updates.putAll(nextRoundState(
                             snapshot,
                             nextRoundNumber,
-                            startingPlayerUid(snapshot, nextRoundNumber),
-                            startingPlayerNumber(nextRoundNumber),
+                            nextActiveUid,
+                            playerNumberForUid(snapshot, nextActiveUid),
                             nextPuzzle
                     ));
                 }
@@ -268,6 +269,54 @@ public final class KorakPoKorakRoomRepository {
         return state;
     }
 
+    public void handleAbandonedPlayer(
+            @NonNull RoomSession room,
+            @NonNull Consumer<String> onError
+    ) {
+        String abandonedUid = room.getAbandonedByUid();
+        if (abandonedUid.isEmpty()) {
+            return;
+        }
+
+        DocumentReference ref = stateRef(room.getRoomId());
+
+        db.runTransaction(transaction -> {
+            DocumentSnapshot snapshot = transaction.get(ref);
+            if (!snapshot.exists()) {
+                return null;
+            }
+
+            String phase = stringOrDefault(snapshot.getString("phase"), PHASE_ACTIVE);
+            if (PHASE_GAME_OVER.equals(phase)) {
+                return null;
+            }
+
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("abandonedByUid", abandonedUid);
+
+            String survivorUid = survivingUid(room);
+            if (PHASE_ACTIVE.equals(phase)
+                    && abandonedUid.equals(snapshot.getString("activePlayerUid"))) {
+                updates.put("activePlayerUid", survivorUid);
+                updates.put("activePlayerNumber", playerNumberForRoomUid(room, survivorUid));
+                updates.put("phaseEndsAtMillis", System.currentTimeMillis() + STEP_DURATION_MS);
+            } else if (PHASE_BONUS.equals(phase)
+                    && abandonedUid.equals(snapshot.getString("bonusPlayerUid"))) {
+                applyRoundOver(updates);
+            }
+
+            if (!updates.isEmpty()) {
+                transaction.update(ref, updates);
+            }
+
+            return null;
+        }).addOnFailureListener(error ->
+                onError.accept(error.getMessage() != null
+                        ? error.getMessage()
+                        : "Napušteni igrač nije obrađen.")
+        );
+    }
+
     @NonNull
     private static Map<String, Object> roundFields(
             int round,
@@ -287,6 +336,7 @@ public final class KorakPoKorakRoomRepository {
         fields.put("currentStepIndex", 0);
         fields.put("solvedStepIndex", -1);
         fields.put("lastAnswerCorrect", false);
+        fields.put("abandonedByUid", "");
         return fields;
     }
 
@@ -319,15 +369,59 @@ public final class KorakPoKorakRoomRepository {
         String activeUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
         String playerOneUid = stringOrEmpty(snapshot.getString("playerOneUid"));
         String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
+        String abandonedByUid = stringOrEmpty(snapshot.getString("abandonedByUid"));
 
-        return activeUid.equals(playerOneUid) ? playerTwoUid : playerOneUid;
+        String bonusUid = activeUid.equals(playerOneUid) ? playerTwoUid : playerOneUid;
+        if (!bonusUid.equals(abandonedByUid)) {
+            return bonusUid;
+        }
+
+        return activeUid;
     }
 
     @NonNull
     private static String startingPlayerUid(@NonNull DocumentSnapshot snapshot, int round) {
-        return startingPlayerNumber(round) == 1
-                ? stringOrEmpty(snapshot.getString("playerOneUid"))
-                : stringOrEmpty(snapshot.getString("playerTwoUid"));
+        String playerOneUid = stringOrEmpty(snapshot.getString("playerOneUid"));
+        String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
+        String abandonedByUid = stringOrEmpty(snapshot.getString("abandonedByUid"));
+
+        String preferred = startingPlayerNumber(round) == 1 ? playerOneUid : playerTwoUid;
+        if (!preferred.equals(abandonedByUid)) {
+            return preferred;
+        }
+
+        return preferred.equals(playerOneUid) ? playerTwoUid : playerOneUid;
+    }
+
+    @NonNull
+    private static String survivingUid(@NonNull RoomSession room) {
+        if (room.getAbandonedByUid().equals(room.getHostUid())) {
+            return room.getGuestUid();
+        }
+        if (room.getAbandonedByUid().equals(room.getGuestUid())) {
+            return room.getHostUid();
+        }
+        return "";
+    }
+
+    private static int playerNumberForRoomUid(@NonNull RoomSession room, @NonNull String uid) {
+        if (uid.equals(room.getHostUid())) {
+            return 1;
+        }
+        if (uid.equals(room.getGuestUid())) {
+            return 2;
+        }
+        return 1;
+    }
+
+    private static int playerNumberForUid(@NonNull DocumentSnapshot snapshot, @NonNull String uid) {
+        if (uid.equals(snapshot.getString("playerOneUid"))) {
+            return 1;
+        }
+        if (uid.equals(snapshot.getString("playerTwoUid"))) {
+            return 2;
+        }
+        return 1;
     }
 
     private static int startingPlayerNumber(int round) {

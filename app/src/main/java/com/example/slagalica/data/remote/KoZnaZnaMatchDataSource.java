@@ -400,7 +400,8 @@ public final class KoZnaZnaMatchDataSource {
                             match.getGuestAnsweredAtMs(),
                             match.getQuestionOrder(),
                             match.getHostAvatarUri(),
-                            match.getGuestAvatarUri()
+                            match.getGuestAvatarUri(),
+                            match.getAbandonedByUid()
                     ),
                     now
             ));
@@ -448,15 +449,24 @@ public final class KoZnaZnaMatchDataSource {
             return updates;
         }
 
+        boolean hostAbandoned = match.getHostUid().equals(match.getAbandonedByUid());
+        boolean guestAbandoned = match.getGuestUid().equals(match.getAbandonedByUid());
+
         updates.put("currentQuestionIndex", nextIndex);
         updates.put("questionStartedAtMs", now);
         updates.put("questionEndsAtMs", now + QUESTION_MS);
         updates.put("questionResolved", false);
         updates.put("statusMessage", "");
-        updates.put("hostAnswerIndex", KoZnaZnaScoring.ANSWER_PENDING);
-        updates.put("guestAnswerIndex", KoZnaZnaScoring.ANSWER_PENDING);
-        updates.put("hostAnsweredAtMs", 0L);
-        updates.put("guestAnsweredAtMs", 0L);
+        updates.put(
+                "hostAnswerIndex",
+                hostAbandoned ? KoZnaZnaScoring.ANSWER_SKIP : KoZnaZnaScoring.ANSWER_PENDING
+        );
+        updates.put(
+                "guestAnswerIndex",
+                guestAbandoned ? KoZnaZnaScoring.ANSWER_SKIP : KoZnaZnaScoring.ANSWER_PENDING
+        );
+        updates.put("hostAnsweredAtMs", hostAbandoned ? now : 0L);
+        updates.put("guestAnsweredAtMs", guestAbandoned ? now : 0L);
         return updates;
     }
 
@@ -496,6 +506,59 @@ public final class KoZnaZnaMatchDataSource {
         long now = System.currentTimeMillis();
         return match.getQuestionStartedAtMs() == 0L
                 || now < match.getQuestionEndsAtMs();
+    }
+
+    public void handleAbandonedPlayer(
+            @NonNull String matchId,
+            @NonNull String abandonedUid,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (abandonedUid.isEmpty()) {
+            onSuccess.run();
+            return;
+        }
+
+        DocumentReference ref = db.collection(MATCHES).document(matchId);
+        db.runTransaction((Transaction transaction) -> {
+                    DocumentSnapshot snapshot = transaction.get(ref);
+                    if (!snapshot.exists()) {
+                        throw new IllegalStateException("MATCH_NOT_FOUND");
+                    }
+
+                    KoZnaZnaMatch match = KoZnaZnaMatch.fromMap(matchId, snapshot.getData());
+                    if (KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
+                        return null;
+                    }
+
+                    long now = System.currentTimeMillis();
+                    boolean hostAbandoned = abandonedUid.equals(match.getHostUid());
+                    boolean guestAbandoned = abandonedUid.equals(match.getGuestUid());
+
+                    Map<String, Object> updates = new HashMap<>();
+                    updates.put("abandonedByUid", abandonedUid);
+
+                    if (match.getQuestionStartedAtMs() <= 0L && match.getCurrentQuestionIndex() == 0) {
+                        int totalQuestions = questionCount(match.getQuestionOrder());
+                        updates.put("questionStartedAtMs", now);
+                        updates.put("questionEndsAtMs", now + QUESTION_MS);
+                        updates.put("roundEndsAtMs", now + (long) totalQuestions * QUESTION_MS);
+                    }
+
+                    if (hostAbandoned && match.getHostAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING) {
+                        updates.put("hostAnswerIndex", KoZnaZnaScoring.ANSWER_SKIP);
+                        updates.put("hostAnsweredAtMs", now);
+                    }
+
+                    if (guestAbandoned && match.getGuestAnswerIndex() == KoZnaZnaScoring.ANSWER_PENDING) {
+                        updates.put("guestAnswerIndex", KoZnaZnaScoring.ANSWER_SKIP);
+                        updates.put("guestAnsweredAtMs", now);
+                    }
+
+                    transaction.update(ref, updates);
+                    return null;
+                }).addOnSuccessListener(unused -> onSuccess.run())
+                .addOnFailureListener(e -> onError.accept(errorMessage(e)));
     }
 
     public void updateStatusMessage(
@@ -584,6 +647,7 @@ public final class KoZnaZnaMatchDataSource {
         match.put("questionOrder", order);
         match.put("hostAvatarUri", "");
         match.put("guestAvatarUri", "");
+        match.put("abandonedByUid", "");
         return match;
     }
 
