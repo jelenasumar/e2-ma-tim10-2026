@@ -388,4 +388,11 @@
     <string name="game_header_stars">Zvezde: %1$d</string>
     <string name="game_header_league">Liga: %1$s</string>
 
+    <string name="region_chat_title">Čet</string>
+    <string name="region_chat_title_with_region">Čet - %1$s</string>
+    <string name="region_chat_hint">Unesi poruku</string>
+    <string name="region_chat_send">Pošalji</string>
+
+    <string name="region_chat_button">Čet</string>
+
 </resources>

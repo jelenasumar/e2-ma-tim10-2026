@@ -7,6 +7,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function currentUserDocument() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isCurrentUserInRegion(regionKey) {
+      return isSignedIn()
+        && currentUserDocument().data.regionKey == regionKey;
+    }
+
     function isMatchParticipant() {
       return isSignedIn()
         && resource.data.keys().hasAll(['hostUid', 'guestUid'])
@@ -101,17 +110,17 @@ service cloud.firestore {
       allow create, update: if isSignedIn();
     }
 
-   match /username_lookup/{usernameLower} {
-  	allow read: if true;
+    match /username_lookup/{usernameLower} {
+      allow read: if true;
 
-  	allow create: if isSignedIn()
-   	  && request.resource.data.uid == request.auth.uid
-  	  && request.resource.data.keys().hasOnly(['uid', 'email'])
-  	  && request.resource.data.email is string
-  	  && request.resource.data.uid is string;
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'email'])
+        && request.resource.data.email is string
+        && request.resource.data.uid is string;
 
- 	 allow update, delete: if false;
-	}
+      allow update, delete: if false;
+    }
 
     match /kzz_lobbies/{code} {
       allow read: if isSignedIn();
@@ -156,6 +165,34 @@ service cloud.firestore {
 
     match /korak_po_korak_puzzles/{puzzleId} {
       allow read: if isSignedIn();
+    }
+
+    match /region_chats/{regionKey} {
+      allow read: if isCurrentUserInRegion(regionKey);
+      allow create, update, delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isCurrentUserInRegion(regionKey);
+
+        allow create: if isCurrentUserInRegion(regionKey)
+          && request.resource.data.keys().hasOnly([
+            'regionKey',
+            'senderUid',
+            'senderUsername',
+            'text',
+            'createdAt'
+          ])
+          && request.resource.data.regionKey == regionKey
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.senderUsername is string
+          && request.resource.data.senderUsername.size() > 0
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500
+          && request.resource.data.createdAt == request.time;
+
+        allow update, delete: if false;
+      }
     }
 
     match /rooms/{roomId} {

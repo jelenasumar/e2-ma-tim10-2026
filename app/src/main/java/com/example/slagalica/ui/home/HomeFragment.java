@@ -32,6 +32,7 @@ public class HomeFragment extends Fragment {
         Button inviteFriendsBtn = view.findViewById(R.id.inviteFriends);
         Button regionMapBtn = view.findViewById(R.id.regionMap);
         Button rankingBtn = view.findViewById(R.id.ranking);
+        Button regionChatBtn = view.findViewById(R.id.regionChat);
 
         if (isGuestMode()) {
             view.findViewById(R.id.accountSectionTitle).setVisibility(View.GONE);
@@ -42,6 +43,7 @@ public class HomeFragment extends Fragment {
             inviteFriendsBtn.setVisibility(View.GONE);
             regionMapBtn.setVisibility(View.GONE);
             rankingBtn.setVisibility(View.GONE);
+            regionChatBtn.setVisibility(View.GONE);
         }
 
         profileBtn.setOnClickListener(v -> {
@@ -74,6 +76,10 @@ public class HomeFragment extends Fragment {
         regionMapBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
                     .navigate(R.id.action_home_to_regionMap);
+        });
+        regionChatBtn.setOnClickListener(v -> {
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_home_to_regionChat);
         });
         rankingBtn.setOnClickListener(v -> {
             NavHostFragment.findNavController(this)
