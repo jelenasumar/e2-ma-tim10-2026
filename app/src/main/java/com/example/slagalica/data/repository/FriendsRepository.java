@@ -16,6 +16,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.SetOptions;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,18 +32,16 @@ import java.util.function.Consumer;
 public final class FriendsRepository {
 
     private static final String USERS = "users";
-    private static final String FRIENDS = "friends";
+    private static final String FRIEND_IDS_FIELD = "friendIds";
     private static final String USERNAME_LOOKUP = "username_lookup";
     private static final String ROOMS = "rooms";
 
-    private final Context appContext;
     private final FirebaseAuth auth;
     private final FirebaseFirestore db;
     private final FireBaseUserDataSource userRemote;
     private final GameInviteRepository inviteRepository;
 
     public FriendsRepository(@NonNull Context context) {
-        this.appContext = context.getApplicationContext();
         this.auth = FirebaseAuth.getInstance();
         this.db = FirebaseFirestore.getInstance();
         this.userRemote = new FireBaseUserDataSource();
@@ -65,19 +64,16 @@ public final class FriendsRepository {
             return;
         }
 
-        db.collection(USERS).document(uid).collection(FRIENDS).get()
-                .addOnSuccessListener(friendsSnapshot -> {
-                    List<String> friendUids = new ArrayList<>();
-                    for (DocumentSnapshot document : friendsSnapshot.getDocuments()) {
-                        friendUids.add(document.getId());
-                    }
+        db.collection(USERS).document(uid).get()
+                .addOnSuccessListener(userDocument -> {
+                    List<String> friendUids = readFriendIds(userDocument);
                     if (friendUids.isEmpty()) {
                         onSuccess.accept(Collections.emptyList());
                         return;
                     }
                     loadFriendProfiles(friendUids, onSuccess, onError);
                 })
-                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Prijatelji nisu ucitani.")));
+                .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Prijatelji nisu ucitani.")));
     }
 
     public void searchByUsername(
@@ -107,9 +103,13 @@ public final class FriendsRepository {
                         onError.accept("CANNOT_ADD_SELF");
                         return;
                     }
-                    userRemote.fetchUserProfile(friendUid, profile -> onSuccess.accept(friendUid, profile), onError);
+                    userRemote.fetchUserProfile(
+                            friendUid,
+                            profile -> onSuccess.accept(friendUid, profile),
+                            error -> onError.accept(mapErrorMessage(error))
+                    );
                 })
-                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Pretraga nije uspela.")));
+                .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Pretraga nije uspela.")));
     }
 
     public interface BiProfileConsumer {
@@ -131,21 +131,21 @@ public final class FriendsRepository {
             return;
         }
 
-        db.collection(USERS).document(uid).collection(FRIENDS).document(friendUid).get()
-                .addOnSuccessListener(existing -> {
-                    if (existing.exists()) {
+        db.collection(USERS).document(uid).get()
+                .addOnSuccessListener(userDocument -> {
+                    List<String> existing = readFriendIds(userDocument);
+                    if (existing.contains(friendUid)) {
                         onError.accept("ALREADY_FRIEND");
                         return;
                     }
-                    Map<String, Object> data = new HashMap<>();
-                    data.put("friendUid", friendUid);
-                    data.put("addedAt", FieldValue.serverTimestamp());
-                    db.collection(USERS).document(uid).collection(FRIENDS).document(friendUid)
-                            .set(data)
+                    Map<String, Object> updates = new HashMap<>();
+                    updates.put(FRIEND_IDS_FIELD, FieldValue.arrayUnion(friendUid));
+                    db.collection(USERS).document(uid)
+                            .set(updates, SetOptions.merge())
                             .addOnSuccessListener(unused -> onSuccess.run())
-                            .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Dodavanje nije uspelo.")));
+                            .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Dodavanje nije uspelo.")));
                 })
-                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Dodavanje nije uspelo.")));
+                .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Dodavanje nije uspelo.")));
     }
 
     public void addFriendFromQr(
@@ -181,38 +181,65 @@ public final class FriendsRepository {
                     }
 
                     Map<String, Integer> monthlyRanks = computeMonthlyRanks(usersSnapshot.getDocuments());
-                    Set<String> busyUids = new HashSet<>();
-
-                    db.collection(ROOMS).get()
-                            .addOnSuccessListener(roomsSnapshot -> {
-                                for (DocumentSnapshot room : roomsSnapshot.getDocuments()) {
-                                    String status = stringOrDefault(room.getString("status"), "");
-                                    if (isActiveRoomStatus(status)) {
-                                        busyUids.add(stringOrDefault(room.getString("hostUid"), ""));
-                                        busyUids.add(stringOrDefault(room.getString("guestUid"), ""));
-                                    }
-                                }
-                                inviteRepository.loadPendingSentInviteTargets(targets -> {
-                                    List<Friend> friends = new ArrayList<>();
-                                    for (String friendUid : friendUids) {
-                                        DocumentSnapshot document = usersById.get(friendUid);
-                                        if (document == null || !document.exists()) {
-                                            continue;
-                                        }
-                                        friends.add(buildFriend(
-                                                document,
-                                                monthlyRanks.getOrDefault(friendUid, 0),
-                                                busyUids.contains(friendUid),
-                                                targets.contains(friendUid)
-                                        ));
-                                    }
-                                    Collections.sort(friends, Comparator.comparing(Friend::getUsername, String.CASE_INSENSITIVE_ORDER));
-                                    onSuccess.accept(friends);
-                                }, error -> onError.accept(error));
-                            })
-                            .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Prijatelji nisu ucitani.")));
+                    loadBusyUids(busyUids -> loadPendingInviteTargets(targets -> {
+                        List<Friend> friends = new ArrayList<>();
+                        for (String friendUid : friendUids) {
+                            DocumentSnapshot document = usersById.get(friendUid);
+                            if (document == null || !document.exists()) {
+                                continue;
+                            }
+                            friends.add(buildFriend(
+                                    document,
+                                    monthlyRanks.getOrDefault(friendUid, 0),
+                                    busyUids.contains(friendUid),
+                                    targets.contains(friendUid)
+                            ));
+                        }
+                        Collections.sort(friends, Comparator.comparing(Friend::getUsername, String.CASE_INSENSITIVE_ORDER));
+                        onSuccess.accept(friends);
+                    }));
                 })
-                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Prijatelji nisu ucitani.")));
+                .addOnFailureListener(e -> onError.accept(mapFirestoreError(e, "Prijatelji nisu ucitani.")));
+    }
+
+    private void loadBusyUids(@NonNull Consumer<Set<String>> onResult) {
+        db.collection(ROOMS).get()
+                .addOnSuccessListener(roomsSnapshot -> {
+                    Set<String> busyUids = new HashSet<>();
+                    for (DocumentSnapshot room : roomsSnapshot.getDocuments()) {
+                        String status = stringOrDefault(room.getString("status"), "");
+                        if (isActiveRoomStatus(status)) {
+                            busyUids.add(stringOrDefault(room.getString("hostUid"), ""));
+                            busyUids.add(stringOrDefault(room.getString("guestUid"), ""));
+                        }
+                    }
+                    onResult.accept(busyUids);
+                })
+                .addOnFailureListener(e -> onResult.accept(Collections.emptySet()));
+    }
+
+    private void loadPendingInviteTargets(@NonNull Consumer<Set<String>> onResult) {
+        inviteRepository.loadPendingSentInviteTargets(
+                onResult,
+                error -> onResult.accept(Collections.emptySet())
+        );
+    }
+
+    @NonNull
+    private List<String> readFriendIds(@NonNull DocumentSnapshot userDocument) {
+        Object raw = userDocument.get(FRIEND_IDS_FIELD);
+        List<String> friendIds = new ArrayList<>();
+        if (raw instanceof List) {
+            for (Object value : (List<?>) raw) {
+                if (value != null) {
+                    String friendId = String.valueOf(value).trim();
+                    if (!friendId.isEmpty()) {
+                        friendIds.add(friendId);
+                    }
+                }
+            }
+        }
+        return friendIds;
     }
 
     @NonNull
@@ -281,6 +308,25 @@ public final class FriendsRepository {
         return payload.contains("code=" + code);
     }
 
+    @NonNull
+    private static String mapFirestoreError(@NonNull Exception error, @NonNull String fallback) {
+        return mapErrorMessage(messageOrDefault(error.getMessage(), fallback));
+    }
+
+    @NonNull
+    private static String mapErrorMessage(@NonNull String message) {
+        String lower = message.toLowerCase(Locale.ROOT);
+        if (lower.contains("permission_denied") || lower.contains("insufficient permissions")) {
+            return "PERMISSION_DENIED";
+        }
+        return message;
+    }
+
+    @NonNull
+    private static String messageOrDefault(@Nullable String value, @NonNull String fallback) {
+        return value != null && !value.isEmpty() ? value : fallback;
+    }
+
     private static long longValue(@Nullable Object value) {
         if (value instanceof Number) {
             return ((Number) value).longValue();
@@ -291,11 +337,6 @@ public final class FriendsRepository {
     @NonNull
     private static String stringOrDefault(@Nullable String value, @NonNull String fallback) {
         return value != null && !value.isEmpty() ? value : fallback;
-    }
-
-    @NonNull
-    private static String messageOrDefault(@NonNull Exception error, @NonNull String fallback) {
-        return error.getMessage() != null ? error.getMessage() : fallback;
     }
 
     private static final class MonthlyRankRow {

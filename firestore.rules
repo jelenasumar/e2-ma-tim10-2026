@@ -16,8 +16,10 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update, delete: if isSignedIn() && request.auth.uid == userId;
       allow update: if isSignedIn()
+        && request.auth.uid == userId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tokens']);
 
       match /notifications/{notificationId} {

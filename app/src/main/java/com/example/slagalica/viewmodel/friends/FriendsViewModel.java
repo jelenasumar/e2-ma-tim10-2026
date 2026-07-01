@@ -158,6 +158,10 @@ public class FriendsViewModel extends AndroidViewModel {
 
     @NonNull
     private String mapError(@NonNull String error) {
+        if (error.toLowerCase(java.util.Locale.ROOT).contains("permission")
+                || error.toLowerCase(java.util.Locale.ROOT).contains("insufficient")) {
+            return mapError("PERMISSION_DENIED");
+        }
         switch (error) {
             case "USERNAME_NOT_FOUND":
                 return "Korisnik nije pronadjen.";
@@ -171,6 +175,8 @@ public class FriendsViewModel extends AndroidViewModel {
                 return "Prijatelj trenutno igra partiju.";
             case "NOT_LOGGED_IN":
                 return "Morate biti prijavljeni.";
+            case "PERMISSION_DENIED":
+                return "Nemate dozvolu za ovu akciju. Proverite da ste prijavljeni registrovanim nalogom.";
             default:
                 return error;
         }
