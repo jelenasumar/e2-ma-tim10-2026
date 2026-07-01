@@ -44,6 +44,7 @@ public class RegionMapFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         mapView = view.findViewById(R.id.region_map_view);
+        mapView.onCreate(savedInstanceState);
         currentRegionValue = view.findViewById(R.id.region_map_current_value);
         currentRegionCard = view.findViewById(R.id.region_map_current_card);
         ImageView currentRegionIcon = view.findViewById(R.id.region_map_current_icon);
@@ -57,10 +58,7 @@ public class RegionMapFragment extends Fragment {
                 NavHostFragment.findNavController(this).navigate(R.id.action_regionMap_to_leaderboard)
         );
 
-        mapView.setRegionClickListener(region -> {
-            viewModel.onRegionSelected(region);
-            mapView.setSelectedRegion(region);
-        });
+        mapView.setRegionClickListener(region -> viewModel.onRegionSelected(region));
 
         viewModel.getMarkers().observe(getViewLifecycleOwner(), markers -> {
             if (markers != null) {
@@ -87,6 +85,46 @@ public class RegionMapFragment extends Fragment {
         });
 
         viewModel.load();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mapView != null) {
+            mapView.onResume();
+        }
+    }
+
+    @Override
+    public void onPause() {
+        if (mapView != null) {
+            mapView.onPause();
+        }
+        super.onPause();
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (mapView != null) {
+            mapView.onDestroy();
+        }
+        super.onDestroyView();
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        if (mapView != null) {
+            mapView.onLowMemory();
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (mapView != null) {
+            mapView.onSaveInstanceState(outState);
+        }
     }
 
     private void bindCurrentRegion(@NonNull UserProfile profile, @NonNull ImageView iconView) {

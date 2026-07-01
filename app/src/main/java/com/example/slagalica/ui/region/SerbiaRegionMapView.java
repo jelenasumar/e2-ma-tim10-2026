@@ -1,45 +1,43 @@
 package com.example.slagalica.ui.region;
 
 import android.content.Context;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.PointF;
-import android.graphics.RectF;
+import android.os.Bundle;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
-import android.view.View;
+import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.slagalica.model.RegionPlayerMarker;
 import com.example.slagalica.model.SerbiaRegion;
+import com.example.slagalica.utils.SerbiaMapProjection;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
+import com.google.android.gms.maps.model.LatLng;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-public class SerbiaRegionMapView extends View {
+public class SerbiaRegionMapView extends FrameLayout implements OnMapReadyCallback {
 
     public interface RegionClickListener {
         void onRegionClicked(@NonNull SerbiaRegion region);
     }
 
-    private final Paint regionFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint regionStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint markerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint currentMarkerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Map<SerbiaRegion, Path> regionPaths = new HashMap<>();
-    private final List<RegionPlayerMarker> markers = new ArrayList<>();
+    private final List<Circle> markerObjects = new ArrayList<>();
+    private final List<RegionPlayerMarker> pendingMarkers = new ArrayList<>();
 
+    private MapView mapView;
+    private GoogleMap googleMap;
     private RegionClickListener regionClickListener;
-    private SerbiaRegion selectedRegion;
-    private float width;
-    private float height;
+    private boolean mapReady;
 
     public SerbiaRegionMapView(Context context) {
         super(context);
@@ -57,19 +55,33 @@ public class SerbiaRegionMapView extends View {
     }
 
     private void init() {
-        regionStrokePaint.setStyle(Paint.Style.STROKE);
-        regionStrokePaint.setStrokeWidth(4f);
-        regionStrokePaint.setColor(Color.DKGRAY);
+        mapView = new MapView(getContext());
+        addView(mapView, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        mapView.getMapAsync(this);
+    }
 
-        markerPaint.setStyle(Paint.Style.FILL);
-        markerPaint.setColor(Color.RED);
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        mapView.onCreate(savedInstanceState);
+    }
 
-        currentMarkerPaint.setStyle(Paint.Style.FILL);
-        currentMarkerPaint.setColor(Color.parseColor("#1565C0"));
+    public void onResume() {
+        mapView.onResume();
+    }
 
-        labelPaint.setColor(Color.BLACK);
-        labelPaint.setTextAlign(Paint.Align.CENTER);
-        labelPaint.setTextSize(28f);
+    public void onPause() {
+        mapView.onPause();
+    }
+
+    public void onDestroy() {
+        mapView.onDestroy();
+    }
+
+    public void onLowMemory() {
+        mapView.onLowMemory();
+    }
+
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        mapView.onSaveInstanceState(outState);
     }
 
     public void setRegionClickListener(@Nullable RegionClickListener listener) {
@@ -77,93 +89,95 @@ public class SerbiaRegionMapView extends View {
     }
 
     public void setSelectedRegion(@Nullable SerbiaRegion region) {
-        this.selectedRegion = region;
-        invalidate();
+        // No visual overlay on the map.
     }
 
     public void setMarkers(@NonNull List<RegionPlayerMarker> playerMarkers) {
-        markers.clear();
-        markers.addAll(playerMarkers);
-        invalidate();
-    }
-
-    @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
-        width = w;
-        height = h;
-        rebuildPaths();
-    }
-
-    private void rebuildPaths() {
-        regionPaths.clear();
-        if (width <= 0f || height <= 0f) {
-            return;
-        }
-        for (SerbiaRegion region : SerbiaRegion.all()) {
-            regionPaths.put(region, region.buildPath(width, height));
+        pendingMarkers.clear();
+        pendingMarkers.addAll(playerMarkers);
+        if (mapReady) {
+            drawMarkers();
         }
     }
 
     @Override
-    protected void onDraw(@NonNull Canvas canvas) {
-        super.onDraw(canvas);
-        if (width <= 0f || height <= 0f) {
-            return;
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_MOVE:
+                getParent().requestDisallowInterceptTouchEvent(true);
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                getParent().requestDisallowInterceptTouchEvent(false);
+                break;
+            default:
+                break;
         }
+        return super.dispatchTouchEvent(event);
+    }
 
-        for (SerbiaRegion region : SerbiaRegion.all()) {
-            Path path = regionPaths.get(region);
-            if (path == null) {
-                continue;
+    @Override
+    public void onMapReady(@NonNull GoogleMap map) {
+        googleMap = map;
+        mapReady = true;
+
+        googleMap.getUiSettings().setMapToolbarEnabled(false);
+        googleMap.getUiSettings().setRotateGesturesEnabled(false);
+        googleMap.getUiSettings().setTiltGesturesEnabled(false);
+        googleMap.getUiSettings().setCompassEnabled(false);
+
+        googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(
+                SerbiaMapProjection.getSerbiaBounds(),
+                48
+        ));
+
+        drawMarkers();
+
+        googleMap.setOnMapClickListener(latLng -> {
+            if (regionClickListener == null) {
+                return;
             }
-            int color = region.getFillColor();
-            if (region == selectedRegion) {
-                color = Color.argb(255,
-                        Math.min(255, Color.red(color) + 30),
-                        Math.min(255, Color.green(color) + 30),
-                        Math.min(255, Color.blue(color) + 30));
-            }
-            regionFillPaint.setColor(color);
-            regionFillPaint.setAlpha(region == selectedRegion ? 235 : 190);
-            canvas.drawPath(path, regionFillPaint);
-            canvas.drawPath(path, regionStrokePaint);
-
-            RectF bounds = region.getBounds();
-            float centerX = ((bounds.left + bounds.right) / 2f) * width;
-            float centerY = ((bounds.top + bounds.bottom) / 2f) * height;
-            canvas.drawText(region.getDisplayName(getContext()), centerX, centerY, labelPaint);
-        }
-
-        float markerRadius = 7f;
-        for (RegionPlayerMarker marker : markers) {
-            Paint paint = marker.isCurrentUser() ? currentMarkerPaint : markerPaint;
-            float x = marker.getMapPointX() * width;
-            float y = marker.getMapPointY() * height;
-            canvas.drawCircle(x, y, markerRadius, paint);
-        }
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        if (event.getAction() != MotionEvent.ACTION_UP || regionClickListener == null) {
-            return true;
-        }
-        float normalizedX = event.getX() / width;
-        float normalizedY = event.getY() / height;
-        for (SerbiaRegion region : SerbiaRegion.all()) {
-            if (region.containsNormalizedPoint(normalizedX, normalizedY)) {
-                selectedRegion = region;
-                invalidate();
+            SerbiaRegion region = SerbiaRegion.findAtLatLng(latLng);
+            if (region != null) {
                 regionClickListener.onRegionClicked(region);
-                return true;
             }
+        });
+    }
+
+    private void drawMarkers() {
+        if (googleMap == null) {
+            return;
         }
-        return true;
+        clearMarkers();
+        for (RegionPlayerMarker marker : pendingMarkers) {
+            LatLng position = SerbiaMapProjection.normalizedToLatLng(
+                    marker.getMapPointX(),
+                    marker.getMapPointY()
+            );
+            int color = marker.isCurrentUser()
+                    ? Color.parseColor("#1565C0")
+                    : Color.RED;
+            CircleOptions options = new CircleOptions()
+                    .center(position)
+                    .radius(1200)
+                    .fillColor(color)
+                    .strokeColor(color)
+                    .strokeWidth(1f)
+                    .clickable(false);
+            markerObjects.add(googleMap.addCircle(options));
+        }
+    }
+
+    private void clearMarkers() {
+        for (Circle marker : markerObjects) {
+            marker.remove();
+        }
+        markerObjects.clear();
     }
 
     @NonNull
     public PointF mapPointToView(float mapPointX, float mapPointY) {
-        return new PointF(mapPointX * width, mapPointY * height);
+        return new PointF(mapPointX * getWidth(), mapPointY * getHeight());
     }
 }

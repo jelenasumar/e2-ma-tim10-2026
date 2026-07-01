@@ -3,6 +3,15 @@ plugins {
     alias(libs.plugins.google.gms.google.services)
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+def mapsApiKey = localProperties.getProperty('MAPS_API_KEY', '')
+
 android {
     namespace 'com.example.slagalica'
     compileSdk {
@@ -19,6 +28,8 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        manifestPlaceholders = [MAPS_API_KEY: mapsApiKey]
     }
 
     buildTypes {
@@ -52,4 +63,5 @@ dependencies {
     androidTestImplementation libs.espresso.core
     implementation "androidx.navigation:navigation-fragment:2.7.7"
     implementation "androidx.navigation:navigation-ui:2.7.7"
+    implementation libs.play.services.maps
 }

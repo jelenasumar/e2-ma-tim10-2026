@@ -81,8 +81,8 @@
             android:layout_width="match_parent"
             android:layout_height="360dp"
             android:layout_marginTop="12dp"
-            android:background="#F5F5F5"
-            android:contentDescription="@string/region_map_title" />
+            android:contentDescription="@string/region_map_title"
+            android:nestedScrollingEnabled="false" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/region_map_leaderboard"

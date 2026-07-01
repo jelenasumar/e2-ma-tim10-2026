@@ -1,7 +1,6 @@
 package com.example.slagalica.model;
 
 import android.content.Context;
-import android.graphics.Path;
 import android.graphics.RectF;
 
 import androidx.annotation.NonNull;
@@ -9,6 +8,8 @@ import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
 import com.example.slagalica.R;
+import com.example.slagalica.utils.SerbiaMapProjection;
+import com.google.android.gms.maps.model.LatLng;
 
 import java.util.Arrays;
 import java.util.List;
@@ -22,43 +23,52 @@ public enum SerbiaRegion {
             R.string.region_beograd,
             R.drawable.ic_region_beograd,
             0xFF4CAF50,
-            new float[]{0.38f, 0.52f, 0.48f, 0.64f}
+            new float[]{0.28f, 0.28f, 0.52f, 0.42f}
     ),
     VOJVODINA(
             "vojvodina",
             R.string.region_vojvodina,
             R.drawable.ic_region_vojvodina,
             0xFF2196F3,
-            new float[]{0.18f, 0.08f, 0.82f, 0.28f}
+            new float[]{0.08f, 0.02f, 0.95f, 0.30f}
     ),
     SUMADIJA(
             "sumadija",
             R.string.region_sumadija,
             R.drawable.ic_region_sumadija,
             0xFF8BC34A,
-            new float[]{0.30f, 0.36f, 0.58f, 0.52f}
+            new float[]{0.24f, 0.40f, 0.56f, 0.58f}
     ),
     ZAPAD(
             "zapad",
             R.string.region_zapad,
             R.drawable.ic_region_zapad,
             0xFF795548,
-            new float[]{0.04f, 0.30f, 0.32f, 0.58f}
+            new float[]{0.02f, 0.26f, 0.30f, 0.62f}
     ),
     JUG(
             "jug",
             R.string.region_jug,
             R.drawable.ic_region_jug,
             0xFFFF9800,
-            new float[]{0.28f, 0.58f, 0.62f, 0.88f}
+            new float[]{0.16f, 0.56f, 0.72f, 0.96f}
     ),
     ISTOK(
             "istok",
             R.string.region_istok,
             R.drawable.ic_region_istok,
             0xFF9C27B0,
-            new float[]{0.58f, 0.30f, 0.96f, 0.72f}
+            new float[]{0.52f, 0.26f, 0.98f, 0.68f}
     );
+
+    private static final SerbiaRegion[] HIT_TEST_ORDER = {
+            BEOGRAD,
+            VOJVODINA,
+            ZAPAD,
+            SUMADIJA,
+            ISTOK,
+            JUG
+    };
 
     private final String key;
     @StringRes
@@ -110,19 +120,6 @@ public enum SerbiaRegion {
     }
 
     @NonNull
-    public Path buildPath(float width, float height) {
-        RectF scaled = new RectF(
-                bounds.left * width,
-                bounds.top * height,
-                bounds.right * width,
-                bounds.bottom * height
-        );
-        Path path = new Path();
-        path.addRoundRect(scaled, 12f, 12f, Path.Direction.CW);
-        return path;
-    }
-
-    @NonNull
     public float[] randomMapPoint(@NonNull Random random) {
         float x = bounds.left + random.nextFloat() * (bounds.right - bounds.left);
         float y = bounds.top + random.nextFloat() * (bounds.bottom - bounds.top);
@@ -131,6 +128,22 @@ public enum SerbiaRegion {
 
     public boolean containsNormalizedPoint(float x, float y) {
         return bounds.contains(x, y);
+    }
+
+    @Nullable
+    public static SerbiaRegion findAtNormalizedPoint(float x, float y) {
+        for (SerbiaRegion region : HIT_TEST_ORDER) {
+            if (region.containsNormalizedPoint(x, y)) {
+                return region;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    public static SerbiaRegion findAtLatLng(@NonNull LatLng latLng) {
+        float[] normalized = SerbiaMapProjection.latLngToNormalized(latLng);
+        return findAtNormalizedPoint(normalized[0], normalized[1]);
     }
 
     @NonNull

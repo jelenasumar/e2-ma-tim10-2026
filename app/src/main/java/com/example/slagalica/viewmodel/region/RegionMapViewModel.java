@@ -75,10 +75,11 @@ public class RegionMapViewModel extends AndroidViewModel {
     }
 
     public void onRegionSelected(@NonNull SerbiaRegion region) {
+        selectedRegionStats.setValue(null);
         regionRepository.loadRegionStats(
                 region.getKey(),
-                selectedRegionStats::setValue,
-                errorMessage::setValue
+                stats -> selectedRegionStats.postValue(stats),
+                error -> errorMessage.postValue(error)
         );
     }
 }
