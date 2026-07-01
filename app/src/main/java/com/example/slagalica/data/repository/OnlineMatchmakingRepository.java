@@ -21,6 +21,9 @@ public final class OnlineMatchmakingRepository {
     private static final String QUEUE = "matchmaking_queue";
     private static final String ROOMS = "rooms";
 
+    private static final int MATCH_ENTRY_FEE = 1;
+    private static final String NO_TOKENS = "NO_TOKENS";
+
     private final FirebaseAuth auth = FirebaseAuth.getInstance();
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
@@ -44,7 +47,21 @@ public final class OnlineMatchmakingRepository {
         String uid = currentUser.getUid();
         db.collection(USERS).document(uid).get()
                 .addOnSuccessListener(myProfile ->
-                        findOpponentOrWait(uid, myProfile, onMatched, onWaiting, onError))
+                        reserveMatchToken(
+                                uid,
+                                result -> {
+                                    if (result.isAlreadyMatched()) {
+                                        onMatched.accept(result.getRoomId());
+                                        return;
+                                    }
+                                    if (result.isAlreadyWaiting()) {
+                                        onWaiting.run();
+                                        return;
+                                    }
+                                    findOpponentOrWait(uid, myProfile, onMatched, onWaiting, onError);
+                                },
+                                onError
+                        ))
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Matchmaking failed.")));
     }
 
@@ -81,9 +98,78 @@ public final class OnlineMatchmakingRepository {
             return;
         }
 
-        db.collection(QUEUE)
+        DocumentReference userRef = db.collection(USERS).document(uid);
+        DocumentReference queueRef = db.collection(QUEUE).document(uid);
+
+        db.runTransaction(transaction -> {
+            DocumentSnapshot queueDoc = transaction.get(queueRef);
+            if (!queueDoc.exists()) {
+                return null;
+            }
+
+            String status = queueDoc.getString("status");
+            if ("WAITING".equals(status)) {
+                transaction.delete(queueRef);
+                transaction.update(userRef, "tokens", FieldValue.increment(MATCH_ENTRY_FEE));
+            }
+
+            return null;
+        }).addOnCompleteListener(task -> onDone.run());
+    }
+
+    private void reserveMatchToken(
+            @NonNull String uid,
+            @NonNull Consumer<ReservationResult> onReserved,
+            @NonNull Consumer<String> onError
+    ) {
+        DocumentReference userRef = db.collection(USERS).document(uid);
+        DocumentReference queueRef = db.collection(QUEUE).document(uid);
+
+        db.runTransaction(transaction -> {
+                    DocumentSnapshot queueDoc = transaction.get(queueRef);
+                    DocumentSnapshot userDoc = transaction.get(userRef);
+
+                    if (queueDoc.exists()) {
+                        String status = stringOrDefault(queueDoc.getString("status"), "");
+
+                        if ("WAITING".equals(status)) {
+                            return ReservationResult.alreadyWaiting();
+                        }
+                    }
+
+                    long tokens = longOrZero(userDoc.get("tokens"));
+                    if (tokens < MATCH_ENTRY_FEE) {
+                        throw new IllegalStateException(NO_TOKENS);
+                    }
+
+                    if (queueDoc.exists()) {
+                        String status = stringOrDefault(queueDoc.getString("status"), "");
+                        if ("MATCHED".equals(status)) {
+                            transaction.delete(queueRef);
+                        }
+                    }
+
+                    transaction.update(userRef, "tokens", FieldValue.increment(-MATCH_ENTRY_FEE));
+                    return ReservationResult.reserved();
+                })
+                .addOnSuccessListener(onReserved::accept)
+                .addOnFailureListener(e -> {
+                    String message = e.getMessage();
+                    if (message != null && message.contains(NO_TOKENS)) {
+                        onError.accept(NO_TOKENS);
+                    } else {
+                        onError.accept(messageOrDefault(e, "Token could not be reserved."));
+                    }
+                });
+    }
+
+    private void refundReservedMatchToken(
+            @NonNull String uid,
+            @NonNull Runnable onDone
+    ) {
+        db.collection(USERS)
                 .document(uid)
-                .delete()
+                .update("tokens", FieldValue.increment(MATCH_ENTRY_FEE))
                 .addOnCompleteListener(task -> onDone.run());
     }
 
@@ -113,7 +199,10 @@ public final class OnlineMatchmakingRepository {
                         createRoomFromMatch(uid, myProfile, opponent, onMatched, onError);
                     }
                 })
-                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Opponent search failed.")));
+                .addOnFailureListener(e -> refundReservedMatchToken(
+                        uid,
+                        () -> onError.accept(messageOrDefault(e, "Opponent search failed."))
+                ));
     }
 
     private void createWaitingEntry(
@@ -133,7 +222,10 @@ public final class OnlineMatchmakingRepository {
                 .document(uid)
                 .set(entry)
                 .addOnSuccessListener(unused -> onWaiting.run())
-                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Queue entry failed.")));
+                .addOnFailureListener(e -> refundReservedMatchToken(
+                        uid,
+                        () -> onError.accept(messageOrDefault(e, "Queue entry failed."))
+                ));
     }
 
     private void createRoomFromMatch(
@@ -151,10 +243,10 @@ public final class OnlineMatchmakingRepository {
         DocumentReference opponentQueueRef = db.collection(QUEUE).document(opponentUid);
 
         Map<String, Object> room = new HashMap<>();
-        room.put("hostUid", opponentUid);
-        room.put("guestUid", uid);
-        room.put("hostUsername", opponentUsername);
-        room.put("guestUsername", myUsername);
+        room.put("hostUid", uid);
+        room.put("guestUid", opponentUid);
+        room.put("hostUsername", myUsername);
+        room.put("guestUsername", opponentUsername);
         room.put("hostTotalScore", 0);
         room.put("guestTotalScore", 0);
         room.put("currentGame", com.example.slagalica.model.RoomGameKeys.DEFAULT_GAME_ORDER.get(0));
@@ -171,11 +263,14 @@ public final class OnlineMatchmakingRepository {
         matchedUpdate.put("matchedAt", FieldValue.serverTimestamp());
 
         db.runBatch(batch -> {
-            batch.set(roomRef, room);
-            batch.set(myQueueRef, queueEntry(uid, myUsername, roomRef.getId()));
-            batch.update(opponentQueueRef, matchedUpdate);
-        }).addOnSuccessListener(unused -> onMatched.accept(roomRef.getId()))
-                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Room creation failed.")));
+                    batch.set(roomRef, room);
+                    batch.set(myQueueRef, queueEntry(uid, myUsername, roomRef.getId()));
+                    batch.update(opponentQueueRef, matchedUpdate);
+                }).addOnSuccessListener(unused -> onMatched.accept(roomRef.getId()))
+                .addOnFailureListener(e -> refundReservedMatchToken(
+                        uid,
+                        () -> onError.accept(messageOrDefault(e, "Room creation failed."))
+                ));
     }
 
     @NonNull
@@ -194,6 +289,13 @@ public final class OnlineMatchmakingRepository {
         return entry;
     }
 
+    private static long longOrZero(@Nullable Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return 0L;
+    }
+
     @NonNull
     private static String stringOrDefault(@Nullable String value, @NonNull String fallback) {
         return value != null && !value.isEmpty() ? value : fallback;
@@ -202,5 +304,43 @@ public final class OnlineMatchmakingRepository {
     @NonNull
     private static String messageOrDefault(@NonNull Exception error, @NonNull String fallback) {
         return error.getMessage() != null ? error.getMessage() : fallback;
+    }
+
+    private static final class ReservationResult {
+        private final boolean alreadyWaiting;
+        private final String roomId;
+
+        private ReservationResult(boolean alreadyWaiting, @NonNull String roomId) {
+            this.alreadyWaiting = alreadyWaiting;
+            this.roomId = roomId;
+        }
+
+        @NonNull
+        static ReservationResult reserved() {
+            return new ReservationResult(false, "");
+        }
+
+        @NonNull
+        static ReservationResult alreadyWaiting() {
+            return new ReservationResult(true, "");
+        }
+
+        @NonNull
+        static ReservationResult alreadyMatched(@NonNull String roomId) {
+            return new ReservationResult(false, roomId);
+        }
+
+        boolean isAlreadyWaiting() {
+            return alreadyWaiting;
+        }
+
+        boolean isAlreadyMatched() {
+            return !roomId.isEmpty();
+        }
+
+        @NonNull
+        String getRoomId() {
+            return roomId;
+        }
     }
 }

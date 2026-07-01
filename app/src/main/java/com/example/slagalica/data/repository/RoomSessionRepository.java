@@ -19,6 +19,8 @@ public final class RoomSessionRepository {
 
     private static final String ROOMS = "rooms";
 
+    private static final String FINISH_REASON_ABANDONED = "ABANDONED";
+
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
     @Nullable
@@ -93,6 +95,46 @@ public final class RoomSessionRepository {
                 .addOnSuccessListener(unused -> onDone.run())
                 .addOnFailureListener(e -> onError.accept(
                         e.getMessage() != null ? e.getMessage() : "Session could not be started."
+                ));
+    }
+
+    public void abandonRoom(
+            @NonNull RoomSession room,
+            @NonNull Runnable onDone,
+            @NonNull Consumer<String> onError
+    ) {
+        String uid = getCurrentUid();
+        if (uid == null || (!uid.equals(room.getHostUid()) && !uid.equals(room.getGuestUid()))) {
+            onDone.run();
+            return;
+        }
+
+        if (RoomGameKeys.STATUS_FINISHED.equals(room.getStatus())) {
+            onDone.run();
+            return;
+        }
+
+        if (!room.getAbandonedByUid().isEmpty()) {
+            onDone.run();
+            return;
+        }
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("finishReason", FINISH_REASON_ABANDONED);
+        updates.put("abandonedByUid", uid);
+        updates.put("abandonedAt", FieldValue.serverTimestamp());
+        updates.put("updatedAt", FieldValue.serverTimestamp());
+
+        if (RoomGameKeys.STATUS_BREAK.equals(room.getStatus())) {
+            updates.put("breakEndsAtMillis", System.currentTimeMillis());
+        }
+
+        db.collection(ROOMS)
+                .document(room.getRoomId())
+                .update(updates)
+                .addOnSuccessListener(unused -> onDone.run())
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Room could not be abandoned."
                 ));
     }
 

@@ -188,8 +188,14 @@ public final class SkockoRoomRepository {
                     updates.put("phase", PHASE_GAME_OVER);
                     updates.put("phaseEndsAtMillis", 0L);
                 } else {
-                    String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
-                    updates.putAll(nextRoundState(snapshot, currentRound + 1, playerTwoUid, 2, nextSecretCombination));
+                    String nextActiveUid = startingPlayerUid(snapshot, currentRound + 1);
+                    updates.putAll(nextRoundState(
+                            snapshot,
+                            currentRound + 1,
+                            nextActiveUid,
+                            playerNumberForUid(snapshot, nextActiveUid),
+                            nextSecretCombination
+                    ));
                 }
             }
 
@@ -262,7 +268,80 @@ public final class SkockoRoomRepository {
         fields.put("secretCombination", symbolNames(secretCombination));
         fields.put("attempts", new ArrayList<Map<String, Object>>());
         fields.put("bonusAttempt", new ArrayList<String>());
+        fields.put("abandonedByUid", "");
         return fields;
+    }
+
+    public void handleAbandonedPlayer(
+            @NonNull RoomSession room,
+            @NonNull List<SkockoSymbol> nextSecretCombination,
+            @NonNull Consumer<String> onError
+    ) {
+        String abandonedUid = room.getAbandonedByUid();
+        if (abandonedUid.isEmpty()) {
+            return;
+        }
+
+        DocumentReference ref = stateRef(room.getRoomId());
+
+        db.runTransaction(transaction -> {
+            DocumentSnapshot snapshot = transaction.get(ref);
+            if (!snapshot.exists()) {
+                return null;
+            }
+
+            String phase = stringOrEmpty(snapshot.getString("phase"));
+            if (phase.isEmpty()) {
+                phase = PHASE_ROUND;
+            }
+            if (PHASE_GAME_OVER.equals(phase)) {
+                return null;
+            }
+
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("abandonedByUid", abandonedUid);
+
+            String survivorUid = survivingUid(room);
+
+            if (PHASE_ROUND.equals(phase)
+                    && abandonedUid.equals(snapshot.getString("activePlayerUid"))) {
+                updates.put("activePlayerUid", survivorUid);
+                updates.put("activePlayerNumber", playerNumberForRoomUid(room, survivorUid));
+                updates.put("attempts", new ArrayList<Map<String, Object>>());
+                updates.put("phaseEndsAtMillis", System.currentTimeMillis() + ROUND_DURATION_MILLIS);
+            } else if (PHASE_BONUS.equals(phase)
+                    && abandonedUid.equals(snapshot.getString("bonusPlayerUid"))) {
+                updates.put("bonusAttempt", new ArrayList<String>());
+                completeRound(snapshot, updates, 0, false);
+            } else if (PHASE_ROUND_OVER.equals(phase)) {
+                long endsAt = longOrZero(snapshot.get("phaseEndsAtMillis"));
+                if (endsAt > 0L && endsAt <= System.currentTimeMillis()) {
+                    int currentRound = intOrZero(snapshot.get("currentRound"));
+                    if (currentRound >= TOTAL_ROUNDS) {
+                        updates.put("phase", PHASE_GAME_OVER);
+                        updates.put("phaseEndsAtMillis", 0L);
+                    } else {
+                        updates.putAll(nextRoundState(
+                                snapshot,
+                                currentRound + 1,
+                                survivorUid,
+                                playerNumberForRoomUid(room, survivorUid),
+                                nextSecretCombination
+                        ));
+                    }
+                }
+            }
+
+            if (!updates.isEmpty()) {
+                transaction.update(ref, updates);
+            }
+
+            return null;
+        }).addOnFailureListener(error ->
+                onError.accept(error.getMessage() != null
+                        ? error.getMessage()
+                        : "Napušteni igrač nije obrađen.")
+        );
     }
 
     private static void completeRound(
@@ -294,7 +373,59 @@ public final class SkockoRoomRepository {
         String activeUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
         String playerOneUid = stringOrEmpty(snapshot.getString("playerOneUid"));
         String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
-        return activeUid.equals(playerOneUid) ? playerTwoUid : playerOneUid;
+        String abandonedByUid = stringOrEmpty(snapshot.getString("abandonedByUid"));
+
+        String bonusUid = activeUid.equals(playerOneUid) ? playerTwoUid : playerOneUid;
+        if (!bonusUid.equals(abandonedByUid)) {
+            return bonusUid;
+        }
+
+        return activeUid;
+    }
+
+    @NonNull
+    private static String startingPlayerUid(@NonNull DocumentSnapshot snapshot, int round) {
+        String playerOneUid = stringOrEmpty(snapshot.getString("playerOneUid"));
+        String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
+        String abandonedByUid = stringOrEmpty(snapshot.getString("abandonedByUid"));
+
+        String preferred = round % 2 == 0 ? playerTwoUid : playerOneUid;
+        if (!preferred.equals(abandonedByUid)) {
+            return preferred;
+        }
+
+        return preferred.equals(playerOneUid) ? playerTwoUid : playerOneUid;
+    }
+
+    private static int playerNumberForUid(@NonNull DocumentSnapshot snapshot, @NonNull String uid) {
+        if (uid.equals(snapshot.getString("playerOneUid"))) {
+            return 1;
+        }
+        if (uid.equals(snapshot.getString("playerTwoUid"))) {
+            return 2;
+        }
+        return 1;
+    }
+
+    @NonNull
+    private static String survivingUid(@NonNull RoomSession room) {
+        if (room.getAbandonedByUid().equals(room.getHostUid())) {
+            return room.getGuestUid();
+        }
+        if (room.getAbandonedByUid().equals(room.getGuestUid())) {
+            return room.getHostUid();
+        }
+        return "";
+    }
+
+    private static int playerNumberForRoomUid(@NonNull RoomSession room, @NonNull String uid) {
+        if (uid.equals(room.getHostUid())) {
+            return 1;
+        }
+        if (uid.equals(room.getGuestUid())) {
+            return 2;
+        }
+        return 1;
     }
 
     @NonNull

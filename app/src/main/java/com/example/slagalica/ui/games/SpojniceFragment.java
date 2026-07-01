@@ -17,7 +17,6 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
 import com.example.slagalica.data.repository.SpojniceRoomRepository;
@@ -72,7 +71,7 @@ public class SpojniceFragment extends Fragment {
         viewModel = new ViewModelProvider(this).get(SpojniceViewModel.class);
 
         submitBtn.setOnClickListener(v -> viewModel.submitPair());
-        backBtn.setOnClickListener(v -> NavHostFragment.findNavController(this).navigateUp());
+        backBtn.setOnClickListener(v -> RoomGameFlow.confirmAbandonOrNavigateUp(this, roomId));
 
         for (int i = 0; i < ROW_COUNT; i++) {
             int rowIndex = i;
@@ -105,6 +104,7 @@ public class SpojniceFragment extends Fragment {
         }
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
+            RoomGameFlow.registerRoomBackHandler(this, roomId);
         } else {
             statusView.setVisibility(View.VISIBLE);
             statusView.setText(getString(R.string.spojnice_waiting_room));

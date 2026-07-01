@@ -711,8 +711,22 @@ public final class UserProfileRepository {
         String winnerUid = winnerUid(room);
         String loserUid = loserUid(room);
         boolean randomMatch = MATCH_TYPE_RANDOM.equals(room.getMatchType());
-        int hostStarsDelta = randomMatch ? starsDelta(room.getHostTotalScore(), room.getHostUid().equals(winnerUid)) : 0;
-        int guestStarsDelta = randomMatch ? starsDelta(room.getGuestTotalScore(), room.getGuestUid().equals(winnerUid)) : 0;
+        int hostStarsDelta = randomMatch
+                ? roomPlayerStarsDelta(
+                room,
+                room.getHostUid(),
+                room.getHostTotalScore(),
+                room.getHostUid().equals(winnerUid)
+        )
+                : 0;
+        int guestStarsDelta = randomMatch
+                ? roomPlayerStarsDelta(
+                room,
+                room.getGuestUid(),
+                room.getGuestTotalScore(),
+                room.getGuestUid().equals(winnerUid)
+        )
+                : 0;
 
         Map<String, Object> result = new HashMap<>();
         result.put("roomId", room.getRoomId());
@@ -725,6 +739,8 @@ public final class UserProfileRepository {
         result.put("winnerUid", winnerUid);
         result.put("loserUid", loserUid);
         result.put("matchType", room.getMatchType());
+        result.put("finishReason", room.getFinishReason());
+        result.put("abandonedByUid", room.getAbandonedByUid());
         result.put("hostStarsDelta", hostStarsDelta);
         result.put("guestStarsDelta", guestStarsDelta);
         result.put("processedBy_" + uid, true);
@@ -743,6 +759,11 @@ public final class UserProfileRepository {
                             .document(room.getRoomId())
                             .set(result, SetOptions.merge())
                             .addOnSuccessListener(unused -> {
+                                if (!randomMatch) {
+                                    onSuccess.run();
+                                    return;
+                                }
+
                                 int myScore = uid.equals(room.getHostUid()) ? room.getHostTotalScore() : room.getGuestTotalScore();
                                 int opponentScore = uid.equals(room.getHostUid()) ? room.getGuestTotalScore() : room.getHostTotalScore();
                                 int myStarsDelta = uid.equals(room.getHostUid()) ? hostStarsDelta : guestStarsDelta;
@@ -751,7 +772,7 @@ public final class UserProfileRepository {
                                         myScore,
                                         opponentScore,
                                         myStarsDelta,
-                                        randomMatch
+                                        true
                                 );
                                 preferences.saveProfile(updated);
                                 saveRemoteProfile(updated);
@@ -814,10 +835,14 @@ public final class UserProfileRepository {
             String currentCycle = MonthlyCycleHelper.currentCycleKey();
             String cycleKey = currentCycle;
             long monthlyStars = currentCycle.equals(profile.getStarsCycleKey()) ? profile.getMonthlyStars() : 0L;
-            long newTotalStars = Math.max(0L, profile.getTotalStars() + starsDelta);
+            long previousTotalStars = profile.getTotalStars();
+            long newTotalStars = Math.max(0L, previousTotalStars + starsDelta);
+            long earnedTokens = earnedTokensFromStarMilestones(previousTotalStars, newTotalStars);
+
             builder.totalStars(newTotalStars)
                     .monthlyStars(Math.max(0L, monthlyStars + starsDelta))
-                    .starsCycleKey(cycleKey);
+                    .starsCycleKey(cycleKey)
+                    .tokens(profile.getTokens() + earnedTokens);
         }
         UserProfile withStats = builder.build();
         if (!affectsStars) {
@@ -829,6 +854,15 @@ public final class UserProfileRepository {
                 true
         );
         return syncResult.getProfile();
+    }
+
+    private static long earnedTokensFromStarMilestones(long previousTotalStars, long newTotalStars) {
+        if (newTotalStars <= previousTotalStars) {
+            return 0L;
+        }
+        long previousMilestones = previousTotalStars / 50L;
+        long newMilestones = newTotalStars / 50L;
+        return Math.max(0L, newMilestones - previousMilestones);
     }
 
     @NonNull
@@ -855,6 +889,14 @@ public final class UserProfileRepository {
 
     @NonNull
     private static String winnerUid(@NonNull RoomSession room) {
+        if (!room.getAbandonedByUid().isEmpty()) {
+            if (room.getAbandonedByUid().equals(room.getHostUid())) {
+                return room.getGuestUid();
+            }
+            if (room.getAbandonedByUid().equals(room.getGuestUid())) {
+                return room.getHostUid();
+            }
+        }
         if (room.getHostTotalScore() > room.getGuestTotalScore()) {
             return room.getHostUid();
         }
@@ -866,6 +908,9 @@ public final class UserProfileRepository {
 
     @NonNull
     private static String loserUid(@NonNull RoomSession room) {
+        if (!room.getAbandonedByUid().isEmpty()) {
+            return room.getAbandonedByUid();
+        }
         if (room.getHostTotalScore() > room.getGuestTotalScore()) {
             return room.getGuestUid();
         }
@@ -873,6 +918,18 @@ public final class UserProfileRepository {
             return room.getHostUid();
         }
         return "";
+    }
+
+    private static int roomPlayerStarsDelta(
+            @NonNull RoomSession room,
+            @NonNull String playerUid,
+            int score,
+            boolean won
+    ) {
+        if (playerUid.equals(room.getAbandonedByUid())) {
+            return -10;
+        }
+        return starsDelta(score, won);
     }
 
     private static int starsDelta(int score, boolean won) {

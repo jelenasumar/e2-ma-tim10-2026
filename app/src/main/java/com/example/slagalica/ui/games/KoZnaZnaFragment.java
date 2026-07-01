@@ -89,6 +89,7 @@ public class KoZnaZnaFragment extends Fragment {
         roomId = args != null ? args.getString("roomId", "") : "";
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
+            RoomGameFlow.registerRoomBackHandler(this, roomId);
             return;
         }
 

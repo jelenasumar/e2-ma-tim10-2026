@@ -21,6 +21,7 @@ import com.example.slagalica.model.RoomSession;
 import com.example.slagalica.viewmodel.room.RoomSessionViewModel;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
+import androidx.appcompat.app.AlertDialog;
 
 public class RoomSessionFragment extends Fragment {
 
@@ -37,6 +38,7 @@ public class RoomSessionFragment extends Fragment {
     private boolean navigatedToCurrentGame = false;
     private boolean roomMatchStatsRecorded = false;
     private String lastHandledGame = "";
+    private RoomSession latestRoom;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     public RoomSessionFragment() {
@@ -55,9 +57,7 @@ public class RoomSessionFragment extends Fragment {
         currentGameView = view.findViewById(R.id.roomSessionCurrentGame);
         breakStatusView = view.findViewById(R.id.roomSessionBreakStatus);
 
-        view.findViewById(R.id.roomSessionBack).setOnClickListener(v ->
-                NavHostFragment.findNavController(this).navigateUp()
-        );
+        view.findViewById(R.id.roomSessionBack).setOnClickListener(v -> confirmLeaveRoom());
 
         view.findViewById(R.id.roomSessionGamesContainer).setVisibility(View.GONE);
         view.findViewById(R.id.roomSessionGamesTitle).setVisibility(View.GONE);
@@ -81,6 +81,9 @@ public class RoomSessionFragment extends Fragment {
     }
 
     private void renderRoom(@NonNull RoomSession room) {
+
+        latestRoom = room;
+
         roomIdView.setText(getString(R.string.room_session_id, room.getRoomId()));
 
         if (room.hasBothPlayers()) {
@@ -147,6 +150,44 @@ public class RoomSessionFragment extends Fragment {
         }
     }
 
+    private void confirmLeaveRoom() {
+        if (latestRoom == null
+                || RoomGameKeys.STATUS_FINISHED.equals(latestRoom.getStatus())
+                || myUid.isEmpty()
+                || (!myUid.equals(latestRoom.getHostUid()) && !myUid.equals(latestRoom.getGuestUid()))) {
+            NavHostFragment.findNavController(this).navigateUp();
+            return;
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Napustiti partiju?")
+                .setMessage("Ako napustis partiju, automatski gubis mec.")
+                .setNegativeButton("Ostani", null)
+                .setPositiveButton("Napusti", (dialog, which) -> abandonCurrentRoom())
+                .show();
+    }
+
+    private void abandonCurrentRoom() {
+        if (latestRoom == null) {
+            NavHostFragment.findNavController(this).navigateUp();
+            return;
+        }
+
+        repository.abandonRoom(
+                latestRoom,
+                () -> {
+                    if (isAdded()) {
+                        NavHostFragment.findNavController(this).navigateUp();
+                    }
+                },
+                error -> {
+                    if (isAdded()) {
+                        NavHostFragment.findNavController(this).navigateUp();
+                    }
+                }
+        );
+    }
+
     private void startBreakCountdown(@NonNull RoomSession room) {
         stopBreakTimer();
         long remaining = Math.max(0L, room.getBreakEndsAtMillis() - System.currentTimeMillis());
@@ -176,7 +217,7 @@ public class RoomSessionFragment extends Fragment {
     }
 
     private void scheduleAdvanceWhenBreakEnds(@NonNull RoomSession room) {
-        if (myUid.isEmpty() || !myUid.equals(room.getHostUid())) {
+        if (myUid.isEmpty() || !canControlRoomProgress(room)) {
             return;
         }
         long delay = Math.max(0L, room.getBreakEndsAtMillis() - System.currentTimeMillis());
@@ -191,6 +232,16 @@ public class RoomSessionFragment extends Fragment {
                 },
                 error -> { }
         ), delay + 200L);
+    }
+
+    private boolean canControlRoomProgress(@NonNull RoomSession room) {
+        if (myUid.equals(room.getHostUid())) {
+            return true;
+        }
+
+        return !room.getAbandonedByUid().isEmpty()
+                && !myUid.equals(room.getAbandonedByUid())
+                && (myUid.equals(room.getHostUid()) || myUid.equals(room.getGuestUid()));
     }
 
     private void stopBreakTimer() {

@@ -33,6 +33,7 @@ public final class KoZnaZnaMatch {
     private final List<Integer> questionOrder;
     private final String hostAvatarUri;
     private final String guestAvatarUri;
+    private final String abandonedByUid;
 
     public KoZnaZnaMatch(
             @NonNull String matchId,
@@ -57,6 +58,56 @@ public final class KoZnaZnaMatch {
             @NonNull String hostAvatarUri,
             @NonNull String guestAvatarUri
     ) {
+        this(
+                matchId,
+                hostUid,
+                guestUid,
+                hostUsername,
+                guestUsername,
+                hostScore,
+                guestScore,
+                currentQuestionIndex,
+                status,
+                roundEndsAtMs,
+                questionStartedAtMs,
+                questionEndsAtMs,
+                questionResolved,
+                statusMessage,
+                hostAnswerIndex,
+                guestAnswerIndex,
+                hostAnsweredAtMs,
+                guestAnsweredAtMs,
+                questionOrder,
+                hostAvatarUri,
+                guestAvatarUri,
+                ""
+        );
+    }
+
+    public KoZnaZnaMatch(
+            @NonNull String matchId,
+            @NonNull String hostUid,
+            @NonNull String guestUid,
+            @NonNull String hostUsername,
+            @NonNull String guestUsername,
+            int hostScore,
+            int guestScore,
+            int currentQuestionIndex,
+            @NonNull String status,
+            long roundEndsAtMs,
+            long questionStartedAtMs,
+            long questionEndsAtMs,
+            boolean questionResolved,
+            @NonNull String statusMessage,
+            int hostAnswerIndex,
+            int guestAnswerIndex,
+            long hostAnsweredAtMs,
+            long guestAnsweredAtMs,
+            @NonNull List<Integer> questionOrder,
+            @NonNull String hostAvatarUri,
+            @NonNull String guestAvatarUri,
+            @NonNull String abandonedByUid
+    ) {
         this.matchId = matchId;
         this.hostUid = hostUid;
         this.guestUid = guestUid;
@@ -78,6 +129,7 @@ public final class KoZnaZnaMatch {
         this.questionOrder = questionOrder;
         this.hostAvatarUri = hostAvatarUri;
         this.guestAvatarUri = guestAvatarUri;
+        this.abandonedByUid = abandonedByUid;
     }
 
     @NonNull
@@ -119,7 +171,8 @@ public final class KoZnaZnaMatch {
                 longValue(map.get("guestAnsweredAtMs")),
                 order,
                 stringValue(map.get("hostAvatarUri")),
-                stringValue(map.get("guestAvatarUri"))
+                stringValue(map.get("guestAvatarUri")),
+                stringValue(map.get("abandonedByUid"))
         );
     }
 
@@ -142,6 +195,11 @@ public final class KoZnaZnaMatch {
 
     private static boolean boolValue(@Nullable Object value) {
         return value instanceof Boolean && (Boolean) value;
+    }
+
+    @NonNull
+    public String getAbandonedByUid() {
+        return abandonedByUid;
     }
 
     @NonNull

@@ -80,6 +80,10 @@ public class StepByStepViewModel extends AndroidViewModel {
         return uiState;
     }
 
+    public boolean shouldRecordGameStats() {
+        return roomSession == null || !"FRIENDLY".equals(roomSession.getMatchType());
+    }
+
     public void startRoomGame(@NonNull String roomId) {
         if (roomId.isEmpty() || roomId.equals(this.roomId)) {
             return;
@@ -142,6 +146,15 @@ public class StepByStepViewModel extends AndroidViewModel {
 
         if (myUid.equals(room.getHostUid())) {
             initializeRoomGameIfNeeded(room);
+        }
+
+        if (!room.getAbandonedByUid().isEmpty()
+                && !myUid.isEmpty()
+                && !myUid.equals(room.getAbandonedByUid())) {
+            roomGameRepository.handleAbandonedPlayer(
+                    room,
+                    error -> publishState(remainingSeconds(), error)
+            );
         }
     }
 

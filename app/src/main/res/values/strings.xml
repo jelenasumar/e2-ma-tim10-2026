@@ -377,4 +377,15 @@
     <string name="region_zapad">Zapadna Srbija</string>
     <string name="region_jug">Južna Srbija</string>
     <string name="region_istok">Istočna Srbija</string>
+
+    <string name="room_abandon_title">Napusti partiju?</string>
+    <string name="room_abandon_message">Ako napustiš partiju, protivnik će biti upisan kao pobednik.</string>
+    <string name="room_abandon_positive">Napusti</string>
+    <string name="room_abandon_negative">Ostani</string>
+    <string name="room_abandon_error">Napuštanje partije nije uspelo.</string>
+
+    <string name="game_header_tokens">Tokeni: %1$d</string>
+    <string name="game_header_stars">Zvezde: %1$d</string>
+    <string name="game_header_league">Liga: %1$s</string>
+
 </resources>

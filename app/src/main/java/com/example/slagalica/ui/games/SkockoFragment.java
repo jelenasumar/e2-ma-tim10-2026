@@ -74,6 +74,7 @@ public class SkockoFragment extends Fragment {
         }
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
+            RoomGameFlow.registerRoomBackHandler(this, roomId);
         } else {
             viewModel.startGame(createPlayerOneState(), createPlayerTwoState());
         }
@@ -149,7 +150,7 @@ public class SkockoFragment extends Fragment {
     }
 
     private void recordStatsIfNeeded(@NonNull SkockoGameState state) {
-        if (statsRecorded || !state.isGameOver()) {
+        if (statsRecorded || !state.isGameOver() || !viewModel.shouldRecordGameStats()) {
             return;
         }
         statsRecorded = true;
