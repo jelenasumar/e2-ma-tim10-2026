@@ -23,6 +23,7 @@ import com.example.slagalica.model.GameHeaderPlayerState;
 import com.example.slagalica.model.GameHeaderState;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.ui.room.RoomGameFlow;
+import com.example.slagalica.ui.challenge.ChallengeGameFlow;
 
 import java.util.Locale;
 
@@ -50,6 +51,8 @@ public class StepByStepFragment extends Fragment {
 
     private String roomId = "";
     private boolean gameOverHandled;
+    private Bundle challengeArgs;
+    private boolean challengeMode;
 
     public StepByStepFragment() {
         // Required empty public constructor
@@ -91,9 +94,16 @@ public class StepByStepFragment extends Fragment {
         Bundle args = getArguments();
         roomId = args != null ? args.getString("roomId", "") : "";
 
+        if (args != null && ChallengeGameFlow.isChallengeGame(args)) {
+            challengeArgs = new Bundle(args);
+            challengeMode = true;
+        }
+
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
             RoomGameFlow.registerRoomBackHandler(this, roomId);
+        } else if (challengeMode) {
+            viewModel.startChallengeGame();
         } else {
             statusView.setVisibility(View.VISIBLE);
             statusView.setText("Korak po korak se pokrece iz online partije.");
@@ -209,9 +219,17 @@ public class StepByStepFragment extends Fragment {
         if (state.isGameOver()) {
             submitButton.setText("Nazad");
             submitButton.setEnabled(true);
-            submitButton.setOnClickListener(v ->
-                    NavHostFragment.findNavController(this).navigateUp()
-            );
+            submitButton.setOnClickListener(v -> {
+                if (challengeMode && challengeArgs != null) {
+                    ChallengeGameFlow.onGameFinished(
+                            this,
+                            challengeArgs,
+                            viewModel.getCurrentUserGameScore()
+                    );
+                } else {
+                    NavHostFragment.findNavController(this).navigateUp();
+                }
+            });
         } else {
             submitButton.setText(R.string.submit);
             submitButton.setEnabled(state.isCanSubmit());

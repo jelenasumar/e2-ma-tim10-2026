@@ -21,6 +21,7 @@ import com.example.slagalica.model.associations.AssociationPuzzle;
 import com.example.slagalica.model.associations.AssociationsGameState;
 import com.example.slagalica.ui.room.RoomGameFlow;
 import com.example.slagalica.viewmodel.games.AssociationsViewModel;
+import com.example.slagalica.ui.challenge.ChallengeGameFlow;
 
 public class AssociationsFragment extends Fragment {
 
@@ -35,6 +36,8 @@ public class AssociationsFragment extends Fragment {
     private String roomId = "";
     private boolean gameOverHandled;
     private boolean statsRecorded;
+    private Bundle challengeArgs;
+    private boolean challengeMode;
 
     public AssociationsFragment() {
         super(R.layout.fragment_associations);
@@ -62,6 +65,10 @@ public class AssociationsFragment extends Fragment {
         Bundle args = getArguments();
         if (args != null) {
             roomId = args.getString("roomId", "");
+            if (ChallengeGameFlow.isChallengeGame(args)) {
+                challengeArgs = new Bundle(args);
+                challengeMode = true;
+            }
         }
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
@@ -175,14 +182,26 @@ public class AssociationsFragment extends Fragment {
 
         recordStatsIfNeeded(state);
 
-        if (state.isGameOver() && !roomId.isEmpty() && !gameOverHandled) {
+        if (state.isGameOver() && !gameOverHandled) {
             gameOverHandled = true;
-            RoomGameFlow.onGameFinished(
-                    this,
-                    roomId,
-                    state.getPlayerOneScore(),
-                    state.getPlayerTwoScore()
-            );
+
+            if (challengeMode && challengeArgs != null) {
+                ChallengeGameFlow.onGameFinished(
+                        this,
+                        challengeArgs,
+                        viewModel.getCurrentUserGameScore()
+                );
+                return;
+            }
+
+            if (!roomId.isEmpty()) {
+                RoomGameFlow.onGameFinished(
+                        this,
+                        roomId,
+                        state.getPlayerOneScore(),
+                        state.getPlayerTwoScore()
+                );
+            }
         }
     }
 
