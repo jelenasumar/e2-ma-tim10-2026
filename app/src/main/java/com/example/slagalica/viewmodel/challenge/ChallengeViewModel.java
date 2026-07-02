@@ -133,8 +133,35 @@ public class ChallengeViewModel extends AndroidViewModel {
     }
 
     public void submitResult(@NonNull String challengeId, int score) {
+        submitResult(
+                challengeId,
+                score,
+                () -> successMessage.setValue("Rezultat je sacuvan."),
+                errorMessage::setValue
+        );
+    }
+
+    public void loadMyParticipation(
+            @NonNull String challengeId,
+            @NonNull java.util.function.Consumer<ChallengeParticipant> onSuccess,
+            @NonNull Runnable onMissing
+    ) {
+        challengeRepository.loadMyParticipation(
+                challengeId,
+                onSuccess,
+                onMissing,
+                errorMessage::setValue
+        );
+    }
+
+    public void submitResult(
+            @NonNull String challengeId,
+            int score,
+            @NonNull Runnable onSuccess,
+            @NonNull java.util.function.Consumer<String> onError
+    ) {
         if (challengeId.isEmpty()) {
-            errorMessage.setValue("Izazov nije izabran.");
+            onError.accept("Izazov nije izabran.");
             return;
         }
 
@@ -143,12 +170,12 @@ public class ChallengeViewModel extends AndroidViewModel {
                 challengeId,
                 score,
                 () -> {
-                    successMessage.setValue("Rezultat je sacuvan.");
                     loading.setValue(false);
+                    onSuccess.run();
                 },
                 error -> {
-                    errorMessage.setValue(error);
                     loading.setValue(false);
+                    onError.accept(error);
                 }
         );
     }

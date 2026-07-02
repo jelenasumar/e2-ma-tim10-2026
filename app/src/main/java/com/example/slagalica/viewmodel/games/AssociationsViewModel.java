@@ -79,6 +79,7 @@ public class AssociationsViewModel extends GameViewModel {
     private int statsSolvedRounds = 0;
     private int statsUnsolvedRounds = 0;
     private int statsLastRecordedRound = 0;
+    private boolean challengeMode;
 
     public AssociationsViewModel(@NonNull Application application) {
         super(application);
@@ -313,6 +314,13 @@ public class AssociationsViewModel extends GameViewModel {
             associationsListener.remove();
         }
     }
+    public void startChallengeGame(
+            @NonNull GameHeaderPlayerState playerOne,
+            @NonNull GameHeaderPlayerState playerTwo
+    ) {
+        challengeMode = true;
+        startGame(playerOne, playerTwo);
+    }
 
     private void onRoomChanged(@NonNull RoomSession room) {
         roomSession = room;
@@ -507,7 +515,7 @@ public class AssociationsViewModel extends GameViewModel {
         publishGameState();
 
         startResultTimer(() -> {
-            if (currentRound < TOTAL_ROUNDS) {
+            if (!challengeMode && currentRound < TOTAL_ROUNDS) {
                 startRound(currentRound + 1);
             } else {
                 gameOver = true;

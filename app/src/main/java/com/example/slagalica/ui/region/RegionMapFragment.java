@@ -286,21 +286,39 @@ public class RegionMapFragment extends Fragment {
         detailsButton.setText(R.string.challenge_results);
         detailsButton.setOnClickListener(v -> challengeViewModel.selectChallenge(challenge.getChallengeId()));
 
-        if (challenge.isOpen()) {
-            MaterialButton playButton = new MaterialButton(requireContext());
-            playButton.setText(R.string.challenge_play);
-            playButton.setOnClickListener(v -> openChallengeSession(challenge.getChallengeId()));
-            actions.addView(playButton);
-        }
+        challengeViewModel.loadMyParticipation(
+                challenge.getChallengeId(),
+                participant -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+
+                    if (participant.isFinished() || !challenge.isOpen()) {
+                        return;
+                    }
+
+                    MaterialButton playButton = new MaterialButton(requireContext());
+                    playButton.setText(R.string.challenge_play);
+                    playButton.setOnClickListener(v -> openChallengeSession(challenge.getChallengeId()));
+                    actions.addView(playButton);
+                },
+                () -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+
+                    if (challenge.isOpen() && challenge.getParticipantCount() < 4) {
+                        MaterialButton acceptButton = new MaterialButton(requireContext());
+                        acceptButton.setText(R.string.challenge_accept);
+                        acceptButton.setOnClickListener(v -> challengeViewModel.joinChallenge(challenge.getChallengeId()));
+                        actions.addView(acceptButton);
+                    }
+                }
+        );
 
         actions.addView(detailsButton);
 
-        if (challenge.isOpen() && challenge.getParticipantCount() < 4) {
-            MaterialButton acceptButton = new MaterialButton(requireContext());
-            acceptButton.setText(R.string.challenge_accept);
-            acceptButton.setOnClickListener(v -> challengeViewModel.joinChallenge(challenge.getChallengeId()));
-            actions.addView(acceptButton);
-        }
+
 
         content.addView(actions);
         card.addView(content);

@@ -378,17 +378,11 @@ public class StepByStepViewModel extends AndroidViewModel {
     }
 
     private void finishLocalRound(@NonNull String message) {
-        if (currentRound >= TOTAL_ROUNDS) {
-            roundOver = true;
-            gameOver = true;
-            phase = KorakPoKorakRoomRepository.PHASE_GAME_OVER;
-            lastStatusMessage = "Kraj igre. Ukupno poena: " + playerOneScore + ".";
-            publishState(0, lastStatusMessage);
-            return;
-        }
-
-        lastStatusMessage = message;
-        startLocalRound(currentRound + 1);
+        roundOver = true;
+        gameOver = true;
+        phase = KorakPoKorakRoomRepository.PHASE_GAME_OVER;
+        lastStatusMessage = "Kraj igre. Ukupno poena: " + playerOneScore + ".";
+        publishState(0, lastStatusMessage);
     }
 
     private void preparePuzzles(@NonNull List<KorakPoKorakPuzzle> puzzles) {

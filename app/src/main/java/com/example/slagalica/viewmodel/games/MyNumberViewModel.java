@@ -335,7 +335,7 @@ public class MyNumberViewModel extends AndroidViewModel {
                 && numbersRevealed
                 && !roundOver
                 && !gameOver
-                && isCurrentUserParticipant();
+                && (isCurrentUserParticipant() || roomSession == null);
 
         uiState.setValue(new MyNumberUiState(
                 currentRound,
@@ -510,10 +510,38 @@ public class MyNumberViewModel extends AndroidViewModel {
         numbersRevealed = true;
         phase = MyNumberRoomRepository.PHASE_SOLVING;
         lastStatusMessage = "Sastavi izraz pomocu ponudjenih brojeva.";
-        publishState(0, lastStatusMessage);
+        startLocalChallengeTimer(30);
+    }
+
+    private void startLocalChallengeTimer(int seconds) {
+        stopTimer();
+
+        secondsLeft = seconds;
+        publishState(secondsLeft, lastStatusMessage);
+
+        timer = new CountDownTimer(seconds * 1000L, TIMER_INTERVAL_MS) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                secondsLeft = secondsFromMillis(millisUntilFinished);
+                publishState(secondsLeft, lastStatusMessage);
+            }
+
+            @Override
+            public void onFinish() {
+                secondsLeft = 0;
+                finishLocalChallengeRound("");
+            }
+        };
+
+        timer.start();
     }
 
     private void finishLocalChallengeRound(@NonNull String expression) {
+        stopTimer();
+
+        if (gameOver) {
+            return;
+        }
         int score = 0;
         if (!expression.trim().isEmpty()) {
             score = 5;

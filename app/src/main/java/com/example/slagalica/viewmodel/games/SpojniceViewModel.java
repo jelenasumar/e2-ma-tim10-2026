@@ -16,6 +16,7 @@ import com.example.slagalica.data.repository.SpojnicePuzzlesRepository;
 import com.example.slagalica.data.repository.SpojniceRoomRepository;
 import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.RoomSession;
+import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.model.spojnice.SpojnicePuzzle;
 import com.example.slagalica.model.spojnice.SpojniceUiState;
 import com.example.slagalica.utils.AvatarImageLoader;
@@ -341,14 +342,9 @@ public class SpojniceViewModel extends AndroidViewModel {
         selectedSpinnerPosition = 0;
 
         if (currentLeftIndex >= PAIRS_PER_ROUND) {
-            if (currentRound >= TOTAL_ROUNDS) {
-                gameOver = true;
-                roundOver = true;
-                phase = SpojniceRoomRepository.PHASE_GAME_OVER;
-            } else {
-                startLocalRound(currentRound + 1);
-                return;
-            }
+            gameOver = true;
+            roundOver = true;
+            phase = SpojniceRoomRepository.PHASE_GAME_OVER;
         }
 
         publishUiState(0);
@@ -692,6 +688,9 @@ public class SpojniceViewModel extends AndroidViewModel {
     }
 
     private int displayActivePlayerNumber() {
+        if (challengeMode) {
+            return gameOver ? 0 : 1;
+        }
         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
             return playerNumberForUid(followupPlayerUidForRound(currentRound));
         }
@@ -712,6 +711,9 @@ public class SpojniceViewModel extends AndroidViewModel {
     }
 
     private String startingPlayerUid(int round) {
+        if (challengeMode) {
+            return myUid;
+        }
         String preferred;
         if (!playerOneUid.isEmpty() || !playerTwoUid.isEmpty()) {
             preferred = startingPlayerNumber(round) == 1 ? playerOneUid : playerTwoUid;

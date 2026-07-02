@@ -82,6 +82,8 @@ public class SkockoFragment extends Fragment {
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
             RoomGameFlow.registerRoomBackHandler(this, roomId);
+        } else if (challengeMode) {
+            viewModel.startChallengeGame(createPlayerOneState(), createPlayerTwoState());
         } else {
             viewModel.startGame(createPlayerOneState(), createPlayerTwoState());
         }

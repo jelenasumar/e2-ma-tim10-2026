@@ -74,7 +74,11 @@ public class AssociationsFragment extends Fragment {
             viewModel.startRoomGame(roomId);
             RoomGameFlow.registerRoomBackHandler(this, roomId);
         } else {
-            viewModel.startGame(createPlayerOneState(), createPlayerTwoState());
+            if (challengeMode) {
+                viewModel.startChallengeGame(createPlayerOneState(), createPlayerTwoState());
+            } else {
+                viewModel.startGame(createPlayerOneState(), createPlayerTwoState());
+            }
         }
     }
 

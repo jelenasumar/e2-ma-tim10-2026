@@ -271,6 +271,11 @@ public final class ChallengeRepository {
                         throw new IllegalStateException("Ne ucestvujes u ovom izazovu.");
                     }
 
+                    ChallengeParticipant participant = ChallengeParticipant.fromDocument(participantDocument);
+                    if (participant.isFinished()) {
+                        throw new IllegalStateException("Vec si zavrsio/la ovaj izazov.");
+                    }
+
                     Challenge challenge = Challenge.fromDocument(challengeDocument);
                     if (!challenge.isOpen()) {
                         throw new IllegalStateException("Izazov je vec zavrsen.");
@@ -376,6 +381,33 @@ public final class ChallengeRepository {
                             .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Izazov nije zavrsen.")));
                 })
                 .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Ucesnici izazova nisu ucitani.")));
+    }
+
+    public void loadMyParticipation(
+            @NonNull String challengeId,
+            @NonNull Consumer<ChallengeParticipant> onSuccess,
+            @NonNull Runnable onMissing,
+            @NonNull Consumer<String> onError
+    ) {
+        String uid = getCurrentUid();
+        if (uid == null) {
+            onMissing.run();
+            return;
+        }
+
+        db.collection(REGION_CHALLENGES)
+                .document(challengeId)
+                .collection(PARTICIPANTS)
+                .document(uid)
+                .get()
+                .addOnSuccessListener(document -> {
+                    if (document.exists()) {
+                        onSuccess.accept(ChallengeParticipant.fromDocument(document));
+                    } else {
+                        onMissing.run();
+                    }
+                })
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Ucesce nije ucitano.")));
     }
 
     private void rewardParticipant(

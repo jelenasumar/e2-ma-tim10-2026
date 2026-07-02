@@ -74,10 +74,6 @@
             android:id="@+id/action_home_to_regionChat"
             app:destination="@id/regionChatFragment" />
 
-        <action
-            android:id="@+id/action_regionMap_to_challengeSession"
-            app:destination="@id/challengeSessionFragment" />
-
 
     </fragment>
 
@@ -191,6 +187,9 @@
         <action
             android:id="@+id/action_regionMap_to_leaderboard"
             app:destination="@id/regionLeaderboardFragment" />
+        <action
+            android:id="@+id/action_regionMap_to_challengeSession"
+            app:destination="@id/challengeSessionFragment" />
     </fragment>
 
     <fragment
