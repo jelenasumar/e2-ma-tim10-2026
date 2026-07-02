@@ -247,12 +247,21 @@ public final class TournamentRepository {
                     int guestTokensDelta = tokensForTournament(room, ROUND_FINAL.equals(room.getTournamentRound()), false);
 
                     boolean currentIsHost = uid.equals(room.getHostUid());
+                    int myScoreForStats = currentIsHost ? room.getHostTotalScore() : room.getGuestTotalScore();
+                    int opponentScoreForStats = currentIsHost ? room.getGuestTotalScore() : room.getHostTotalScore();
+                    if (room.wasAbandoned()) {
+                        if (uid.equals(winnerUid)) {
+                            myScoreForStats = Math.max(myScoreForStats, opponentScoreForStats + 1);
+                        } else if (uid.equals(room.getAbandonedByUid())) {
+                            opponentScoreForStats = Math.max(opponentScoreForStats, myScoreForStats + 1);
+                        }
+                    }
                     DocumentReference userRef = db.collection(USERS).document(uid);
                     DocumentSnapshot userDoc = transaction.get(userRef);
                     transaction.set(userRef, UserProfileMapper.toMap(profileAfterTournamentMatch(
                             UserProfileMapper.fromDocument(userDoc),
-                            currentIsHost ? room.getHostTotalScore() : room.getGuestTotalScore(),
-                            currentIsHost ? room.getGuestTotalScore() : room.getHostTotalScore(),
+                            myScoreForStats,
+                            opponentScoreForStats,
                             currentIsHost ? hostStarsDelta : guestStarsDelta,
                             currentIsHost ? hostTokensDelta : guestTokensDelta,
                             shouldUpdateStats(room, uid),
@@ -478,6 +487,9 @@ public final class TournamentRepository {
 
     private int starsForTournament(@NonNull RoomSession room, boolean finalRound, boolean host, int regularStars) {
         String uid = host ? room.getHostUid() : room.getGuestUid();
+        if (uid.equals(room.getAbandonedByUid())) {
+            return 0;
+        }
         boolean winner = uid.equals(tournamentWinnerUid(room));
         if (!finalRound) {
             return winner ? regularStars : 0;
@@ -496,6 +508,14 @@ public final class TournamentRepository {
 
     @NonNull
     private static String tournamentWinnerUid(@NonNull RoomSession room) {
+        if (!room.getAbandonedByUid().isEmpty()) {
+            if (room.getAbandonedByUid().equals(room.getHostUid())) {
+                return room.getGuestUid();
+            }
+            if (room.getAbandonedByUid().equals(room.getGuestUid())) {
+                return room.getHostUid();
+            }
+        }
         if (room.getGuestTotalScore() > room.getHostTotalScore()) {
             return room.getGuestUid();
         }
@@ -526,6 +546,8 @@ public final class TournamentRepository {
         result.put("winnerUid", winnerUid);
         result.put("loserUid", loserUid);
         result.put("matchType", MATCH_TYPE_TOURNAMENT);
+        result.put("finishReason", room.getFinishReason());
+        result.put("abandonedByUid", room.getAbandonedByUid());
         result.put("tournamentId", room.getTournamentId());
         result.put("tournamentRound", room.getTournamentRound());
         result.put("hostStarsDelta", hostStarsDelta);
