@@ -18,6 +18,7 @@ import java.util.function.Consumer;
 public final class RoomSessionRepository {
 
     private static final String ROOMS = "rooms";
+    private static final String GAMES = "games";
 
     private static final String FINISH_REASON_ABANDONED = "ABANDONED";
     private static final String MATCH_TYPE_TOURNAMENT = "TOURNAMENT";
@@ -136,10 +137,95 @@ public final class RoomSessionRepository {
         db.collection(ROOMS)
                 .document(room.getRoomId())
                 .update(updates)
-                .addOnSuccessListener(unused -> onDone.run())
+                .addOnSuccessListener(unused -> markCurrentGameAbandoned(room, uid, onDone))
                 .addOnFailureListener(e -> onError.accept(
                         e.getMessage() != null ? e.getMessage() : "Room could not be abandoned."
                 ));
+    }
+
+    private void markCurrentGameAbandoned(
+            @NonNull RoomSession room,
+            @NonNull String abandonedUid,
+            @NonNull Runnable onDone
+    ) {
+        String gameDocumentId = gameDocumentId(room.getCurrentGame());
+        String survivorUid = survivorUid(room, abandonedUid);
+        if (gameDocumentId.isEmpty() || survivorUid.isEmpty()) {
+            onDone.run();
+            return;
+        }
+
+        db.collection(ROOMS)
+                .document(room.getRoomId())
+                .collection(GAMES)
+                .document(gameDocumentId)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (!snapshot.exists()) {
+                        onDone.run();
+                        return;
+                    }
+
+                    Map<String, Object> gameUpdates = new HashMap<>();
+                    gameUpdates.put("abandonedByUid", abandonedUid);
+                    if (abandonedUid.equals(snapshot.getString("activePlayerUid"))) {
+                        gameUpdates.put("activePlayerUid", survivorUid);
+                        gameUpdates.put("activePlayerNumber", playerNumberForRoomUid(room, survivorUid));
+                    }
+                    if (abandonedUid.equals(snapshot.getString("bonusPlayerUid"))) {
+                        gameUpdates.put("bonusPlayerUid", survivorUid);
+                    }
+                    if (abandonedUid.equals(snapshot.getString("followupPlayerUid"))) {
+                        gameUpdates.put("followupPlayerUid", survivorUid);
+                    }
+
+                    db.collection(ROOMS)
+                            .document(room.getRoomId())
+                            .collection(GAMES)
+                            .document(gameDocumentId)
+                            .update(gameUpdates)
+                            .addOnCompleteListener(task -> onDone.run());
+                })
+                .addOnFailureListener(error -> onDone.run());
+    }
+
+    @NonNull
+    private static String gameDocumentId(@NonNull String currentGame) {
+        switch (currentGame) {
+            case RoomGameKeys.SPOJNICE:
+                return "spojnice";
+            case RoomGameKeys.ASOCIJACIJE:
+                return "associations";
+            case RoomGameKeys.SKOCKO:
+                return "skocko";
+            case RoomGameKeys.KORAK_PO_KORAK:
+                return "korak_po_korak";
+            case RoomGameKeys.MOJ_BROJ:
+                return "my_number";
+            default:
+                return "";
+        }
+    }
+
+    @NonNull
+    private static String survivorUid(@NonNull RoomSession room, @NonNull String abandonedUid) {
+        if (abandonedUid.equals(room.getHostUid())) {
+            return room.getGuestUid();
+        }
+        if (abandonedUid.equals(room.getGuestUid())) {
+            return room.getHostUid();
+        }
+        return "";
+    }
+
+    private static int playerNumberForRoomUid(@NonNull RoomSession room, @NonNull String uid) {
+        if (uid.equals(room.getHostUid())) {
+            return 1;
+        }
+        if (uid.equals(room.getGuestUid())) {
+            return 2;
+        }
+        return 1;
     }
 
     public void startBreakAfterGame(
