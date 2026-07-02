@@ -186,8 +186,20 @@ public class MainActivity extends AppCompatActivity {
         if (!appInForeground || notification.getAction() == NotificationAction.ACCEPT_INVITE) {
             return true;
         }
+        if (isInviteResponseNotification(notification)) {
+            return true;
+        }
         return notification.getCategory() == NotificationCategory.REWARD
                 || notification.getCategory() == NotificationCategory.RANKING;
+    }
+
+    private boolean isInviteResponseNotification(@NonNull SystemNotification notification) {
+        String inviteId = notification.getInviteId();
+        if (inviteId == null || inviteId.isEmpty()) {
+            return false;
+        }
+        return notification.getAction() == NotificationAction.OPEN_ROOM
+                || notification.getAction() == NotificationAction.NONE;
     }
 
     private void processFinishedRankingCyclesOnce() {
