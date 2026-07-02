@@ -9,6 +9,7 @@ import androidx.annotation.Nullable;
 import com.example.slagalica.data.local.UserPreferences;
 import com.example.slagalica.data.remote.RegionDataSource;
 import com.example.slagalica.data.remote.FireBaseUserDataSource;
+import com.example.slagalica.model.DailyMissionProgress;
 import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.RoomSession;
 import com.example.slagalica.model.SerbiaRegion;
@@ -24,7 +25,10 @@ import com.google.firebase.firestore.SetOptions;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -34,6 +38,7 @@ public final class UserProfileRepository {
 
     private static final String MATCH_RESULTS = "match_results";
     private static final String MATCH_TYPE_RANDOM = "RANDOM";
+    private static final String MATCH_TYPE_FRIENDLY = "FRIENDLY";
 
     private final Context appContext;
     private final UserPreferences preferences;
@@ -711,6 +716,7 @@ public final class UserProfileRepository {
         String winnerUid = winnerUid(room);
         String loserUid = loserUid(room);
         boolean randomMatch = MATCH_TYPE_RANDOM.equals(room.getMatchType());
+        List<String> dailyMissionKeys = dailyMissionsForFinishedRoom(room, uid, winnerUid);
         int hostStarsDelta = randomMatch
                 ? roomPlayerStarsDelta(
                 room,
@@ -760,7 +766,7 @@ public final class UserProfileRepository {
                             .set(result, SetOptions.merge())
                             .addOnSuccessListener(unused -> {
                                 if (!randomMatch) {
-                                    onSuccess.run();
+                                    recordDailyMissions(dailyMissionKeys, onSuccess, onError);
                                     return;
                                 }
 
@@ -772,7 +778,8 @@ public final class UserProfileRepository {
                                         myScore,
                                         opponentScore,
                                         myStarsDelta,
-                                        true
+                                        true,
+                                        dailyMissionKeys
                                 );
                                 preferences.saveProfile(updated);
                                 saveRemoteProfile(updated);
@@ -793,7 +800,8 @@ public final class UserProfileRepository {
             int myTotalScore,
             int opponentTotalScore,
             int starsDelta,
-            boolean affectsStars
+            boolean affectsStars,
+            @NonNull List<String> dailyMissionKeys
     ) {
         PlayerStatistics stats = profile.getStatistics();
 
@@ -844,7 +852,10 @@ public final class UserProfileRepository {
                     .starsCycleKey(cycleKey)
                     .tokens(profile.getTokens() + earnedTokens);
         }
-        UserProfile withStats = builder.build();
+        UserProfile withStats = DailyMissionRewardHelper.applyCompletedMissions(
+                builder.build(),
+                dailyMissionKeys
+        );
         if (!affectsStars) {
             return withStats;
         }
@@ -854,6 +865,71 @@ public final class UserProfileRepository {
                 true
         );
         return syncResult.getProfile();
+    }
+
+    public void recordDailyChatMessage(
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        recordDailyMissions(
+                Arrays.asList(DailyMissionProgress.MISSION_SEND_CHAT),
+                onSuccess,
+                onError
+        );
+    }
+
+    private void recordDailyMissions(
+            @NonNull List<String> missionKeys,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (missionKeys.isEmpty() || !isRegisteredPlayer()) {
+            onSuccess.run();
+            return;
+        }
+        String uid = remote.getCurrentUid();
+        if (uid == null) {
+            onSuccess.run();
+            return;
+        }
+
+        db.runTransaction(transaction -> {
+                    com.google.firebase.firestore.DocumentReference userRef = db.collection("users").document(uid);
+                    com.google.firebase.firestore.DocumentSnapshot userDoc = transaction.get(userRef);
+                    if (!userDoc.exists()) {
+                        return null;
+                    }
+                    UserProfile before = UserProfileMapper.fromDocument(userDoc);
+                    UserProfile rewarded = DailyMissionRewardHelper.applyCompletedMissions(before, missionKeys);
+                    UserProfile synced = leagueRepository.syncProfile(rewarded, before, true).getProfile();
+                    transaction.set(userRef, UserProfileMapper.toMap(synced), SetOptions.merge());
+                    return synced;
+                })
+                .addOnSuccessListener(updated -> {
+                    if (updated != null) {
+                        preferences.saveProfile(updated);
+                    }
+                    onSuccess.run();
+                })
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Dnevna misija nije sacuvana."
+                ));
+    }
+
+    @NonNull
+    private static List<String> dailyMissionsForFinishedRoom(
+            @NonNull RoomSession room,
+            @NonNull String uid,
+            @NonNull String winnerUid
+    ) {
+        List<String> missions = new ArrayList<>();
+        if (MATCH_TYPE_RANDOM.equals(room.getMatchType()) && uid.equals(winnerUid)) {
+            missions.add(DailyMissionProgress.MISSION_WIN_MATCH);
+        }
+        if (MATCH_TYPE_FRIENDLY.equals(room.getMatchType())) {
+            missions.add(DailyMissionProgress.MISSION_PLAY_FRIENDLY);
+        }
+        return missions;
     }
 
     private static long earnedTokensFromStarMilestones(long previousTotalStars, long newTotalStars) {

@@ -27,6 +27,10 @@
             app:destination="@id/notificationsFragment" />
 
         <action
+            android:id="@+id/action_home_to_dailyMissions"
+            app:destination="@id/dailyMissionsFragment" />
+
+        <action
             android:id="@+id/action_home_to_profile"
             app:destination="@id/profileFragment" />
 
@@ -97,6 +101,28 @@
         android:id="@+id/notificationsFragment"
         android:name="com.example.slagalica.ui.notifications.NotificationsFragment"
         android:label="Notifikacije" />
+
+    <fragment
+        android:id="@+id/dailyMissionsFragment"
+        android:name="com.example.slagalica.ui.missions.DailyMissionsFragment"
+        android:label="@string/daily_missions_title">
+
+        <action
+            android:id="@+id/action_dailyMissions_to_onlineMatchmaking"
+            app:destination="@id/onlineMatchmakingFragment" />
+
+        <action
+            android:id="@+id/action_dailyMissions_to_regionChat"
+            app:destination="@id/regionChatFragment" />
+
+        <action
+            android:id="@+id/action_dailyMissions_to_inviteFriends"
+            app:destination="@id/inviteFriendsFragment" />
+
+        <action
+            android:id="@+id/action_dailyMissions_to_tournament"
+            app:destination="@id/tournamentFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/notificationDestinationFragment"

@@ -8,6 +8,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.slagalica.data.repository.RegionChatRepository;
+import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.RegionChatMessage;
 import com.google.firebase.firestore.ListenerRegistration;
 
@@ -17,6 +18,7 @@ import java.util.List;
 public class RegionChatViewModel extends AndroidViewModel {
 
     private final RegionChatRepository repository;
+    private final UserProfileRepository userProfileRepository;
     private final MutableLiveData<List<RegionChatMessage>> messages = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
     private final MutableLiveData<String> regionKey = new MutableLiveData<>("");
@@ -25,6 +27,7 @@ public class RegionChatViewModel extends AndroidViewModel {
     public RegionChatViewModel(@NonNull Application application) {
         super(application);
         repository = new RegionChatRepository();
+        userProfileRepository = new UserProfileRepository(application);
     }
 
     @NonNull
@@ -68,7 +71,7 @@ public class RegionChatViewModel extends AndroidViewModel {
         repository.sendMessage(
                 currentRegionKey,
                 text,
-                () -> { },
+                () -> userProfileRepository.recordDailyChatMessage(() -> { }, error -> { }),
                 errorMessage::setValue
         );
     }

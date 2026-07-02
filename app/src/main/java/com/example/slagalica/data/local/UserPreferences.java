@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import androidx.annotation.NonNull;
 
 import com.example.slagalica.data.repository.UserProfileMapper;
+import com.example.slagalica.model.DailyMissionProgress;
 import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.UserProfile;
 
@@ -60,6 +61,12 @@ public final class UserPreferences {
     private static final String KEY_MATCHES_WON = "matches_won";
     private static final String KEY_MATCHES_LOST = "matches_lost";
     private static final String KEY_LAST_DAILY_TOKEN_DATE = "last_daily_token_date";
+    private static final String KEY_DAILY_MISSION_DATE = "daily_mission_date";
+    private static final String KEY_DAILY_MISSION_WON_MATCH = "daily_mission_won_match";
+    private static final String KEY_DAILY_MISSION_SENT_CHAT = "daily_mission_sent_chat";
+    private static final String KEY_DAILY_MISSION_PLAYED_FRIENDLY = "daily_mission_played_friendly";
+    private static final String KEY_DAILY_MISSION_WON_TOURNAMENT = "daily_mission_won_tournament";
+    private static final String KEY_DAILY_MISSION_BONUS_CLAIMED = "daily_mission_bonus_claimed";
     private static final String KEY_MONTHLY_PENALTY_PREFIX = "monthly_penalty_";
 
     private final SharedPreferences prefs;
@@ -97,6 +104,14 @@ public final class UserPreferences {
         if (invitePayload == null || invitePayload.isEmpty()) {
             invitePayload = buildInvitePayload();
         }
+        DailyMissionProgress dailyMissionProgress = new DailyMissionProgress(
+                prefs.getString(KEY_DAILY_MISSION_DATE, ""),
+                prefs.getBoolean(KEY_DAILY_MISSION_WON_MATCH, false),
+                prefs.getBoolean(KEY_DAILY_MISSION_SENT_CHAT, false),
+                prefs.getBoolean(KEY_DAILY_MISSION_PLAYED_FRIENDLY, false),
+                prefs.getBoolean(KEY_DAILY_MISSION_WON_TOURNAMENT, false),
+                prefs.getBoolean(KEY_DAILY_MISSION_BONUS_CLAIMED, false)
+        );
 
         return new UserProfile.Builder()
                 .username(prefs.getString(KEY_USERNAME, ""))
@@ -116,6 +131,7 @@ public final class UserPreferences {
                 .lastActiveAt(prefs.getLong(KEY_LAST_ACTIVE_AT, 0L))
                 .invitePayload(invitePayload)
                 .statistics(stats)
+                .dailyMissionProgress(dailyMissionProgress)
                 .build();
     }
 
@@ -191,6 +207,12 @@ public final class UserPreferences {
                 .putFloat(KEY_LOSS_PCT, stats.getMatchesLossPercent())
                 .putInt(KEY_MATCHES_WON, stats.getMatchesWon())
                 .putInt(KEY_MATCHES_LOST, stats.getMatchesLost())
+                .putString(KEY_DAILY_MISSION_DATE, profile.getDailyMissionProgress().getDateKey())
+                .putBoolean(KEY_DAILY_MISSION_WON_MATCH, profile.getDailyMissionProgress().hasWonMatch())
+                .putBoolean(KEY_DAILY_MISSION_SENT_CHAT, profile.getDailyMissionProgress().hasSentChatMessage())
+                .putBoolean(KEY_DAILY_MISSION_PLAYED_FRIENDLY, profile.getDailyMissionProgress().hasPlayedFriendlyMatch())
+                .putBoolean(KEY_DAILY_MISSION_WON_TOURNAMENT, profile.getDailyMissionProgress().hasWonTournamentMatch())
+                .putBoolean(KEY_DAILY_MISSION_BONUS_CLAIMED, profile.getDailyMissionProgress().isCompletionBonusClaimed())
                 .apply();
 
         syncInviteCodeFromPayload(profile.getInvitePayload());
@@ -214,6 +236,12 @@ public final class UserPreferences {
                 .remove(KEY_LAST_ACTIVE_AT)
                 .remove(KEY_AVATAR_URI)
                 .remove(KEY_INVITE_PAYLOAD)
+                .remove(KEY_DAILY_MISSION_DATE)
+                .remove(KEY_DAILY_MISSION_WON_MATCH)
+                .remove(KEY_DAILY_MISSION_SENT_CHAT)
+                .remove(KEY_DAILY_MISSION_PLAYED_FRIENDLY)
+                .remove(KEY_DAILY_MISSION_WON_TOURNAMENT)
+                .remove(KEY_DAILY_MISSION_BONUS_CLAIMED)
                 .apply();
         ensureSeedDefaults();
     }
