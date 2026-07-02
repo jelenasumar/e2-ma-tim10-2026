@@ -427,10 +427,7 @@ public final class TournamentRepository {
         if (!uid.equals(winnerUid)) {
             return Collections.emptyList();
         }
-        return Arrays.asList(
-                DailyMissionProgress.MISSION_WIN_MATCH,
-                DailyMissionProgress.MISSION_WIN_TOURNAMENT
-        );
+        return Arrays.asList(DailyMissionProgress.MISSION_WIN_TOURNAMENT);
     }
 
     @NonNull

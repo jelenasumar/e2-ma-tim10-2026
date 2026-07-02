@@ -923,7 +923,7 @@ public final class UserProfileRepository {
             @NonNull String winnerUid
     ) {
         List<String> missions = new ArrayList<>();
-        if (uid.equals(winnerUid)) {
+        if (MATCH_TYPE_RANDOM.equals(room.getMatchType()) && uid.equals(winnerUid)) {
             missions.add(DailyMissionProgress.MISSION_WIN_MATCH);
         }
         if (MATCH_TYPE_FRIENDLY.equals(room.getMatchType())) {
