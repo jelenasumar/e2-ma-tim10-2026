@@ -114,6 +114,16 @@ public class RoomSessionFragment extends Fragment {
             return;
         }
 
+        if (!myUid.isEmpty() && myUid.equals(room.getAbandonedByUid())) {
+            stopBreakTimer();
+            navigatedToCurrentGame = false;
+            activeSessionRepository.clearActiveRoomIfMatches(room.getRoomId());
+            currentGameView.setVisibility(View.VISIBLE);
+            currentGameView.setText("Napustili ste partiju.");
+            breakStatusView.setVisibility(View.GONE);
+            return;
+        }
+
         if (RoomGameKeys.STATUS_BREAK.equals(room.getStatus())) {
             navigatedToCurrentGame = false;
             currentGameView.setVisibility(View.GONE);
@@ -176,6 +186,7 @@ public class RoomSessionFragment extends Fragment {
         repository.abandonRoom(
                 latestRoom,
                 () -> {
+                    activeSessionRepository.clearActiveRoomIfMatches(latestRoom.getRoomId());
                     if (isAdded()) {
                         NavHostFragment.findNavController(this).navigateUp();
                     }
