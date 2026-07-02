@@ -101,11 +101,19 @@ public final class RoomGameFlow {
 
     private static void registerRoomFinishedListener(@NonNull Fragment fragment, @NonNull String roomId) {
         RoomSessionRepository repository = new RoomSessionRepository();
+        UserActiveSessionRepository activeSessionRepository = new UserActiveSessionRepository();
+        String uid = repository.getCurrentUid();
         final boolean[] navigatedBack = {false};
         ListenerRegistration listener = repository.listenRoom(
                 roomId,
                 room -> {
                     if (navigatedBack[0] || !fragment.isAdded()) {
+                        return;
+                    }
+                    if (uid != null && uid.equals(room.getAbandonedByUid())) {
+                        navigatedBack[0] = true;
+                        activeSessionRepository.clearActiveRoomIfMatches(roomId);
+                        navigateUpIfAdded(fragment);
                         return;
                     }
                     if (RoomGameKeys.STATUS_FINISHED.equals(room.getStatus())) {
