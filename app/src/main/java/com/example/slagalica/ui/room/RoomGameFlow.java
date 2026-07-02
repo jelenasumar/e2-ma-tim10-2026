@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.data.repository.RoomSessionRepository;
+import com.example.slagalica.data.repository.UserActiveSessionRepository;
 import com.example.slagalica.model.RoomGameKeys;
 import com.example.slagalica.model.RoomSession;
 import com.google.firebase.firestore.ListenerRegistration;
@@ -146,7 +147,10 @@ public final class RoomGameFlow {
                 roomId,
                 room -> repository.abandonRoom(
                         room,
-                        () -> navigateUpIfAdded(fragment),
+                        () -> {
+                            new UserActiveSessionRepository().clearActiveRoomIfMatches(roomId);
+                            navigateUpIfAdded(fragment);
+                        },
                         error -> showAbandonError(fragment)
                 ),
                 error -> showAbandonError(fragment)
