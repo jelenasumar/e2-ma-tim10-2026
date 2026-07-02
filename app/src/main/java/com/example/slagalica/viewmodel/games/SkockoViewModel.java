@@ -74,6 +74,7 @@ public class SkockoViewModel extends GameViewModel {
     private int statsExactMatches = 0;
     private int statsTotalSlots = 0;
     private int statsLastRecordedRound = 0;
+    private boolean challengeMode = false;
 
     public SkockoViewModel(@NonNull Application application) {
         super(application);
@@ -104,6 +105,13 @@ public class SkockoViewModel extends GameViewModel {
         this.playerOne = playerOne;
         this.playerTwo = playerTwo;
         startRound(1);
+    }
+    public void startChallengeGame(
+            @NonNull GameHeaderPlayerState playerOne,
+            @NonNull GameHeaderPlayerState playerTwo
+    ) {
+        challengeMode = true;
+        startGame(playerOne, playerTwo);
     }
 
     public void startRoomGame(@NonNull String roomId) {
@@ -495,7 +503,7 @@ public class SkockoViewModel extends GameViewModel {
         publishGameState();
 
         startResultTimer(() -> {
-            if (currentRound < TOTAL_ROUNDS) {
+            if (!challengeMode && currentRound < TOTAL_ROUNDS) {
                 startRound(currentRound + 1);
             } else {
                 gameOver = true;

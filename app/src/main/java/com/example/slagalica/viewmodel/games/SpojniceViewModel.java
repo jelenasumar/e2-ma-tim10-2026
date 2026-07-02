@@ -16,6 +16,7 @@ import com.example.slagalica.data.repository.SpojnicePuzzlesRepository;
 import com.example.slagalica.data.repository.SpojniceRoomRepository;
 import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.RoomSession;
+import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.model.spojnice.SpojnicePuzzle;
 import com.example.slagalica.model.spojnice.SpojniceUiState;
 import com.example.slagalica.utils.AvatarImageLoader;
@@ -39,6 +40,8 @@ public class SpojniceViewModel extends AndroidViewModel {
     private static final long TIMER_INTERVAL_MS = 1_000L;
     private static final long ROUND_DURATION_MS = 30_000L;
     private static final long RESULT_VISIBLE_MS = 2_500L;
+    private boolean challengeMode;
+    private List<Integer> localAnswers = new ArrayList<>();
 
     private final MutableLiveData<SpojniceUiState> uiState = new MutableLiveData<>();
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
@@ -125,6 +128,57 @@ public class SpojniceViewModel extends AndroidViewModel {
         );
     }
 
+    public void startChallengeGame() {
+        if (challengeMode) {
+            return;
+        }
+
+        challengeMode = true;
+        roomId = "";
+        roomSession = null;
+
+        String uid = spojniceRepository.getCurrentUid();
+        myUid = uid != null ? uid : "challenge_player";
+        playerOneUid = myUid;
+        playerTwoUid = "";
+        activePlayerUid = myUid;
+        followupPlayerUid = "";
+
+        UserProfile profile = profileRepository.loadProfile();
+        playerOneLabel = profile.getUsername() != null && !profile.getUsername().trim().isEmpty()
+                ? profile.getUsername()
+                : "Igrac";
+        playerTwoLabel = "Izazov";
+
+        playerOneScore = 0;
+        playerTwoScore = 0;
+        basePlayerOneScore = 0;
+        basePlayerTwoScore = 0;
+        currentRound = 1;
+        activePlayerNumber = 1;
+        phase = SpojniceRoomRepository.PHASE_ACTIVE;
+        roundOver = false;
+        gameOver = false;
+
+        loadRoundPuzzles(() -> startLocalRound(1));
+    }
+
+    public int getCurrentUserGameScore() {
+        if (roomSession == null || myUid.isEmpty()) {
+            return playerOneScore;
+        }
+
+        if (myUid.equals(roomSession.getHostUid())) {
+            return playerOneScore - basePlayerOneScore;
+        }
+
+        if (myUid.equals(roomSession.getGuestUid())) {
+            return playerTwoScore - basePlayerTwoScore;
+        }
+
+        return playerOneScore;
+    }
+
     public void selectFollowupRow(int rowIndex) {
         if (!SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase) || !canCurrentUserPlay()) {
             return;
@@ -167,6 +221,10 @@ public class SpojniceViewModel extends AndroidViewModel {
     }
 
     public void submitPair() {
+        if (challengeMode || roomId.isEmpty()) {
+            submitLocalChallengePair();
+            return;
+        }
         if (!canCurrentUserPlay() || selectedRightIndex < 0) {
             return;
         }
@@ -217,6 +275,79 @@ public class SpojniceViewModel extends AndroidViewModel {
                     }
                 }
         );
+    }
+
+    private void startLocalRound(int round) {
+        SpojnicePuzzle puzzle = puzzleForRound(round);
+        SpojnicePuzzle.ShuffledRound shuffled = puzzle.shuffled(random);
+
+        currentRound = round;
+        activePlayerNumber = 1;
+        activePlayerUid = myUid;
+        followupPlayerUid = "";
+        phase = SpojniceRoomRepository.PHASE_ACTIVE;
+        criterion = puzzle.getCriterion();
+        leftTerms = shuffled.getLeftTerms();
+        rightTerms = shuffled.getRightTerms();
+        localAnswers = shuffled.getAnswers();
+
+        connectedLeft = new ArrayList<>();
+        attemptedLeft = new ArrayList<>();
+        usedRightIndices = new ArrayList<>();
+        followupLockedLeft = new ArrayList<>();
+
+        currentLeftIndex = 0;
+        selectedRow = 0;
+        selectedRightIndex = SpojniceUiState.NO_SELECTION;
+        selectedSpinnerPosition = 0;
+        roundOver = false;
+        gameOver = false;
+
+        publishUiState(0);
+    }
+
+    private void submitLocalChallengePair() {
+        if (!canCurrentUserPlay() || selectedRightIndex < 0) {
+            return;
+        }
+
+        int leftIndex = currentLeftIndex;
+        if (leftIndex < 0 || leftIndex >= PAIRS_PER_ROUND || connectedLeft.contains(leftIndex)) {
+            return;
+        }
+
+        boolean correct = leftIndex < localAnswers.size()
+                && localAnswers.get(leftIndex) == selectedRightIndex;
+
+        if (!attemptedLeft.contains(leftIndex)) {
+            attemptedLeft = new ArrayList<>(attemptedLeft);
+            attemptedLeft.add(leftIndex);
+        }
+
+        if (correct) {
+            connectedLeft = new ArrayList<>(connectedLeft);
+            connectedLeft.add(leftIndex);
+
+            if (!usedRightIndices.contains(selectedRightIndex)) {
+                usedRightIndices = new ArrayList<>(usedRightIndices);
+                usedRightIndices.add(selectedRightIndex);
+            }
+
+            playerOneScore += 2;
+        }
+
+        currentLeftIndex++;
+        selectedRow = currentLeftIndex < PAIRS_PER_ROUND ? currentLeftIndex : SpojniceUiState.NO_ROW;
+        selectedRightIndex = SpojniceUiState.NO_SELECTION;
+        selectedSpinnerPosition = 0;
+
+        if (currentLeftIndex >= PAIRS_PER_ROUND) {
+            gameOver = true;
+            roundOver = true;
+            phase = SpojniceRoomRepository.PHASE_GAME_OVER;
+        }
+
+        publishUiState(0);
     }
 
     @Override
@@ -557,6 +688,9 @@ public class SpojniceViewModel extends AndroidViewModel {
     }
 
     private int displayActivePlayerNumber() {
+        if (challengeMode) {
+            return gameOver ? 0 : 1;
+        }
         if (SpojniceRoomRepository.PHASE_FOLLOWUP.equals(phase)) {
             return playerNumberForUid(followupPlayerUidForRound(currentRound));
         }
@@ -577,6 +711,9 @@ public class SpojniceViewModel extends AndroidViewModel {
     }
 
     private String startingPlayerUid(int round) {
+        if (challengeMode) {
+            return myUid;
+        }
         String preferred;
         if (!playerOneUid.isEmpty() || !playerTwoUid.isEmpty()) {
             preferred = startingPlayerNumber(round) == 1 ? playerOneUid : playerTwoUid;

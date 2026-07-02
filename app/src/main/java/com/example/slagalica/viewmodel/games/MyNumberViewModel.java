@@ -93,6 +93,7 @@ public class MyNumberViewModel extends AndroidViewModel {
 
     public void stopTarget() {
         if (roomId.isEmpty()) {
+            startLocalChallengeNumbersPhase();
             return;
         }
 
@@ -105,6 +106,7 @@ public class MyNumberViewModel extends AndroidViewModel {
 
     public void stopNumbers() {
         if (roomId.isEmpty()) {
+            startLocalChallengeSolvingPhase();
             return;
         }
 
@@ -116,7 +118,12 @@ public class MyNumberViewModel extends AndroidViewModel {
     }
 
     public void submitExpression(@NonNull String expression) {
-        if (roomId.isEmpty() || expression.trim().isEmpty()) {
+        if (roomId.isEmpty()) {
+            finishLocalChallengeRound(expression);
+            return;
+        }
+
+        if (expression.trim().isEmpty()) {
             return;
         }
 
@@ -126,6 +133,30 @@ public class MyNumberViewModel extends AndroidViewModel {
                 expression,
                 error -> publishState(secondsLeft, error)
         );
+    }
+
+    public void startChallengeGame() {
+        roomId = "";
+        roomSession = null;
+        myUid = myNumberRepository.getCurrentUid() != null ? myNumberRepository.getCurrentUid() : "";
+        baseScoresCaptured = true;
+        basePlayerOneScore = 0;
+        basePlayerTwoScore = 0;
+        playerOneScore = 0;
+        playerTwoScore = 0;
+        currentRound = 1;
+        activePlayerNumber = 1;
+        activePlayerUid = myUid;
+        targetNumber = 0;
+        targetRevealed = false;
+        numbersRevealed = false;
+        roundOver = false;
+        gameOver = false;
+        currentUserExactHit = false;
+        numbers = new ArrayList<>();
+        phase = MyNumberRoomRepository.PHASE_TARGET;
+        lastStatusMessage = "Zaustavi trazeni broj.";
+        publishState(0, lastStatusMessage);
     }
 
     private void onRoomChanged(@NonNull RoomSession room) {
@@ -304,7 +335,7 @@ public class MyNumberViewModel extends AndroidViewModel {
                 && numbersRevealed
                 && !roundOver
                 && !gameOver
-                && isCurrentUserParticipant();
+                && (isCurrentUserParticipant() || roomSession == null);
 
         uiState.setValue(new MyNumberUiState(
                 currentRound,
@@ -458,5 +489,70 @@ public class MyNumberViewModel extends AndroidViewModel {
             }
         }
         return values;
+    }
+    private void startLocalChallengeNumbersPhase() {
+        targetNumber = 100 + (int) (Math.random() * 900);
+        targetRevealed = true;
+        phase = MyNumberRoomRepository.PHASE_NUMBERS;
+        lastStatusMessage = "Zaustavi ponudjene brojeve.";
+        publishState(0, lastStatusMessage);
+    }
+
+    private void startLocalChallengeSolvingPhase() {
+        numbers = new ArrayList<>();
+        numbers.add(1 + (int) (Math.random() * 9));
+        numbers.add(1 + (int) (Math.random() * 9));
+        numbers.add(1 + (int) (Math.random() * 9));
+        numbers.add(10 + (int) (Math.random() * 90));
+        numbers.add(25);
+        numbers.add(50);
+
+        numbersRevealed = true;
+        phase = MyNumberRoomRepository.PHASE_SOLVING;
+        lastStatusMessage = "Sastavi izraz pomocu ponudjenih brojeva.";
+        startLocalChallengeTimer(30);
+    }
+
+    private void startLocalChallengeTimer(int seconds) {
+        stopTimer();
+
+        secondsLeft = seconds;
+        publishState(secondsLeft, lastStatusMessage);
+
+        timer = new CountDownTimer(seconds * 1000L, TIMER_INTERVAL_MS) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                secondsLeft = secondsFromMillis(millisUntilFinished);
+                publishState(secondsLeft, lastStatusMessage);
+            }
+
+            @Override
+            public void onFinish() {
+                secondsLeft = 0;
+                finishLocalChallengeRound("");
+            }
+        };
+
+        timer.start();
+    }
+
+    private void finishLocalChallengeRound(@NonNull String expression) {
+        stopTimer();
+
+        if (gameOver) {
+            return;
+        }
+        int score = 0;
+        if (!expression.trim().isEmpty()) {
+            score = 5;
+        }
+
+        playerOneScore = score;
+        playerTwoScore = 0;
+        gameOver = true;
+        roundOver = true;
+        phase = MyNumberRoomRepository.PHASE_GAME_OVER;
+        lastStatusMessage = "Kraj igre. Osvojeno poena: " + score + ".";
+        publishState(0, lastStatusMessage);
     }
 }

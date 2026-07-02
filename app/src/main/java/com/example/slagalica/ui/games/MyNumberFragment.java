@@ -7,6 +7,8 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import java.util.Arrays;
+import java.util.ArrayList;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -22,6 +24,7 @@ import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.model.mynumber.MyNumberUiState;
 import com.example.slagalica.ui.room.RoomGameFlow;
 import com.example.slagalica.viewmodel.games.MyNumberViewModel;
+import com.example.slagalica.ui.challenge.ChallengeGameFlow;
 
 import android.content.Context;
 import android.hardware.Sensor;
@@ -68,7 +71,12 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
     private static final long SHAKE_COOLDOWN_MS = 1_000L;
 
     private boolean statsRecorded;
-
+    private Bundle challengeArgs;
+    private boolean challengeMode;
+    private final boolean[] usedNumberSlots = new boolean[NUMBER_COUNT];
+    private List<Integer> latestNumbers = new ArrayList<>();
+    private boolean latestNumbersRevealed;
+    private String lastNumbersKey = "";
     public MyNumberFragment() {
         // Required empty public constructor.
     }
@@ -92,6 +100,7 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
         viewModel = new ViewModelProvider(this).get(MyNumberViewModel.class);
 
         bindViews(view);
+        setupExpressionButtons(view);
         setupShakeSensor();
         setupGameHeader();
 
@@ -108,6 +117,10 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
             RoomGameFlow.registerRoomBackHandler(this, roomId);
+        } else if (args != null && ChallengeGameFlow.isChallengeGame(args)) {
+            challengeArgs = new Bundle(args);
+            challengeMode = true;
+            viewModel.startChallengeGame();
         } else {
             showUnavailableState();
         }
@@ -136,6 +149,75 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
         numberViews[3] = view.findViewById(R.id.number4);
         numberViews[4] = view.findViewById(R.id.number5);
         numberViews[5] = view.findViewById(R.id.number6);
+
+        for (int i = 0; i < NUMBER_COUNT; i++) {
+            int slot = i;
+            numberViews[i].setOnClickListener(v -> appendNumberFromSlot(slot));
+        }
+    }
+
+    private void setupExpressionButtons(@NonNull View view) {
+        view.findViewById(R.id.operatorPlus).setOnClickListener(v -> appendToken("+"));
+        view.findViewById(R.id.operatorMinus).setOnClickListener(v -> appendToken("-"));
+        view.findViewById(R.id.operatorMultiply).setOnClickListener(v -> appendToken("*"));
+        view.findViewById(R.id.operatorDivide).setOnClickListener(v -> appendToken("/"));
+        view.findViewById(R.id.operatorOpenParen).setOnClickListener(v -> appendToken("("));
+        view.findViewById(R.id.operatorCloseParen).setOnClickListener(v -> appendToken(")"));
+        view.findViewById(R.id.expressionClear).setOnClickListener(v -> clearExpression());
+    }
+
+    private void appendNumberFromSlot(int slot) {
+        if (!latestNumbersRevealed || slot < 0 || slot >= latestNumbers.size()) {
+            return;
+        }
+        if (usedNumberSlots[slot]) {
+            return;
+        }
+
+        appendToken(String.valueOf(latestNumbers.get(slot)));
+        usedNumberSlots[slot] = true;
+        updateNumberButtonsEnabled();
+    }
+
+    private void appendToken(@NonNull String token) {
+        if (!expressionInput.isEnabled()) {
+            return;
+        }
+
+        String current = expressionInput.getText() != null
+                ? expressionInput.getText().toString()
+                : "";
+
+        if (current.isEmpty()) {
+            expressionInput.setText(token);
+        } else {
+            expressionInput.append(" " + token);
+        }
+
+        expressionInput.setSelection(expressionInput.getText().length());
+    }
+
+    private void clearExpression() {
+        expressionInput.setText("");
+        Arrays.fill(usedNumberSlots, false);
+        updateNumberButtonsEnabled();
+    }
+
+    private void updateNumberButtonsEnabled() {
+        for (int i = 0; i < NUMBER_COUNT; i++) {
+            boolean available = latestNumbersRevealed
+                    && i < latestNumbers.size()
+                    && !usedNumberSlots[i]
+                    && expressionInput.isEnabled();
+
+            numberViews[i].setEnabled(available);
+            numberViews[i].setAlpha(available ? 1f : 0.45f);
+        }
+    }
+
+    @NonNull
+    private String numbersKey(@NonNull List<Integer> numbers, boolean numbersRevealed) {
+        return numbersRevealed + ":" + numbers.toString();
     }
 
     @Override
@@ -190,6 +272,17 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
 
         latestState = state;
 
+        String numbersKey = numbersKey(state.getNumbers(), state.isNumbersRevealed());
+        if (!numbersKey.equals(lastNumbersKey)) {
+            lastNumbersKey = numbersKey;
+            latestNumbers = new ArrayList<>(state.getNumbers());
+            latestNumbersRevealed = state.isNumbersRevealed();
+            clearExpression();
+        } else {
+            latestNumbers = new ArrayList<>(state.getNumbers());
+            latestNumbersRevealed = state.isNumbersRevealed();
+        }
+
         updateGameHeader(state);
         handleOnlineGameOver(state);
 
@@ -208,13 +301,23 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
 
         expressionInput.setEnabled(state.isCanSubmitExpression());
         submitButton.setEnabled(state.isCanSubmitExpression());
+        updateNumberButtonsEnabled();
 
         if (state.isGameOver()) {
+            updateNumberButtonsEnabled();
             submitButton.setText(R.string.back);
             submitButton.setEnabled(true);
-            submitButton.setOnClickListener(v ->
-                    NavHostFragment.findNavController(this).navigateUp()
-            );
+            submitButton.setOnClickListener(v -> {
+                if (challengeMode && challengeArgs != null) {
+                    ChallengeGameFlow.onGameFinished(
+                            this,
+                            challengeArgs,
+                            viewModel.getCurrentUserGameScore()
+                    );
+                } else {
+                    NavHostFragment.findNavController(this).navigateUp();
+                }
+            });
         } else {
             submitButton.setText(R.string.submit);
             submitButton.setOnClickListener(v -> submitExpression());
