@@ -32,7 +32,10 @@ public final class ChallengeGameFlow {
         nextArgs.putInt(ChallengeSessionFragment.ARG_GAME_INDEX, gameIndex + 1);
         nextArgs.putInt(ChallengeSessionFragment.ARG_TOTAL_SCORE, totalScore + gameScore);
 
-        NavHostFragment.findNavController(fragment)
-                .navigate(R.id.challengeSessionFragment, nextArgs);
+        androidx.navigation.NavController navController =
+                NavHostFragment.findNavController(fragment);
+
+        navController.popBackStack(R.id.challengeSessionFragment, true);
+        navController.navigate(R.id.challengeSessionFragment, nextArgs);
     }
 }
