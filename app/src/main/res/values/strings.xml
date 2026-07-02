@@ -408,4 +408,20 @@
 
     <string name="region_chat_button">Čet</string>
 
+    <string name="challenge_create">Postavi izazov</string>
+    <string name="challenge_title">Izazovi regiona</string>
+    <string name="challenge_empty">Nema aktivnih izazova za ovaj region.</string>
+    <string name="challenge_stake_stars">Zvezde za ulaganje</string>
+    <string name="challenge_stake_tokens">Tokeni za ulaganje</string>
+    <string name="challenge_create_dialog_title">Novi izazov</string>
+    <string name="challenge_accept">Prihvati</string>
+    <string name="challenge_results">Rezultat izazova</string>
+    <string name="challenge_play">Igraj</string>
+
+    <string name="challenge_session_title">Izazov</string>
+    <string name="challenge_session_status">Igra %1$d/%2$d: %3$s</string>
+    <string name="challenge_session_score">Ukupno poena: %1$d</string>
+    <string name="challenge_session_start">Nastavi izazov</string>
+    <string name="challenge_session_finish">Završi izazov</string>
+
 </resources>

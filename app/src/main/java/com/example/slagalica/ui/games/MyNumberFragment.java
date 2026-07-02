@@ -22,6 +22,7 @@ import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.model.mynumber.MyNumberUiState;
 import com.example.slagalica.ui.room.RoomGameFlow;
 import com.example.slagalica.viewmodel.games.MyNumberViewModel;
+import com.example.slagalica.ui.challenge.ChallengeGameFlow;
 
 import android.content.Context;
 import android.hardware.Sensor;
@@ -68,6 +69,8 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
     private static final long SHAKE_COOLDOWN_MS = 1_000L;
 
     private boolean statsRecorded;
+    private Bundle challengeArgs;
+    private boolean challengeMode;
 
     public MyNumberFragment() {
         // Required empty public constructor.
@@ -108,6 +111,10 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
             RoomGameFlow.registerRoomBackHandler(this, roomId);
+        } else if (args != null && ChallengeGameFlow.isChallengeGame(args)) {
+            challengeArgs = new Bundle(args);
+            challengeMode = true;
+            viewModel.startChallengeGame();
         } else {
             showUnavailableState();
         }
@@ -212,9 +219,17 @@ public class MyNumberFragment extends Fragment implements SensorEventListener {
         if (state.isGameOver()) {
             submitButton.setText(R.string.back);
             submitButton.setEnabled(true);
-            submitButton.setOnClickListener(v ->
-                    NavHostFragment.findNavController(this).navigateUp()
-            );
+            submitButton.setOnClickListener(v -> {
+                if (challengeMode && challengeArgs != null) {
+                    ChallengeGameFlow.onGameFinished(
+                            this,
+                            challengeArgs,
+                            viewModel.getCurrentUserGameScore()
+                    );
+                } else {
+                    NavHostFragment.findNavController(this).navigateUp();
+                }
+            });
         } else {
             submitButton.setText(R.string.submit);
             submitButton.setOnClickListener(v -> submitExpression());

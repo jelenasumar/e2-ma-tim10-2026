@@ -74,6 +74,10 @@
             android:id="@+id/action_home_to_regionChat"
             app:destination="@id/regionChatFragment" />
 
+        <action
+            android:id="@+id/action_regionMap_to_challengeSession"
+            app:destination="@id/challengeSessionFragment" />
+
 
     </fragment>
 
@@ -203,5 +207,10 @@
         android:id="@+id/regionChatFragment"
         android:name="com.example.slagalica.ui.chat.RegionChatFragment"
         android:label="@string/region_chat_title" />
+
+    <fragment
+        android:id="@+id/challengeSessionFragment"
+        android:name="com.example.slagalica.ui.challenge.ChallengeSessionFragment"
+        android:label="@string/challenge_session_title" />
 
 </navigation>
