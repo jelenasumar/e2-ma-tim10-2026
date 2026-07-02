@@ -40,12 +40,12 @@ public class HomeFragment extends Fragment {
             profileBtn.setVisibility(View.GONE);
             notificationsBtn.setVisibility(View.GONE);
             dailyMissionsBtn.setVisibility(View.GONE);
-            startOnlineMatchBtn.setVisibility(View.GONE);
             startTournamentBtn.setVisibility(View.GONE);
             inviteFriendsBtn.setVisibility(View.GONE);
             regionMapBtn.setVisibility(View.GONE);
             rankingBtn.setVisibility(View.GONE);
             regionChatBtn.setVisibility(View.GONE);
+            logoutBtn.setText(R.string.back);
         }
 
         profileBtn.setOnClickListener(v -> {

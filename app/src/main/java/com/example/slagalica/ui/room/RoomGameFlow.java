@@ -6,11 +6,13 @@ import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Lifecycle;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.data.repository.RoomSessionRepository;
 import com.example.slagalica.model.RoomGameKeys;
 import com.example.slagalica.model.RoomSession;
+import com.google.firebase.firestore.ListenerRegistration;
 import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AlertDialog;
@@ -93,6 +95,35 @@ public final class RoomGameFlow {
                         confirmAbandonOrNavigateUp(fragment, roomId);
                     }
                 });
+
+        registerRoomFinishedListener(fragment, roomId);
+    }
+
+    private static void registerRoomFinishedListener(@NonNull Fragment fragment, @NonNull String roomId) {
+        RoomSessionRepository repository = new RoomSessionRepository();
+        final boolean[] navigatedBack = {false};
+        ListenerRegistration listener = repository.listenRoom(
+                roomId,
+                room -> {
+                    if (navigatedBack[0] || !fragment.isAdded()) {
+                        return;
+                    }
+                    if (RoomGameKeys.STATUS_FINISHED.equals(room.getStatus())
+                            || !room.getAbandonedByUid().isEmpty()) {
+                        navigatedBack[0] = true;
+                        navigateUpIfAdded(fragment);
+                    }
+                },
+                error -> { }
+        );
+        fragment.getViewLifecycleOwner().getLifecycle().addObserver(
+                new androidx.lifecycle.DefaultLifecycleObserver() {
+                    @Override
+                    public void onDestroy(@NonNull androidx.lifecycle.LifecycleOwner owner) {
+                        listener.remove();
+                    }
+                }
+        );
     }
 
     public static void confirmAbandonOrNavigateUp(@NonNull Fragment fragment, @NonNull String roomId) {

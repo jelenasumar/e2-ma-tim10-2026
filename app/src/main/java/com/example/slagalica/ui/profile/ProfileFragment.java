@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
+import com.example.slagalica.data.repository.UserProfileRepository;
 import com.example.slagalica.model.SerbiaRegion;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.ui.auth.LoginActivity;
@@ -33,6 +34,7 @@ import java.util.Locale;
 public class ProfileFragment extends Fragment {
 
     private ProfileViewModel viewModel;
+    private UserProfileRepository profileRepository;
 
     public ProfileFragment() {
         super(R.layout.fragment_profile);
@@ -51,6 +53,7 @@ public class ProfileFragment extends Fragment {
         view.findViewById(R.id.profile_back).setOnClickListener(v ->
                 NavHostFragment.findNavController(this).navigate(R.id.homeFragment)
         );
+        profileRepository = new UserProfileRepository(requireContext());
 
         view.findViewById(R.id.profile_change_avatar).setOnClickListener(v -> showAvatarPicker());
 
@@ -141,6 +144,13 @@ public class ProfileFragment extends Fragment {
         TextView email = root.findViewById(R.id.profile_email);
         username.setText(profile.getUsername());
         email.setText(profile.getEmail());
+
+        boolean registered = profileRepository == null || profileRepository.isRegisteredPlayer();
+        int profileRewardsVisibility = registered ? View.VISIBLE : View.GONE;
+        root.findViewById(R.id.profile_tokens_row).setVisibility(profileRewardsVisibility);
+        root.findViewById(R.id.profile_stars_row).setVisibility(profileRewardsVisibility);
+        root.findViewById(R.id.profile_monthly_stars_row).setVisibility(profileRewardsVisibility);
+        root.findViewById(R.id.profile_league_row).setVisibility(profileRewardsVisibility);
 
         TextView tokens = root.findViewById(R.id.profile_tokens_value);
         TextView stars = root.findViewById(R.id.profile_stars_value);

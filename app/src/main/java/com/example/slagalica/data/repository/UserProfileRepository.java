@@ -89,6 +89,21 @@ public final class UserProfileRepository {
         remote.signInAnonymously(onSuccess, onError);
     }
 
+    public void ensureGuestAuthenticated(
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (remote.isAnonymousUser()) {
+            onSuccess.run();
+            return;
+        }
+        if (remote.isLoggedIn()) {
+            remote.signOut();
+            preferences.clearSessionFields();
+        }
+        remote.signInAnonymously(onSuccess, onError);
+    }
+
     @NonNull
     public UserProfile loadProfile() {
         return preferences.loadProfile();

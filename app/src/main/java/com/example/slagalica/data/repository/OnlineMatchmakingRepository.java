@@ -3,6 +3,7 @@ package com.example.slagalica.data.repository;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.example.slagalica.model.RoomGameKeys;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
@@ -23,6 +24,10 @@ public final class OnlineMatchmakingRepository {
 
     private static final int MATCH_ENTRY_FEE = 1;
     private static final String NO_TOKENS = "NO_TOKENS";
+    private static final String PLAYER_TYPE_GUEST = "GUEST";
+    private static final String PLAYER_TYPE_REGISTERED = "REGISTERED";
+    private static final String MATCH_TYPE_GUEST = "GUEST";
+    private static final String MATCH_TYPE_RANDOM = "RANDOM";
 
     private final FirebaseAuth auth = FirebaseAuth.getInstance();
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
@@ -45,6 +50,13 @@ public final class OnlineMatchmakingRepository {
         }
 
         String uid = currentUser.getUid();
+        String playerType = currentUser.isAnonymous() ? PLAYER_TYPE_GUEST : PLAYER_TYPE_REGISTERED;
+        if (PLAYER_TYPE_GUEST.equals(playerType)) {
+            String username = guestUsername(uid);
+            continueGuestMatchmaking(uid, username, onMatched, onWaiting, onError);
+            return;
+        }
+
         db.collection(USERS).document(uid).get()
                 .addOnSuccessListener(myProfile ->
                         reserveMatchToken(
@@ -58,7 +70,14 @@ public final class OnlineMatchmakingRepository {
                                         onWaiting.run();
                                         return;
                                     }
-                                    findOpponentOrWait(uid, myProfile, onMatched, onWaiting, onError);
+                                    findOpponentOrWait(
+                                            uid,
+                                            stringOrDefault(myProfile.getString("username"), "Igrac"),
+                                            playerType,
+                                            onMatched,
+                                            onWaiting,
+                                            onError
+                                    );
                                 },
                                 onError
                         ))
@@ -85,7 +104,13 @@ public final class OnlineMatchmakingRepository {
                         String status = snapshot.getString("status");
                         String roomId = snapshot.getString("roomId");
                         if ("MATCHED".equals(status) && roomId != null && !roomId.isEmpty()) {
-                            onMatched.accept(roomId);
+                            validateMatchedRoomOrClearQueue(
+                                    uid,
+                                    roomId,
+                                    onMatched,
+                                    () -> { },
+                                    onError
+                            );
                         }
                     }
                 });
@@ -100,6 +125,7 @@ public final class OnlineMatchmakingRepository {
 
         DocumentReference userRef = db.collection(USERS).document(uid);
         DocumentReference queueRef = db.collection(QUEUE).document(uid);
+        boolean guest = isCurrentUserGuest();
 
         db.runTransaction(transaction -> {
             DocumentSnapshot queueDoc = transaction.get(queueRef);
@@ -110,7 +136,9 @@ public final class OnlineMatchmakingRepository {
             String status = queueDoc.getString("status");
             if ("WAITING".equals(status)) {
                 transaction.delete(queueRef);
-                transaction.update(userRef, "tokens", FieldValue.increment(MATCH_ENTRY_FEE));
+                if (!guest) {
+                    transaction.update(userRef, "tokens", FieldValue.increment(MATCH_ENTRY_FEE));
+                }
             }
 
             return null;
@@ -173,47 +201,125 @@ public final class OnlineMatchmakingRepository {
                 .addOnCompleteListener(task -> onDone.run());
     }
 
+    private void continueGuestMatchmaking(
+            @NonNull String uid,
+            @NonNull String username,
+            @NonNull Consumer<String> onMatched,
+            @NonNull Runnable onWaiting,
+            @NonNull Consumer<String> onError
+    ) {
+        db.collection(QUEUE)
+                .document(uid)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (snapshot.exists()) {
+                        String status = stringOrDefault(snapshot.getString("status"), "");
+                        String roomId = stringOrDefault(snapshot.getString("roomId"), "");
+                        if ("MATCHED".equals(status) && !roomId.isEmpty()) {
+                            validateMatchedRoomOrClearQueue(
+                                    uid,
+                                    roomId,
+                                    onMatched,
+                                    () -> findOpponentOrWait(
+                                            uid,
+                                            username,
+                                            PLAYER_TYPE_GUEST,
+                                            onMatched,
+                                            onWaiting,
+                                            onError
+                                    ),
+                                    onError
+                            );
+                            return;
+                        }
+                        if ("WAITING".equals(status)
+                                && PLAYER_TYPE_GUEST.equals(snapshot.getString("playerType"))) {
+                            onWaiting.run();
+                            return;
+                        }
+                    }
+                    findOpponentOrWait(uid, username, PLAYER_TYPE_GUEST, onMatched, onWaiting, onError);
+                })
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Guest matchmaking failed.")));
+    }
+
+    private void validateMatchedRoomOrClearQueue(
+            @NonNull String uid,
+            @NonNull String roomId,
+            @NonNull Consumer<String> onMatched,
+            @NonNull Runnable onStale,
+            @NonNull Consumer<String> onError
+    ) {
+        db.collection(ROOMS)
+                .document(roomId)
+                .get()
+                .addOnSuccessListener(room -> {
+                    String status = room.exists()
+                            ? stringOrDefault(room.getString("status"), "")
+                            : "";
+                    String abandonedByUid = room.exists()
+                            ? stringOrDefault(room.getString("abandonedByUid"), "")
+                            : "";
+                    if (room.exists()
+                            && abandonedByUid.isEmpty()
+                            && !RoomGameKeys.STATUS_FINISHED.equals(status)) {
+                        onMatched.accept(roomId);
+                        return;
+                    }
+                    db.collection(QUEUE)
+                            .document(uid)
+                            .delete()
+                            .addOnCompleteListener(task -> onStale.run());
+                })
+                .addOnFailureListener(e -> onError.accept(messageOrDefault(e, "Matched room could not be checked.")));
+    }
+
     private void findOpponentOrWait(
             @NonNull String uid,
-            @NonNull DocumentSnapshot myProfile,
+            @NonNull String username,
+            @NonNull String playerType,
             @NonNull Consumer<String> onMatched,
             @NonNull Runnable onWaiting,
             @NonNull Consumer<String> onError
     ) {
         db.collection(QUEUE)
                 .whereEqualTo("status", "WAITING")
-                .limit(5)
+                .limit(50)
                 .get()
                 .addOnSuccessListener(snapshot -> {
                     DocumentSnapshot opponent = null;
                     for (DocumentSnapshot document : snapshot.getDocuments()) {
-                        if (!document.getId().equals(uid)) {
+                        if (!document.getId().equals(uid)
+                                && matchesPlayerType(document, playerType)) {
                             opponent = document;
                             break;
                         }
                     }
 
                     if (opponent == null) {
-                        createWaitingEntry(uid, myProfile, onWaiting, onError);
+                        createWaitingEntry(uid, username, playerType, onWaiting, onError);
                     } else {
-                        createRoomFromMatch(uid, myProfile, opponent, onMatched, onError);
+                        createRoomFromMatch(uid, username, playerType, opponent, onMatched, onError);
                     }
                 })
-                .addOnFailureListener(e -> refundReservedMatchToken(
+                .addOnFailureListener(e -> refundMatchEntryIfRegistered(
                         uid,
+                        playerType,
                         () -> onError.accept(messageOrDefault(e, "Opponent search failed."))
                 ));
     }
 
     private void createWaitingEntry(
             @NonNull String uid,
-            @NonNull DocumentSnapshot myProfile,
+            @NonNull String username,
+            @NonNull String playerType,
             @NonNull Runnable onWaiting,
             @NonNull Consumer<String> onError
     ) {
         Map<String, Object> entry = new HashMap<>();
         entry.put("uid", uid);
-        entry.put("username", stringOrDefault(myProfile.getString("username"), "Igrac"));
+        entry.put("username", username);
+        entry.put("playerType", playerType);
         entry.put("status", "WAITING");
         entry.put("roomId", "");
         entry.put("createdAt", FieldValue.serverTimestamp());
@@ -222,22 +328,23 @@ public final class OnlineMatchmakingRepository {
                 .document(uid)
                 .set(entry)
                 .addOnSuccessListener(unused -> onWaiting.run())
-                .addOnFailureListener(e -> refundReservedMatchToken(
+                .addOnFailureListener(e -> refundMatchEntryIfRegistered(
                         uid,
+                        playerType,
                         () -> onError.accept(messageOrDefault(e, "Queue entry failed."))
                 ));
     }
 
     private void createRoomFromMatch(
             @NonNull String uid,
-            @NonNull DocumentSnapshot myProfile,
+            @NonNull String myUsername,
+            @NonNull String playerType,
             @NonNull DocumentSnapshot opponent,
             @NonNull Consumer<String> onMatched,
             @NonNull Consumer<String> onError
     ) {
         String opponentUid = opponent.getId();
         String opponentUsername = stringOrDefault(opponent.getString("username"), "Protivnik");
-        String myUsername = stringOrDefault(myProfile.getString("username"), "Igrac");
         DocumentReference roomRef = db.collection(ROOMS).document();
         DocumentReference myQueueRef = db.collection(QUEUE).document(uid);
         DocumentReference opponentQueueRef = db.collection(QUEUE).document(opponentUid);
@@ -253,7 +360,8 @@ public final class OnlineMatchmakingRepository {
         room.put("currentGameIndex", 0);
         room.put("gameOrder", com.example.slagalica.model.RoomGameKeys.DEFAULT_GAME_ORDER);
         room.put("status", "READY");
-        room.put("matchType", "RANDOM");
+        room.put("matchType", PLAYER_TYPE_GUEST.equals(playerType) ? MATCH_TYPE_GUEST : MATCH_TYPE_RANDOM);
+        room.put("playerType", playerType);
         room.put("createdAt", FieldValue.serverTimestamp());
         room.put("updatedAt", FieldValue.serverTimestamp());
 
@@ -264,11 +372,12 @@ public final class OnlineMatchmakingRepository {
 
         db.runBatch(batch -> {
                     batch.set(roomRef, room);
-                    batch.set(myQueueRef, queueEntry(uid, myUsername, roomRef.getId()));
+                    batch.set(myQueueRef, queueEntry(uid, myUsername, playerType, roomRef.getId()));
                     batch.update(opponentQueueRef, matchedUpdate);
                 }).addOnSuccessListener(unused -> onMatched.accept(roomRef.getId()))
-                .addOnFailureListener(e -> refundReservedMatchToken(
+                .addOnFailureListener(e -> refundMatchEntryIfRegistered(
                         uid,
+                        playerType,
                         () -> onError.accept(messageOrDefault(e, "Room creation failed."))
                 ));
     }
@@ -277,16 +386,56 @@ public final class OnlineMatchmakingRepository {
     private static Map<String, Object> queueEntry(
             @NonNull String uid,
             @NonNull String username,
+            @NonNull String playerType,
             @NonNull String roomId
     ) {
         Map<String, Object> entry = new HashMap<>();
         entry.put("uid", uid);
         entry.put("username", username);
+        entry.put("playerType", playerType);
         entry.put("status", "MATCHED");
         entry.put("roomId", roomId);
         entry.put("createdAt", FieldValue.serverTimestamp());
         entry.put("matchedAt", FieldValue.serverTimestamp());
         return entry;
+    }
+
+    private static boolean matchesPlayerType(
+            @NonNull DocumentSnapshot document,
+            @NonNull String playerType
+    ) {
+        String documentPlayerType = document.getString("playerType");
+        if (PLAYER_TYPE_GUEST.equals(playerType)) {
+            return PLAYER_TYPE_GUEST.equals(documentPlayerType);
+        }
+        return documentPlayerType == null
+                || documentPlayerType.isEmpty()
+                || PLAYER_TYPE_REGISTERED.equals(documentPlayerType);
+    }
+
+    private void refundMatchEntryIfRegistered(
+            @NonNull String uid,
+            @NonNull String playerType,
+            @NonNull Runnable onDone
+    ) {
+        if (PLAYER_TYPE_GUEST.equals(playerType)) {
+            onDone.run();
+            return;
+        }
+        refundReservedMatchToken(uid, onDone);
+    }
+
+    private boolean isCurrentUserGuest() {
+        FirebaseUser user = auth.getCurrentUser();
+        return user != null && user.isAnonymous();
+    }
+
+    @NonNull
+    private static String guestUsername(@NonNull String uid) {
+        if (uid.length() >= 4) {
+            return "Gost " + uid.substring(uid.length() - 4);
+        }
+        return "Gost";
     }
 
     private static long longOrZero(@Nullable Object value) {

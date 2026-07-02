@@ -20,7 +20,6 @@ public final class RoomSessionRepository {
     private static final String ROOMS = "rooms";
 
     private static final String FINISH_REASON_ABANDONED = "ABANDONED";
-    private static final String MATCH_TYPE_TOURNAMENT = "TOURNAMENT";
 
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
@@ -124,14 +123,9 @@ public final class RoomSessionRepository {
         updates.put("finishReason", FINISH_REASON_ABANDONED);
         updates.put("abandonedByUid", uid);
         updates.put("abandonedAt", FieldValue.serverTimestamp());
+        updates.put("status", RoomGameKeys.STATUS_FINISHED);
+        updates.put("breakEndsAtMillis", FieldValue.delete());
         updates.put("updatedAt", FieldValue.serverTimestamp());
-
-        if (MATCH_TYPE_TOURNAMENT.equals(room.getMatchType())) {
-            updates.put("status", RoomGameKeys.STATUS_FINISHED);
-            updates.put("breakEndsAtMillis", FieldValue.delete());
-        } else if (RoomGameKeys.STATUS_BREAK.equals(room.getStatus())) {
-            updates.put("breakEndsAtMillis", System.currentTimeMillis());
-        }
 
         db.collection(ROOMS)
                 .document(room.getRoomId())

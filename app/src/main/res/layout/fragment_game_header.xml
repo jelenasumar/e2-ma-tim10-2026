@@ -96,11 +96,13 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/gameHeaderProfileSummary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:visibility="gone">
 
         <TextView
             android:id="@+id/gameHeaderTokens"
