@@ -20,9 +20,12 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
 import com.example.slagalica.data.repository.GameInviteRepository;
+import com.example.slagalica.data.repository.LeagueRepository;
 import com.example.slagalica.data.repository.NotificationsRepository;
+import com.example.slagalica.data.repository.RankingRepository;
 import com.example.slagalica.model.LeagueChangeEvent;
 import com.example.slagalica.model.NotificationAction;
+import com.example.slagalica.model.NotificationCategory;
 import com.example.slagalica.model.SystemNotification;
 import com.example.slagalica.utils.LeagueChangeNotifier;
 import com.google.firebase.firestore.ListenerRegistration;
@@ -40,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String EXTRA_GUEST_MODE = "com.example.slagalica.EXTRA_GUEST_MODE";
     public static final String EXTRA_OPEN_NOTIFICATIONS = "com.example.slagalica.EXTRA_OPEN_NOTIFICATIONS";
+    public static final String EXTRA_OPEN_NOTIFICATION_ID = "com.example.slagalica.EXTRA_OPEN_NOTIFICATION_ID";
     public static final String EXTRA_OPEN_ROOM_ID = "com.example.slagalica.EXTRA_OPEN_ROOM_ID";
     public static final String EXTRA_OPEN_CHAT = "com.example.slagalica.EXTRA_OPEN_CHAT";
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1001;
@@ -50,9 +54,12 @@ public class MainActivity extends AppCompatActivity {
     private final Handler inviteExpireHandler = new Handler(Looper.getMainLooper());
     private GameInviteRepository inviteRepository;
     private NotificationsRepository notificationsRepository;
+    private RankingRepository rankingRepository;
+    private LeagueRepository leagueRepository;
     private ListenerRegistration notificationsListener;
     private boolean initialNotificationsLoaded;
     private boolean appInForeground;
+    private boolean rankingCycleProcessingRequested;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
         requestNotificationPermissionIfNeeded();
         inviteRepository = new GameInviteRepository();
         notificationsRepository = new NotificationsRepository(this);
+        rankingRepository = new RankingRepository(this);
+        leagueRepository = new LeagueRepository(this);
         listenForSystemNotifications();
         observeLeagueChanges();
         openRequestedDestination(getIntent());
@@ -144,6 +153,7 @@ public class MainActivity extends AppCompatActivity {
                 knownNotifications.put(notification.getId(), notification);
             }
             initialNotificationsLoaded = true;
+            processFinishedRankingCyclesOnce();
             return;
         }
 
@@ -151,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
             SystemNotification previous = knownNotifications.get(notification.getId());
             if (previous == null) {
                 if (knownNotificationIds.add(notification.getId())) {
-                    if (!appInForeground || notification.getAction() == NotificationAction.ACCEPT_INVITE) {
+                    if (shouldShowSystemNotification(notification)) {
                         notificationsRepository.showSystemNotification(notification);
                     }
                     scheduleInviteExpiration(notification);
@@ -170,6 +180,47 @@ public class MainActivity extends AppCompatActivity {
             }
             knownNotifications.put(notification.getId(), notification);
         }
+    }
+
+    private boolean shouldShowSystemNotification(@NonNull SystemNotification notification) {
+        if (!appInForeground || notification.getAction() == NotificationAction.ACCEPT_INVITE) {
+            return true;
+        }
+        return notification.getCategory() == NotificationCategory.REWARD
+                || notification.getCategory() == NotificationCategory.RANKING;
+    }
+
+    private void processFinishedRankingCyclesOnce() {
+        if (rankingCycleProcessingRequested || rankingRepository == null) {
+            return;
+        }
+        rankingCycleProcessingRequested = true;
+        rankingRepository.processFinishedCyclePlacements(
+                RankingRepository.CycleType.WEEKLY,
+                () -> { },
+                error -> { }
+        );
+        rankingRepository.processFinishedCyclePlacements(
+                RankingRepository.CycleType.MONTHLY,
+                () -> { },
+                error -> { }
+        );
+        rankingRepository.processFinishedCycleRewards(
+                RankingRepository.CycleType.WEEKLY,
+                () -> { },
+                reward -> { },
+                error -> { }
+        );
+        rankingRepository.processFinishedCycleRewards(
+                RankingRepository.CycleType.MONTHLY,
+                () -> leagueRepository.processMonthlyPenaltyForCurrentUser(
+                        null,
+                        message -> { },
+                        error -> { }
+                ),
+                reward -> { },
+                error -> { }
+        );
     }
 
     private boolean shouldDismissNotification(
@@ -238,6 +289,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         intent.removeExtra(EXTRA_OPEN_NOTIFICATIONS);
+        String notificationId = intent.getStringExtra(EXTRA_OPEN_NOTIFICATION_ID);
+        intent.removeExtra(EXTRA_OPEN_NOTIFICATION_ID);
         NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.nav_host_fragment);
         if (navHostFragment == null) {
@@ -249,7 +302,11 @@ public class MainActivity extends AppCompatActivity {
                 || navController.getCurrentDestination().getId() == R.id.notificationsFragment) {
             return;
         }
-        navController.navigate(R.id.notificationsFragment);
+        Bundle args = new Bundle();
+        if (notificationId != null && !notificationId.isEmpty()) {
+            args.putString("notificationId", notificationId);
+        }
+        navController.navigate(R.id.notificationsFragment, args);
     }
 
     private void openRoomIfRequested(Intent intent) {

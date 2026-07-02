@@ -129,6 +129,13 @@ public class GameHeaderFragment extends Fragment {
             profileRepository = new UserProfileRepository(requireContext());
         }
 
+        View profileSummary = view.findViewById(R.id.gameHeaderProfileSummary);
+        if (!profileRepository.isRegisteredPlayer()) {
+            profileSummary.setVisibility(View.GONE);
+            return;
+        }
+        profileSummary.setVisibility(View.VISIBLE);
+
         UserProfile profile = currentProfile != null ? currentProfile : profileRepository.loadProfile();
 
         TextView tokens = view.findViewById(R.id.gameHeaderTokens);

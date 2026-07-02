@@ -95,6 +95,7 @@ public final class NotificationsRepository {
             intent.putExtra(MainActivity.EXTRA_OPEN_CHAT, true);
         } else {
             intent.putExtra(MainActivity.EXTRA_OPEN_NOTIFICATIONS, true);
+            intent.putExtra(MainActivity.EXTRA_OPEN_NOTIFICATION_ID, notification.getId());
         }
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 appContext,

@@ -96,6 +96,7 @@
             tools:text="email@example.com" />
 
         <LinearLayout
+            android:id="@+id/profile_tokens_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -118,6 +119,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/profile_stars_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -140,6 +142,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/profile_monthly_stars_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -162,6 +165,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/profile_league_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"

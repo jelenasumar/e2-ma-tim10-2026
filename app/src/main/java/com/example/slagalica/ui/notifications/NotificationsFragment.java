@@ -36,9 +36,13 @@ import java.util.List;
 
 public class NotificationsFragment extends Fragment {
 
+    private static final String ARG_NOTIFICATION_ID = "notificationId";
+
     private NotificationsViewModel viewModel;
     private LinearLayout notificationsContainer;
     private boolean navigatedToRoom = false;
+    private String pendingNotificationId = "";
+    private boolean pendingNotificationHandled;
 
     public NotificationsFragment() {
         super(R.layout.fragment_notifications);
@@ -50,6 +54,8 @@ public class NotificationsFragment extends Fragment {
 
         viewModel = new ViewModelProvider(this).get(NotificationsViewModel.class);
         notificationsContainer = view.findViewById(R.id.notificationsContainer);
+        Bundle args = getArguments();
+        pendingNotificationId = args != null ? args.getString(ARG_NOTIFICATION_ID, "") : "";
 
         Button backBtn = view.findViewById(R.id.backButton);
         Spinner categoryFilterSpinner = view.findViewById(R.id.categoryFilterSpinner);
@@ -63,7 +69,10 @@ public class NotificationsFragment extends Fragment {
         setupCategorySpinner(categoryFilterSpinner);
         setupStatusSpinner(statusFilterSpinner);
 
-        viewModel.getVisibleNotifications().observe(getViewLifecycleOwner(), this::renderNotifications);
+        viewModel.getVisibleNotifications().observe(getViewLifecycleOwner(), notifications -> {
+            renderNotifications(notifications);
+            handlePendingNotification(notifications);
+        });
         viewModel.getMessage().observe(getViewLifecycleOwner(), message -> {
             if (message != null && !message.isEmpty()) {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
@@ -155,6 +164,19 @@ public class NotificationsFragment extends Fragment {
 
         for (SystemNotification notification : notifications) {
             notificationsContainer.addView(createNotificationCard(notification));
+        }
+    }
+
+    private void handlePendingNotification(@NonNull List<SystemNotification> notifications) {
+        if (pendingNotificationHandled || pendingNotificationId.isEmpty()) {
+            return;
+        }
+        for (SystemNotification notification : notifications) {
+            if (pendingNotificationId.equals(notification.getId())) {
+                pendingNotificationHandled = true;
+                handleNotificationClick(notification);
+                return;
+            }
         }
     }
 
