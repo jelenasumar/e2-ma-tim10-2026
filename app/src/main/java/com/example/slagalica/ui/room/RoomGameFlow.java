@@ -6,7 +6,6 @@ import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Lifecycle;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.data.repository.RoomSessionRepository;
@@ -108,8 +107,7 @@ public final class RoomGameFlow {
                     if (navigatedBack[0] || !fragment.isAdded()) {
                         return;
                     }
-                    if (RoomGameKeys.STATUS_FINISHED.equals(room.getStatus())
-                            || !room.getAbandonedByUid().isEmpty()) {
+                    if (RoomGameKeys.STATUS_FINISHED.equals(room.getStatus())) {
                         navigatedBack[0] = true;
                         navigateUpIfAdded(fragment);
                     }
