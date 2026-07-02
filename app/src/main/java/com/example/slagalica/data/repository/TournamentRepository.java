@@ -7,6 +7,7 @@ import androidx.annotation.Nullable;
 
 import com.example.slagalica.data.local.UserPreferences;
 import com.example.slagalica.data.remote.FireBaseUserDataSource;
+import com.example.slagalica.model.DailyMissionProgress;
 import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.RoomGameKeys;
 import com.example.slagalica.model.RoomSession;
@@ -24,6 +25,7 @@ import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.SetOptions;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -253,7 +255,8 @@ public final class TournamentRepository {
                             currentIsHost ? room.getGuestTotalScore() : room.getHostTotalScore(),
                             currentIsHost ? hostStarsDelta : guestStarsDelta,
                             currentIsHost ? hostTokensDelta : guestTokensDelta,
-                            shouldUpdateStats(room, uid)
+                            shouldUpdateStats(room, uid),
+                            dailyMissionsForTournamentRoom(uid, winnerUid)
                     )), SetOptions.merge());
 
                     Map<String, Object> result = matchResult(room, winnerUid, loserUid, hostStarsDelta, guestStarsDelta);
@@ -395,7 +398,8 @@ public final class TournamentRepository {
             int opponentScore,
             int starsDelta,
             int tokensDelta,
-            boolean updateStats
+            boolean updateStats,
+            @NonNull List<String> dailyMissionKeys
     ) {
         UserProfile.Builder builder = profile.toBuilder().tokens(Math.max(0L, profile.getTokens() + tokensDelta));
         if (updateStats) {
@@ -408,11 +412,25 @@ public final class TournamentRepository {
                     .monthlyStars(Math.max(0L, monthlyStars + starsDelta))
                     .starsCycleKey(currentCycle);
         }
-        UserProfile updated = builder.build();
-        if (starsDelta == 0) {
+        UserProfile updated = DailyMissionRewardHelper.applyCompletedMissions(builder.build(), dailyMissionKeys);
+        if (updated.getTotalStars() == profile.getTotalStars()) {
             return updated;
         }
         return leagueRepository.syncProfile(updated, profile, true).getProfile();
+    }
+
+    @NonNull
+    private static List<String> dailyMissionsForTournamentRoom(
+            @NonNull String uid,
+            @NonNull String winnerUid
+    ) {
+        if (!uid.equals(winnerUid)) {
+            return Collections.emptyList();
+        }
+        return Arrays.asList(
+                DailyMissionProgress.MISSION_WIN_MATCH,
+                DailyMissionProgress.MISSION_WIN_TOURNAMENT
+        );
     }
 
     @NonNull

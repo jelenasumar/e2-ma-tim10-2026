@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 
 import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.SerbiaRegion;
+import com.example.slagalica.model.DailyMissionProgress;
 import com.example.slagalica.model.UserProfile;
 import com.google.firebase.firestore.DocumentSnapshot;
 
@@ -41,6 +42,7 @@ public final class UserProfileMapper {
         map.put("lastActiveAt", profile.getLastActiveAt());
         map.put("invitePayload", profile.getInvitePayload());
         map.put("statistics", statisticsToMap(profile.getStatistics()));
+        map.put("dailyMissions", dailyMissionsToMap(profile.getDailyMissionProgress()));
         return map;
     }
 
@@ -74,7 +76,39 @@ public final class UserProfileMapper {
                 stringOrEmpty(document.getString("regionRankFrame")),
                 longOrZero(document.get("lastActiveAt")),
                 stringOrEmpty(document.getString("invitePayload")),
-                stats
+                stats,
+                dailyMissionsFromMap(document.get("dailyMissions"))
+        );
+    }
+
+    @NonNull
+    private static Map<String, Object> dailyMissionsToMap(@NonNull DailyMissionProgress progress) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("dateKey", progress.getDateKey());
+        map.put("wonMatch", progress.hasWonMatch());
+        map.put("sentChatMessage", progress.hasSentChatMessage());
+        map.put("playedFriendlyMatch", progress.hasPlayedFriendlyMatch());
+        map.put("wonTournamentMatch", progress.hasWonTournamentMatch());
+        map.put("completionBonusClaimed", progress.isCompletionBonusClaimed());
+        return map;
+    }
+
+    @NonNull
+    private static DailyMissionProgress dailyMissionsFromMap(@Nullable Object raw) {
+        if (!(raw instanceof Map)) {
+            return DailyMissionProgress.empty("");
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> map = (Map<String, Object>) raw;
+
+        return new DailyMissionProgress(
+                stringOrEmpty(map.get("dateKey")),
+                booleanOrFalse(map.get("wonMatch")),
+                booleanOrFalse(map.get("sentChatMessage")),
+                booleanOrFalse(map.get("playedFriendlyMatch")),
+                booleanOrFalse(map.get("wonTournamentMatch")),
+                booleanOrFalse(map.get("completionBonusClaimed"))
         );
     }
 
@@ -213,5 +247,12 @@ public final class UserProfileMapper {
             return ((Number) value).intValue();
         }
         return 0;
+    }
+
+    private static boolean booleanOrFalse(@Nullable Object value) {
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        return false;
     }
 }

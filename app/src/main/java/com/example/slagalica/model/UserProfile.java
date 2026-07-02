@@ -21,6 +21,7 @@ public final class UserProfile {
     private final long lastActiveAt;
     private final String invitePayload;
     private final PlayerStatistics statistics;
+    private final DailyMissionProgress dailyMissionProgress;
 
     public UserProfile(
             String username,
@@ -39,7 +40,8 @@ public final class UserProfile {
             String regionRankFrame,
             long lastActiveAt,
             String invitePayload,
-            PlayerStatistics statistics
+            PlayerStatistics statistics,
+            DailyMissionProgress dailyMissionProgress
     ) {
         this.username = username;
         this.email = email;
@@ -58,6 +60,7 @@ public final class UserProfile {
         this.lastActiveAt = lastActiveAt;
         this.invitePayload = invitePayload;
         this.statistics = statistics;
+        this.dailyMissionProgress = dailyMissionProgress;
     }
 
     @NonNull
@@ -133,6 +136,10 @@ public final class UserProfile {
         return statistics;
     }
 
+    public DailyMissionProgress getDailyMissionProgress() {
+        return dailyMissionProgress;
+    }
+
     public static final class Builder {
         private String username;
         private String email;
@@ -151,6 +158,7 @@ public final class UserProfile {
         private long lastActiveAt;
         private String invitePayload;
         private PlayerStatistics statistics;
+        private DailyMissionProgress dailyMissionProgress = DailyMissionProgress.empty("");
 
         public Builder() {
         }
@@ -173,6 +181,7 @@ public final class UserProfile {
             this.lastActiveAt = profile.lastActiveAt;
             this.invitePayload = profile.invitePayload;
             this.statistics = profile.statistics;
+            this.dailyMissionProgress = profile.dailyMissionProgress;
         }
 
         public Builder username(String value) {
@@ -260,6 +269,11 @@ public final class UserProfile {
             return this;
         }
 
+        public Builder dailyMissionProgress(DailyMissionProgress value) {
+            dailyMissionProgress = value;
+            return this;
+        }
+
         @NonNull
         public UserProfile build() {
             return new UserProfile(
@@ -279,7 +293,8 @@ public final class UserProfile {
                     regionRankFrame,
                     lastActiveAt,
                     invitePayload,
-                    statistics
+                    statistics,
+                    dailyMissionProgress
             );
         }
     }

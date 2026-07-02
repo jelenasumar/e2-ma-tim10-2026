@@ -8,90 +8,107 @@
     android:padding="24dp"
     tools:context=".ui.home.HomeFragment">
 
-    <LinearLayout
-        android:id="@+id/homeContent"
+    <ScrollView
+        android:id="@+id/homeScroll"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
-        android:orientation="vertical"
+        android:layout_height="0dp"
+        android:fillViewport="false"
+        app:layout_constraintBottom_toTopOf="@id/logout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:id="@+id/accountSectionTitle"
+        <LinearLayout
+            android:id="@+id/homeContent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/account_section_title"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingBottom="16dp">
 
-        <Button
-            android:id="@+id/profile_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/profile_button" />
+            <TextView
+                android:id="@+id/accountSectionTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/account_section_title"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/notifikacije"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/notifikacije" />
+            <Button
+                android:id="@+id/profile_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/profile_button" />
 
-        <TextView
-            android:id="@+id/playSectionTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/play_section_title"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            <Button
+                android:id="@+id/notifikacije"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/notifikacije" />
 
-        <Button
-            android:id="@+id/startOnlineMatch"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/start_online_match" />
+            <TextView
+                android:id="@+id/playSectionTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/play_section_title"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/startTournament"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/start_tournament" />
+            <Button
+                android:id="@+id/startOnlineMatch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/start_online_match" />
 
-        <Button
-            android:id="@+id/inviteFriends"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/invite_friends_button" />
+            <Button
+                android:id="@+id/dailyMissions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/daily_missions_button" />
 
-        <Button
-            android:id="@+id/regionMap"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/region_map_button" />
+            <Button
+                android:id="@+id/startTournament"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/start_tournament" />
 
-        <Button
-            android:id="@+id/regionChat"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/region_chat_button" />
+            <Button
+                android:id="@+id/inviteFriends"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/invite_friends_button" />
 
-        <Button
-            android:id="@+id/ranking"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/ranking_button" />
+            <Button
+                android:id="@+id/regionMap"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/region_map_button" />
 
-    </LinearLayout>
+            <Button
+                android:id="@+id/regionChat"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/region_chat_button" />
+
+            <Button
+                android:id="@+id/ranking"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/ranking_button" />
+
+        </LinearLayout>
+
+    </ScrollView>
 
     <Button
         android:id="@+id/logout"
