@@ -355,13 +355,14 @@ public final class AssociationsRoomRepository {
             Map<String, Object> updates = new HashMap<>();
             updates.put("abandonedByUid", abandonedUid);
 
-            String activeUid = stringOrEmpty(snapshot.getString("activePlayerUid"));
-            if (PHASE_ACTIVE.equals(phase) && abandonedUid.equals(activeUid)) {
+            if (PHASE_ACTIVE.equals(phase)) {
                 String survivorUid = survivingUid(room);
-                updates.put("activePlayerUid", survivorUid);
-                updates.put("activePlayerNumber", playerNumberForRoomUid(room, survivorUid));
-                updates.put("fieldOpenedThisTurn", false);
-                updates.put("phaseEndsAtMillis", System.currentTimeMillis() + ROUND_DURATION_MILLIS);
+                if (!survivorUid.isEmpty()) {
+                    updates.put("activePlayerUid", survivorUid);
+                    updates.put("activePlayerNumber", playerNumberForRoomUid(room, survivorUid));
+                    updates.put("fieldOpenedThisTurn", false);
+                    updates.put("phaseEndsAtMillis", System.currentTimeMillis() + ROUND_DURATION_MILLIS);
+                }
             }
 
             if (!updates.isEmpty()) {
