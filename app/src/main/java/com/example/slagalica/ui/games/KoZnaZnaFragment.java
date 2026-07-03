@@ -23,6 +23,7 @@ import com.example.slagalica.model.KoZnaZnaUiState;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.ui.room.RoomGameFlow;
 import com.example.slagalica.viewmodel.games.KoZnaZnaViewModel;
+import com.example.slagalica.ui.challenge.ChallengeGameFlow;
 
 import java.util.List;
 
@@ -44,6 +45,8 @@ public class KoZnaZnaFragment extends Fragment {
     private Button confirmBtn;
     private Button skipBtn;
     private boolean finishUiApplied;
+    private Bundle challengeArgs;
+    private boolean challengeMode;
 
     public KoZnaZnaFragment() {
     }
@@ -87,8 +90,20 @@ public class KoZnaZnaFragment extends Fragment {
 
         Bundle args = getArguments();
         roomId = args != null ? args.getString("roomId", "") : "";
+
+        if (args != null && ChallengeGameFlow.isChallengeGame(args)) {
+            challengeArgs = new Bundle(args);
+            challengeMode = true;
+        }
+
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
+            RoomGameFlow.registerRoomBackHandler(this, roomId);
+            return;
+        }
+
+        if (challengeMode) {
+            viewModel.startChallengeGame();
             return;
         }
 
@@ -171,6 +186,20 @@ public class KoZnaZnaFragment extends Fragment {
 
         if (state.isGameFinished() && !finishUiApplied) {
             finishUiApplied = true;
+
+            if (challengeMode && challengeArgs != null) {
+                confirmBtn.setText(R.string.back);
+                confirmBtn.setVisibility(View.VISIBLE);
+                confirmBtn.setOnClickListener(v ->
+                        ChallengeGameFlow.onGameFinished(
+                                this,
+                                challengeArgs,
+                                viewModel.getCurrentUserGameScore()
+                        )
+                );
+                return;
+            }
+
             if (!roomId.isEmpty()) {
                 confirmBtn.setVisibility(View.GONE);
                 RoomGameFlow.onGameFinished(

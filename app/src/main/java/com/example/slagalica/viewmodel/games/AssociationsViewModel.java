@@ -79,6 +79,7 @@ public class AssociationsViewModel extends GameViewModel {
     private int statsSolvedRounds = 0;
     private int statsUnsolvedRounds = 0;
     private int statsLastRecordedRound = 0;
+    private boolean challengeMode;
 
     public AssociationsViewModel(@NonNull Application application) {
         super(application);
@@ -92,6 +93,10 @@ public class AssociationsViewModel extends GameViewModel {
     @NonNull
     public LiveData<String> getErrorMessage() {
         return errorMessage;
+    }
+
+    public boolean shouldRecordGameStats() {
+        return roomSession == null || !"FRIENDLY".equals(roomSession.getMatchType());
     }
 
     public void startGame(
@@ -309,6 +314,13 @@ public class AssociationsViewModel extends GameViewModel {
             associationsListener.remove();
         }
     }
+    public void startChallengeGame(
+            @NonNull GameHeaderPlayerState playerOne,
+            @NonNull GameHeaderPlayerState playerTwo
+    ) {
+        challengeMode = true;
+        startGame(playerOne, playerTwo);
+    }
 
     private void onRoomChanged(@NonNull RoomSession room) {
         roomSession = room;
@@ -323,6 +335,14 @@ public class AssociationsViewModel extends GameViewModel {
             );
         }
         initializeRoomGameIfNeeded(room);
+        if (!room.getAbandonedByUid().isEmpty()
+                && !myUid.isEmpty()
+                && !myUid.equals(room.getAbandonedByUid())) {
+            associationsRoomRepository.handleAbandonedPlayer(
+                    room,
+                    errorMessage::setValue
+            );
+        }
     }
 
     private void initializeRoomGameIfNeeded(@NonNull RoomSession room) {
@@ -495,7 +515,7 @@ public class AssociationsViewModel extends GameViewModel {
         publishGameState();
 
         startResultTimer(() -> {
-            if (currentRound < TOTAL_ROUNDS) {
+            if (!challengeMode && currentRound < TOTAL_ROUNDS) {
                 startRound(currentRound + 1);
             } else {
                 gameOver = true;

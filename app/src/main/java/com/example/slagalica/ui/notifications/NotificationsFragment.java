@@ -1,10 +1,16 @@
 package com.example.slagalica.ui.notifications;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.os.Bundle;
+import android.media.AudioManager;
+import android.media.ToneGenerator;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -12,6 +18,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
@@ -21,15 +28,21 @@ import com.example.slagalica.model.NotificationAction;
 import com.example.slagalica.model.NotificationCategory;
 import com.example.slagalica.model.NotificationStatus;
 import com.example.slagalica.model.SystemNotification;
+import com.example.slagalica.ui.ranking.RewardConfettiView;
+import com.example.slagalica.ui.ranking.RewardIconHelper;
 import com.example.slagalica.viewmodel.notifications.NotificationsViewModel;
 
 import java.util.List;
 
 public class NotificationsFragment extends Fragment {
 
+    private static final String ARG_NOTIFICATION_ID = "notificationId";
+
     private NotificationsViewModel viewModel;
     private LinearLayout notificationsContainer;
     private boolean navigatedToRoom = false;
+    private String pendingNotificationId = "";
+    private boolean pendingNotificationHandled;
 
     public NotificationsFragment() {
         super(R.layout.fragment_notifications);
@@ -41,6 +54,8 @@ public class NotificationsFragment extends Fragment {
 
         viewModel = new ViewModelProvider(this).get(NotificationsViewModel.class);
         notificationsContainer = view.findViewById(R.id.notificationsContainer);
+        Bundle args = getArguments();
+        pendingNotificationId = args != null ? args.getString(ARG_NOTIFICATION_ID, "") : "";
 
         Button backBtn = view.findViewById(R.id.backButton);
         Spinner categoryFilterSpinner = view.findViewById(R.id.categoryFilterSpinner);
@@ -54,7 +69,10 @@ public class NotificationsFragment extends Fragment {
         setupCategorySpinner(categoryFilterSpinner);
         setupStatusSpinner(statusFilterSpinner);
 
-        viewModel.getVisibleNotifications().observe(getViewLifecycleOwner(), this::renderNotifications);
+        viewModel.getVisibleNotifications().observe(getViewLifecycleOwner(), notifications -> {
+            renderNotifications(notifications);
+            handlePendingNotification(notifications);
+        });
         viewModel.getMessage().observe(getViewLifecycleOwner(), message -> {
             if (message != null && !message.isEmpty()) {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
@@ -149,6 +167,19 @@ public class NotificationsFragment extends Fragment {
         }
     }
 
+    private void handlePendingNotification(@NonNull List<SystemNotification> notifications) {
+        if (pendingNotificationHandled || pendingNotificationId.isEmpty()) {
+            return;
+        }
+        for (SystemNotification notification : notifications) {
+            if (pendingNotificationId.equals(notification.getId())) {
+                pendingNotificationHandled = true;
+                handleNotificationClick(notification);
+                return;
+            }
+        }
+    }
+
     @NonNull
     private View createNotificationCard(@NonNull SystemNotification notification) {
         LinearLayout card = new LinearLayout(requireContext());
@@ -157,7 +188,7 @@ public class NotificationsFragment extends Fragment {
         card.setBackgroundResource(notification.isRead()
                 ? android.R.drawable.edit_text
                 : R.drawable.notification_unread_background);
-        card.setOnClickListener(v -> viewModel.openNotification(notification));
+        card.setOnClickListener(v -> handleNotificationClick(notification));
         card.setClickable(true);
 
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
@@ -175,7 +206,7 @@ public class NotificationsFragment extends Fragment {
         type.setText(notification.getCategoryLabel());
         type.setTextSize(12);
         type.setTypeface(type.getTypeface(), android.graphics.Typeface.BOLD);
-        type.setOnClickListener(v -> viewModel.openNotification(notification));
+        type.setOnClickListener(v -> handleNotificationClick(notification));
         header.addView(type, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
 
         Button readButton = new Button(requireContext());
@@ -198,22 +229,70 @@ public class NotificationsFragment extends Fragment {
 
         card.addView(header);
         TextView title = createText(notification.getTitle(), 17, true, 4);
-        title.setOnClickListener(v -> viewModel.openNotification(notification));
+        title.setOnClickListener(v -> handleNotificationClick(notification));
         card.addView(title);
         TextView message = createText(notification.getMessage(), 14, false, 6);
-        message.setOnClickListener(v -> viewModel.openNotification(notification));
+        message.setOnClickListener(v -> handleNotificationClick(notification));
         card.addView(message);
         if (shouldShowActionResult(notification)) {
             TextView result = createText(notification.getActionResult(), 13, true, 8);
-            result.setOnClickListener(v -> viewModel.openNotification(notification));
+            result.setOnClickListener(v -> handleNotificationClick(notification));
             card.addView(result);
         }
         addActionButton(card, notification);
         TextView dateStatus = createText(buildDateStatus(notification), 12, false, 8);
-        dateStatus.setOnClickListener(v -> viewModel.openNotification(notification));
+        dateStatus.setOnClickListener(v -> handleNotificationClick(notification));
         card.addView(dateStatus);
 
         return card;
+    }
+
+    private void handleNotificationClick(@NonNull SystemNotification notification) {
+        if (isRewardNotification(notification)) {
+            if (!notification.isRead()) {
+                viewModel.markAsRead(notification.getId());
+            }
+            showRewardDialog(notification);
+            return;
+        }
+        viewModel.openNotification(notification);
+    }
+
+    private boolean isRewardNotification(@NonNull SystemNotification notification) {
+        return notification.getCategory() == NotificationCategory.REWARD;
+    }
+
+    private void showRewardDialog(@NonNull SystemNotification notification) {
+        ToneGenerator tone = new ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80);
+        tone.startTone(ToneGenerator.TONE_PROP_ACK, 180);
+        View content = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_ranking_reward, null, false);
+        TextView messageView = content.findViewById(R.id.reward_message);
+        ImageView rewardIcon = content.findViewById(R.id.reward_icon);
+        RewardConfettiView confetti = content.findViewById(R.id.reward_confetti);
+        messageView.setText(notification.getMessage());
+        int rank = notification.getRank() > 0
+                ? notification.getRank()
+                : RewardIconHelper.rankFromMessage(notification.getMessage());
+        rewardIcon.setImageResource(RewardIconHelper.iconForRank(rank));
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setTitle(notification.getTitle())
+                .setView(content)
+                .setPositiveButton(android.R.string.ok, null)
+                .setOnDismissListener(dismissed -> tone.release())
+                .show();
+        confetti.start();
+        animateRewardIcon(rewardIcon);
+    }
+
+    private void animateRewardIcon(@NonNull View icon) {
+        ObjectAnimator jump = ObjectAnimator.ofFloat(icon, View.TRANSLATION_Y, 0f, -34f, 0f, -16f, 0f);
+        ObjectAnimator scaleX = ObjectAnimator.ofFloat(icon, View.SCALE_X, 0.7f, 1.18f, 1f, 1.08f, 1f);
+        ObjectAnimator scaleY = ObjectAnimator.ofFloat(icon, View.SCALE_Y, 0.7f, 1.18f, 1f, 1.08f, 1f);
+        ObjectAnimator rotation = ObjectAnimator.ofFloat(icon, View.ROTATION, -10f, 10f, -6f, 6f, 0f);
+        AnimatorSet set = new AnimatorSet();
+        set.playTogether(jump, scaleX, scaleY, rotation);
+        set.setDuration(950L);
+        set.start();
     }
 
     @NonNull
@@ -324,6 +403,20 @@ public class NotificationsFragment extends Fragment {
 
     private void navigateToNotificationPage(@NonNull String title) {
         if (title.isEmpty()) {
+            return;
+        }
+        if (getString(R.string.notification_destination_league).equals(title)
+                || getString(R.string.notification_destination_ranking).equals(title)
+                || "Liga".equals(title)
+                || "Rang lista".equals(title)) {
+            NavHostFragment.findNavController(this).navigate(R.id.rankingFragment);
+            return;
+        }
+        if (getString(R.string.notification_destination_chat).equals(title)
+                || "Čet".equals(title)
+                || "Cet".equals(title)
+                || "ÄŒet".equals(title)) {
+            NavHostFragment.findNavController(this).navigate(R.id.regionChatFragment);
             return;
         }
         Bundle args = new Bundle();

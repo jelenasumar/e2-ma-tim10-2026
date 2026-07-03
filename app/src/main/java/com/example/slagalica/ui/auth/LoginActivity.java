@@ -95,7 +95,7 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         findViewById(R.id.continueAsGuest).setOnClickListener(v -> {
-            repo.ensureAuthenticated(
+            repo.ensureGuestAuthenticated(
                     () -> {
                         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                         intent.putExtra(MainActivity.EXTRA_GUEST_MODE, true);

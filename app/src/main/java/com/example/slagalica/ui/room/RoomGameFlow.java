@@ -9,8 +9,14 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.data.repository.RoomSessionRepository;
+import com.example.slagalica.data.repository.UserActiveSessionRepository;
 import com.example.slagalica.model.RoomGameKeys;
 import com.example.slagalica.model.RoomSession;
+import com.google.firebase.firestore.ListenerRegistration;
+import android.widget.Toast;
+import androidx.activity.OnBackPressedCallback;
+import androidx.appcompat.app.AlertDialog;
+import com.example.slagalica.R;
 
 public final class RoomGameFlow {
 
@@ -35,7 +41,7 @@ public final class RoomGameFlow {
             repository.fetchRoom(
                     roomId,
                     room -> {
-                        if (!uid.equals(room.getHostUid())
+                        if (!canControlRoomProgress(room, uid)
                                 || !RoomGameKeys.STATUS_PLAYING.equals(room.getStatus())) {
                             return;
                         }
@@ -61,6 +67,120 @@ public final class RoomGameFlow {
             }
             NavHostFragment.findNavController(fragment).navigateUp();
         }, RETURN_TO_ROOM_DELAY_MS);
+    }
+
+    private static boolean canControlRoomProgress(
+            @NonNull RoomSession room,
+            @NonNull String uid
+    ) {
+        if (uid.equals(room.getHostUid())) {
+            return true;
+        }
+
+        return !room.getAbandonedByUid().isEmpty()
+                && !uid.equals(room.getAbandonedByUid())
+                && (uid.equals(room.getHostUid()) || uid.equals(room.getGuestUid()));
+    }
+
+    public static void registerRoomBackHandler(@NonNull Fragment fragment, @NonNull String roomId) {
+        if (roomId.trim().isEmpty()) {
+            return;
+        }
+
+        fragment.requireActivity()
+                .getOnBackPressedDispatcher()
+                .addCallback(fragment.getViewLifecycleOwner(), new OnBackPressedCallback(true) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        confirmAbandonOrNavigateUp(fragment, roomId);
+                    }
+                });
+
+        registerRoomFinishedListener(fragment, roomId);
+    }
+
+    private static void registerRoomFinishedListener(@NonNull Fragment fragment, @NonNull String roomId) {
+        RoomSessionRepository repository = new RoomSessionRepository();
+        UserActiveSessionRepository activeSessionRepository = new UserActiveSessionRepository();
+        String uid = repository.getCurrentUid();
+        final boolean[] navigatedBack = {false};
+        ListenerRegistration listener = repository.listenRoom(
+                roomId,
+                room -> {
+                    if (navigatedBack[0] || !fragment.isAdded()) {
+                        return;
+                    }
+                    if (uid != null && uid.equals(room.getAbandonedByUid())) {
+                        navigatedBack[0] = true;
+                        activeSessionRepository.clearActiveRoomIfMatches(roomId);
+                        navigateUpIfAdded(fragment);
+                        return;
+                    }
+                    if (RoomGameKeys.STATUS_FINISHED.equals(room.getStatus())) {
+                        navigatedBack[0] = true;
+                        navigateUpIfAdded(fragment);
+                    }
+                },
+                error -> { }
+        );
+        fragment.getViewLifecycleOwner().getLifecycle().addObserver(
+                new androidx.lifecycle.DefaultLifecycleObserver() {
+                    @Override
+                    public void onDestroy(@NonNull androidx.lifecycle.LifecycleOwner owner) {
+                        listener.remove();
+                    }
+                }
+        );
+    }
+
+    public static void confirmAbandonOrNavigateUp(@NonNull Fragment fragment, @NonNull String roomId) {
+        if (roomId.trim().isEmpty()) {
+            navigateUpIfAdded(fragment);
+            return;
+        }
+
+        new AlertDialog.Builder(fragment.requireContext())
+                .setTitle(R.string.room_abandon_title)
+                .setMessage(R.string.room_abandon_message)
+                .setPositiveButton(R.string.room_abandon_positive, (dialog, which) ->
+                        abandonRoomAndExit(fragment, roomId)
+                )
+                .setNegativeButton(R.string.room_abandon_negative, null)
+                .show();
+    }
+
+    private static void abandonRoomAndExit(@NonNull Fragment fragment, @NonNull String roomId) {
+        RoomSessionRepository repository = new RoomSessionRepository();
+        repository.fetchRoom(
+                roomId,
+                room -> repository.abandonRoom(
+                        room,
+                        () -> {
+                            new UserActiveSessionRepository().clearActiveRoomIfMatches(roomId);
+                            navigateUpIfAdded(fragment);
+                        },
+                        error -> showAbandonError(fragment)
+                ),
+                error -> showAbandonError(fragment)
+        );
+    }
+
+    private static void navigateUpIfAdded(@NonNull Fragment fragment) {
+        if (!fragment.isAdded()) {
+            return;
+        }
+        NavHostFragment.findNavController(fragment).navigateUp();
+    }
+
+    private static void showAbandonError(@NonNull Fragment fragment) {
+        if (!fragment.isAdded()) {
+            return;
+        }
+        Toast.makeText(
+                fragment.requireContext(),
+                R.string.room_abandon_error,
+                Toast.LENGTH_SHORT
+        ).show();
     }
 
     public static void navigateToCurrentGame(@NonNull Fragment fragment, @NonNull RoomSession room) {

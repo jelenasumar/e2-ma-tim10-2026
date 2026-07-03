@@ -18,6 +18,8 @@ import com.example.slagalica.model.RoomSession;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.ListenerRegistration;
 import androidx.annotation.Nullable;
+import java.text.Normalizer;
+import java.util.Locale;
 
 
 import java.util.ArrayList;
@@ -70,6 +72,7 @@ public class StepByStepViewModel extends AndroidViewModel {
     private int basePlayerTwoScore = 0;
     private boolean baseScoresCaptured = false;
     private int currentUserOwnRoundSolvedStepIndex = -1;
+    private boolean challengeMode;
 
     public StepByStepViewModel(@NonNull Application application) {
         super(application);
@@ -78,6 +81,10 @@ public class StepByStepViewModel extends AndroidViewModel {
     @NonNull
     public LiveData<KorakPoKorakUiState> getUiState() {
         return uiState;
+    }
+
+    public boolean shouldRecordGameStats() {
+        return roomSession == null || !"FRIENDLY".equals(roomSession.getMatchType());
     }
 
     public void startRoomGame(@NonNull String roomId) {
@@ -100,6 +107,40 @@ public class StepByStepViewModel extends AndroidViewModel {
                     error -> publishState(remainingSeconds(), error)
             );
         });
+    }
+
+    public void startChallengeGame() {
+        if (challengeMode) {
+            return;
+        }
+
+        challengeMode = true;
+        roomId = "";
+        roomSession = null;
+
+        String uid = roomGameRepository.getCurrentUid();
+        myUid = uid != null ? uid : "challenge_player";
+
+        baseScoresCaptured = true;
+        basePlayerOneScore = 0;
+        basePlayerTwoScore = 0;
+        currentUserOwnRoundSolvedStepIndex = -1;
+
+        playerOneScore = 0;
+        playerTwoScore = 0;
+        currentRound = 1;
+        activePlayerNumber = 1;
+        answeringPlayerNumber = 1;
+        currentStepIndex = 0;
+        bonusPhase = false;
+        roundOver = false;
+        gameOver = false;
+        phase = KorakPoKorakRoomRepository.PHASE_ACTIVE;
+        activePlayerUid = myUid;
+        bonusPlayerUid = "";
+        lastStatusMessage = "Pogodi pojam u sto manje koraka.";
+
+        loadRoundPuzzles(() -> startLocalRound(1));
     }
 
     private void loadRoundPuzzles(@NonNull Runnable onReady) {
@@ -142,6 +183,15 @@ public class StepByStepViewModel extends AndroidViewModel {
 
         if (myUid.equals(room.getHostUid())) {
             initializeRoomGameIfNeeded(room);
+        }
+
+        if (!room.getAbandonedByUid().isEmpty()
+                && !myUid.isEmpty()
+                && !myUid.equals(room.getAbandonedByUid())) {
+            roomGameRepository.handleAbandonedPlayer(
+                    room,
+                    error -> publishState(remainingSeconds(), error)
+            );
         }
     }
 
@@ -259,7 +309,12 @@ public class StepByStepViewModel extends AndroidViewModel {
     }
 
     public void submitAnswer(@NonNull String answer) {
-        if (answer.trim().isEmpty() || roomId.isEmpty()) {
+        if (challengeMode || roomId.isEmpty()) {
+            submitLocalChallengeAnswer(answer);
+            return;
+        }
+
+        if (answer.trim().isEmpty()) {
             return;
         }
 
@@ -269,6 +324,65 @@ public class StepByStepViewModel extends AndroidViewModel {
                 answer,
                 error -> publishState(remainingSeconds(), error)
         );
+    }
+
+    private void startLocalRound(int round) {
+        currentRound = round;
+        activePlayerNumber = 1;
+        answeringPlayerNumber = 1;
+        currentStepIndex = 0;
+        bonusPhase = false;
+        roundOver = false;
+        gameOver = false;
+        phase = KorakPoKorakRoomRepository.PHASE_ACTIVE;
+        activePlayerUid = myUid;
+        bonusPlayerUid = "";
+
+        currentPuzzle = puzzleForRound(round);
+        lastStatusMessage = "Pogodi pojam u sto manje koraka.";
+        publishState(0, lastStatusMessage);
+    }
+
+    private void submitLocalChallengeAnswer(@NonNull String answer) {
+        if (currentPuzzle == null || roundOver || gameOver) {
+            return;
+        }
+
+        if (answer.trim().isEmpty()) {
+            revealNextLocalStep();
+            return;
+        }
+
+        if (answersMatchLocal(answer, currentPuzzle.getAnswer())) {
+            int points = pointsForLocalStep(currentStepIndex);
+            playerOneScore += points;
+            if (currentUserOwnRoundSolvedStepIndex < 0) {
+                currentUserOwnRoundSolvedStepIndex = currentStepIndex;
+            }
+            finishLocalRound("Tacno! Osvojeno poena: " + points + ".");
+            return;
+        }
+
+        revealNextLocalStep();
+    }
+
+    private void revealNextLocalStep() {
+        if (currentStepIndex < STEP_COUNT - 1) {
+            currentStepIndex++;
+            lastStatusMessage = "Nije tacno. Otkriven je sledeci korak.";
+            publishState(0, lastStatusMessage);
+            return;
+        }
+
+        finishLocalRound("Runda je zavrsena bez tacnog odgovora.");
+    }
+
+    private void finishLocalRound(@NonNull String message) {
+        roundOver = true;
+        gameOver = true;
+        phase = KorakPoKorakRoomRepository.PHASE_GAME_OVER;
+        lastStatusMessage = "Kraj igre. Ukupno poena: " + playerOneScore + ".";
+        publishState(0, lastStatusMessage);
     }
 
     private void preparePuzzles(@NonNull List<KorakPoKorakPuzzle> puzzles) {
@@ -443,6 +557,25 @@ public class StepByStepViewModel extends AndroidViewModel {
 
     public int getCurrentUserOwnRoundSolvedStepIndex() {
         return currentUserOwnRoundSolvedStepIndex;
+    }
+
+    private static int pointsForLocalStep(int stepIndex) {
+        int[] points = {20, 18, 16, 14, 12, 10, 8};
+        if (stepIndex < 0 || stepIndex >= points.length) {
+            return 0;
+        }
+        return points[stepIndex];
+    }
+
+    private static boolean answersMatchLocal(@NonNull String guess, @NonNull String answer) {
+        return normalizeLocal(guess).equals(normalizeLocal(answer));
+    }
+
+    @NonNull
+    private static String normalizeLocal(@NonNull String value) {
+        String normalized = Normalizer.normalize(value.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+        return normalized.toLowerCase(Locale.ROOT);
     }
 
 }

@@ -25,6 +25,7 @@ import com.example.slagalica.model.skocko.SkockoGameState;
 import com.example.slagalica.model.skocko.SkockoSymbol;
 import com.example.slagalica.ui.room.RoomGameFlow;
 import com.example.slagalica.viewmodel.games.SkockoViewModel;
+import com.example.slagalica.ui.challenge.ChallengeGameFlow;
 
 import java.util.List;
 
@@ -42,6 +43,8 @@ public class SkockoFragment extends Fragment {
     private String roomId = "";
     private boolean gameOverHandled;
     private boolean statsRecorded;
+    private Bundle challengeArgs;
+    private boolean challengeMode;
 
     public SkockoFragment() {
         super(R.layout.fragment_skocko);
@@ -71,9 +74,16 @@ public class SkockoFragment extends Fragment {
         Bundle args = getArguments();
         if (args != null) {
             roomId = args.getString("roomId", "");
+            if (ChallengeGameFlow.isChallengeGame(args)) {
+                challengeArgs = new Bundle(args);
+                challengeMode = true;
+            }
         }
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
+            RoomGameFlow.registerRoomBackHandler(this, roomId);
+        } else if (challengeMode) {
+            viewModel.startChallengeGame(createPlayerOneState(), createPlayerTwoState());
         } else {
             viewModel.startGame(createPlayerOneState(), createPlayerTwoState());
         }
@@ -137,19 +147,31 @@ public class SkockoFragment extends Fragment {
 
         recordStatsIfNeeded(state);
 
-        if (state.isGameOver() && !roomId.isEmpty() && !gameOverHandled) {
+        if (state.isGameOver() && !gameOverHandled) {
             gameOverHandled = true;
-            RoomGameFlow.onGameFinished(
-                    this,
-                    roomId,
-                    viewModel.getPlayerOneScore(),
-                    viewModel.getPlayerTwoScore()
-            );
+
+            if (challengeMode && challengeArgs != null) {
+                ChallengeGameFlow.onGameFinished(
+                        this,
+                        challengeArgs,
+                        viewModel.getCurrentUserGameScore()
+                );
+                return;
+            }
+
+            if (!roomId.isEmpty()) {
+                RoomGameFlow.onGameFinished(
+                        this,
+                        roomId,
+                        viewModel.getPlayerOneScore(),
+                        viewModel.getPlayerTwoScore()
+                );
+            }
         }
     }
 
     private void recordStatsIfNeeded(@NonNull SkockoGameState state) {
-        if (statsRecorded || !state.isGameOver()) {
+        if (statsRecorded || !state.isGameOver() || !viewModel.shouldRecordGameStats()) {
             return;
         }
         statsRecorded = true;

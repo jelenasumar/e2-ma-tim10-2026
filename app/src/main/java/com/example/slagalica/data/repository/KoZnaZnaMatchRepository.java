@@ -19,6 +19,15 @@ public final class KoZnaZnaMatchRepository {
         this.remote = new KoZnaZnaMatchDataSource();
     }
 
+    public void handleAbandonedPlayer(
+            @NonNull String matchId,
+            @NonNull String abandonedUid,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        remote.handleAbandonedPlayer(matchId, abandonedUid, onSuccess, onError);
+    }
+
     @Nullable
     public String getCurrentUid() {
         return remote.getCurrentUid();

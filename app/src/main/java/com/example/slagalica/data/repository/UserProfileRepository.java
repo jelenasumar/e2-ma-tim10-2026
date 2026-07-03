@@ -7,30 +7,50 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.slagalica.data.local.UserPreferences;
+import com.example.slagalica.data.remote.RegionDataSource;
 import com.example.slagalica.data.remote.FireBaseUserDataSource;
+import com.example.slagalica.model.DailyMissionProgress;
 import com.example.slagalica.model.PlayerStatistics;
+import com.example.slagalica.model.RoomSession;
+import com.example.slagalica.model.SerbiaRegion;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.R;
 import com.example.slagalica.utils.AvatarFileStorage;
 import com.example.slagalica.utils.AvatarImageLoader;
+import com.example.slagalica.utils.MonthlyCycleHelper;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.SetOptions;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
 public final class UserProfileRepository {
 
+    private static final String MATCH_RESULTS = "match_results";
+    private static final String MATCH_TYPE_RANDOM = "RANDOM";
+    private static final String MATCH_TYPE_FRIENDLY = "FRIENDLY";
+
     private final Context appContext;
     private final UserPreferences preferences;
     private final FireBaseUserDataSource remote;
+    private final LeagueRepository leagueRepository;
+    private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
     public UserProfileRepository(@NonNull Context context) {
         this.appContext = context.getApplicationContext();
         this.preferences = new UserPreferences(appContext);
         this.remote = new FireBaseUserDataSource();
+        this.leagueRepository = new LeagueRepository(appContext);
 
         if (!remote.isLoggedIn()) {
             preferences.clearSessionFields();
@@ -69,6 +89,21 @@ public final class UserProfileRepository {
         remote.signInAnonymously(onSuccess, onError);
     }
 
+    public void ensureGuestAuthenticated(
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (remote.isAnonymousUser()) {
+            onSuccess.run();
+            return;
+        }
+        if (remote.isLoggedIn()) {
+            remote.signOut();
+            preferences.clearSessionFields();
+        }
+        remote.signInAnonymously(onSuccess, onError);
+    }
+
     @NonNull
     public UserProfile loadProfile() {
         return preferences.loadProfile();
@@ -90,8 +125,14 @@ public final class UserProfileRepository {
         }
 
         remote.fetchUserProfile(uid, profile -> {
-            preferences.saveProfile(profile);
-            onSuccess.accept(profile);
+            UserProfile synced = syncProfileState(profile);
+            preferences.saveProfile(synced);
+            leagueRepository.processMonthlyPenaltyForCurrentUser(
+                    synced,
+                    message -> { },
+                    error -> { }
+            );
+            onSuccess.accept(synced);
         }, onError);
     }
 
@@ -106,8 +147,9 @@ public final class UserProfileRepository {
             return null;
         }
         return remote.listenUserProfile(uid, profile -> {
-            preferences.saveProfile(profile);
-            onChanged.accept(profile);
+            UserProfile synced = syncProfileState(profile);
+            preferences.saveProfile(synced);
+            onChanged.accept(synced);
         }, onError);
     }
 
@@ -274,18 +316,7 @@ public final class UserProfileRepository {
     ) {
         preferences.saveAvatarUri(avatarUri);
         UserProfile cached = preferences.loadProfile();
-        UserProfile updated = new UserProfile(
-                cached.getUsername(),
-                cached.getEmail(),
-                avatarUri,
-                cached.getTokens(),
-                cached.getTotalStars(),
-                cached.getLeagueName(),
-                cached.getLeagueTierKey(),
-                cached.getRegion(),
-                cached.getInvitePayload(),
-                cached.getStatistics()
-        );
+        UserProfile updated = cached.toBuilder().avatarUri(avatarUri).build();
         preferences.saveProfile(updated);
         onSuccess.run();
     }
@@ -297,28 +328,46 @@ public final class UserProfileRepository {
     public void register(
             @NonNull String email,
             @NonNull String username,
-            @NonNull String region,
+            @NonNull String regionKey,
             @NonNull String password,
             @NonNull Runnable onSuccess,
             @NonNull Consumer<String> onError
     ) {
         String em = normalizeEmail(email);
         String un = username.trim();
-        String reg = region.trim();
+        SerbiaRegion region = SerbiaRegion.fromKey(regionKey);
+        if (region == null) {
+            onError.accept("Izaberi region.");
+            return;
+        }
+
+        RegionRepository regionRepository = new RegionRepository(appContext);
+        RegionDataSource regionRemote = new RegionDataSource();
 
         remote.createUserWithEmailAndPassword(em, password, firebaseUser -> {
             String uid = firebaseUser.getUid();
-            UserProfile profile = createDefaultProfile(un, em, reg);
+            String inviteCode = UUID.randomUUID().toString();
+            String invitePayload = String.format(
+                    Locale.US,
+                    "slagalica://invite?user=%s&code=%s",
+                    un,
+                    inviteCode
+            );
+            UserProfile profile = regionRepository.createRegistrationProfile(un, em, region, invitePayload);
 
-            remote.saveUserProfile(uid, profile, () -> {
-                remote.saveUsernameLookup(uid, un, em, () -> {
-                    remote.sendEmailVerification(firebaseUser, () -> {
-                        remote.signOut();
-                        preferences.clearSessionFields();
-                        onSuccess.run();
-                    }, onError);
-                }, onError);
-            }, onError);
+            remote.saveUserProfile(uid, profile, () ->
+                    regionRemote.incrementRegionRegistration(region.getKey(), () ->
+                            remote.saveUsernameLookup(uid, un, em, () -> {
+                                remote.sendEmailVerification(firebaseUser, () -> {
+                                    remote.signOut();
+                                    preferences.clearSessionFields();
+                                    onSuccess.run();
+                                }, onError);
+                            }, onError),
+                            onError
+                    ),
+                    onError
+            );
         }, onError);
     }
 
@@ -354,7 +403,8 @@ public final class UserProfileRepository {
 
                 remote.fetchUserProfile(uid, profile -> {
                     UserProfile merged = mergeWithAuthEmail(profile, em);
-                    preferences.saveProfile(merged);
+                    UserProfile synced = new RegionRepository(appContext).ensureRegionState(merged);
+                    preferences.saveProfile(synced);
                     onSuccess.run();
                 }, onError);
             }, onError);
@@ -418,27 +468,9 @@ public final class UserProfileRepository {
                 stats.getMatchesLost()
         );
 
-        UserProfile updatedProfile = new UserProfile(
-                profile.getUsername(),
-                profile.getEmail(),
-                profile.getAvatarUri(),
-                profile.getTokens(),
-                profile.getTotalStars(),
-                profile.getLeagueName(),
-                profile.getLeagueTierKey(),
-                profile.getRegion(),
-                profile.getInvitePayload(),
-                updatedStats
-        );
-
+        UserProfile updatedProfile = profile.toBuilder().statistics(updatedStats).build();
         preferences.saveProfile(updatedProfile);
-
-        if (remote.isLoggedIn()) {
-            String uid = remote.getCurrentUid();
-            if (uid != null) {
-                remote.saveUserProfile(uid, updatedProfile, () -> { }, error -> { });
-            }
-        }
+        saveRemoteProfile(updatedProfile);
     }
 
     public void recordSpojniceGame(int gameScore, int correctPairs, int totalPairsInGame) {
@@ -481,28 +513,10 @@ public final class UserProfileRepository {
                 stats.getMatchesLost()
         );
 
-        UserProfile updatedProfile = new UserProfile(
-                profile.getUsername(),
-                profile.getEmail(),
-                profile.getAvatarUri(),
-                profile.getTokens(),
-                profile.getTotalStars(),
-                profile.getLeagueName(),
-                profile.getLeagueTierKey(),
-                profile.getRegion(),
-                profile.getInvitePayload(),
-                updatedStats
-        );
-
+        UserProfile updatedProfile = profile.toBuilder().statistics(updatedStats).build();
         preferences.setSpojniceGamesPlayed(gamesPlayed + 1);
         preferences.saveProfile(updatedProfile);
-
-        if (remote.isLoggedIn()) {
-            String uid = remote.getCurrentUid();
-            if (uid != null) {
-                remote.saveUserProfile(uid, updatedProfile, () -> { }, error -> { });
-            }
-        }
+        saveRemoteProfile(updatedProfile);
     }
 
     public void recordKorakPoKorakGame(int gameScore, int solvedStepIndex) {
@@ -691,6 +705,327 @@ public final class UserProfileRepository {
         UserProfile updatedProfile = profileWithStatistics(profile, updatedStats);
         preferences.saveProfile(updatedProfile);
         saveRemoteProfile(updatedProfile);
+
+        if (myTotalScore > opponentTotalScore) {
+            new RegionRepository(appContext).awardMonthlyStars(3);
+        } else if (myTotalScore == opponentTotalScore) {
+            new RegionRepository(appContext).awardMonthlyStars(1);
+        }
+    }
+
+    public void processFinishedRoomResult(
+            @NonNull RoomSession room,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (!isRegisteredPlayer()) {
+            onSuccess.run();
+            return;
+        }
+        String uid = remote.getCurrentUid();
+        if (uid == null || (!uid.equals(room.getHostUid()) && !uid.equals(room.getGuestUid()))) {
+            onSuccess.run();
+            return;
+        }
+
+        String winnerUid = winnerUid(room);
+        String loserUid = loserUid(room);
+        boolean randomMatch = MATCH_TYPE_RANDOM.equals(room.getMatchType());
+        List<String> dailyMissionKeys = dailyMissionsForFinishedRoom(room, uid, winnerUid);
+        int hostStarsDelta = randomMatch
+                ? roomPlayerStarsDelta(
+                room,
+                room.getHostUid(),
+                room.getHostTotalScore(),
+                room.getHostUid().equals(winnerUid)
+        )
+                : 0;
+        int guestStarsDelta = randomMatch
+                ? roomPlayerStarsDelta(
+                room,
+                room.getGuestUid(),
+                room.getGuestTotalScore(),
+                room.getGuestUid().equals(winnerUid)
+        )
+                : 0;
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("roomId", room.getRoomId());
+        result.put("hostUid", room.getHostUid());
+        result.put("guestUid", room.getGuestUid());
+        result.put("hostUsername", room.getHostUsername());
+        result.put("guestUsername", room.getGuestUsername());
+        result.put("hostScore", room.getHostTotalScore());
+        result.put("guestScore", room.getGuestTotalScore());
+        result.put("winnerUid", winnerUid);
+        result.put("loserUid", loserUid);
+        result.put("matchType", room.getMatchType());
+        result.put("finishReason", room.getFinishReason());
+        result.put("abandonedByUid", room.getAbandonedByUid());
+        result.put("hostStarsDelta", hostStarsDelta);
+        result.put("guestStarsDelta", guestStarsDelta);
+        result.put("processedBy_" + uid, true);
+        result.put("finishedAt", FieldValue.serverTimestamp());
+        result.put("updatedAt", FieldValue.serverTimestamp());
+
+        db.collection(MATCH_RESULTS)
+                .document(room.getRoomId())
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (snapshot.exists() && Boolean.TRUE.equals(snapshot.getBoolean("processedBy_" + uid))) {
+                        onSuccess.run();
+                        return;
+                    }
+                    db.collection(MATCH_RESULTS)
+                            .document(room.getRoomId())
+                            .set(result, SetOptions.merge())
+                            .addOnSuccessListener(unused -> {
+                                if (!randomMatch) {
+                                    recordDailyMissions(dailyMissionKeys, onSuccess, onError);
+                                    return;
+                                }
+
+                                int myScore = uid.equals(room.getHostUid()) ? room.getHostTotalScore() : room.getGuestTotalScore();
+                                int opponentScore = uid.equals(room.getHostUid()) ? room.getGuestTotalScore() : room.getHostTotalScore();
+                                int myStarsDelta = uid.equals(room.getHostUid()) ? hostStarsDelta : guestStarsDelta;
+                                UserProfile updated = profileAfterFinishedMatch(
+                                        preferences.loadProfile(),
+                                        myScore,
+                                        opponentScore,
+                                        myStarsDelta,
+                                        true,
+                                        dailyMissionKeys
+                                );
+                                preferences.saveProfile(updated);
+                                saveRemoteProfile(updated);
+                                onSuccess.run();
+                            })
+                            .addOnFailureListener(e -> onError.accept(
+                                    e.getMessage() != null ? e.getMessage() : "Match result could not be saved."
+                            ));
+                })
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Match result could not be loaded."
+                ));
+    }
+
+    @NonNull
+    private UserProfile profileAfterFinishedMatch(
+            @NonNull UserProfile profile,
+            int myTotalScore,
+            int opponentTotalScore,
+            int starsDelta,
+            boolean affectsStars,
+            @NonNull List<String> dailyMissionKeys
+    ) {
+        PlayerStatistics stats = profile.getStatistics();
+
+        int totalMatches = stats.getTotalMatches() + 1;
+        int matchesWon = stats.getMatchesWon();
+        int matchesLost = stats.getMatchesLost();
+        if (myTotalScore > opponentTotalScore) {
+            matchesWon++;
+        } else if (myTotalScore < opponentTotalScore) {
+            matchesLost++;
+        }
+        float winPercent = totalMatches > 0 ? (matchesWon * 100f) / totalMatches : 0f;
+        float lossPercent = totalMatches > 0 ? (matchesLost * 100f) / totalMatches : 0f;
+
+        PlayerStatistics updatedStats = new PlayerStatistics(
+                stats.getAvgScoreKoZnaZna(),
+                stats.getAvgScoreSpojnice(),
+                stats.getAvgScoreMojBroj(),
+                stats.getAvgScoreKorakPoKorak(),
+                stats.getAvgScoreAsocijacije(),
+                stats.getAvgScoreSkocko(),
+                stats.getKoZnaZnaHits(),
+                stats.getKoZnaZnaMisses(),
+                stats.getMojBrojCorrectPercent(),
+                stats.getKorakPoKorakStepPercents(),
+                stats.getAsocijacijeSolved(),
+                stats.getAsocijacijeUnsolved(),
+                stats.getSkockoComboPercent(),
+                stats.getSpojniceLinkedPercent(),
+                totalMatches,
+                winPercent,
+                lossPercent,
+                matchesWon,
+                matchesLost
+        );
+
+        UserProfile.Builder builder = profile.toBuilder().statistics(updatedStats);
+        if (affectsStars) {
+            String currentCycle = MonthlyCycleHelper.currentCycleKey();
+            String cycleKey = currentCycle;
+            long monthlyStars = currentCycle.equals(profile.getStarsCycleKey()) ? profile.getMonthlyStars() : 0L;
+            long previousTotalStars = profile.getTotalStars();
+            long newTotalStars = Math.max(0L, previousTotalStars + starsDelta);
+            long earnedTokens = earnedTokensFromStarMilestones(previousTotalStars, newTotalStars);
+
+            builder.totalStars(newTotalStars)
+                    .monthlyStars(Math.max(0L, monthlyStars + starsDelta))
+                    .starsCycleKey(cycleKey)
+                    .tokens(profile.getTokens() + earnedTokens);
+        }
+        UserProfile withStats = DailyMissionRewardHelper.applyCompletedMissions(
+                builder.build(),
+                dailyMissionKeys
+        );
+        if (!affectsStars) {
+            return withStats;
+        }
+        LeagueRepository.SyncResult syncResult = leagueRepository.syncProfile(
+                withStats,
+                profile,
+                true
+        );
+        return syncResult.getProfile();
+    }
+
+    public void recordDailyChatMessage(
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        recordDailyMissions(
+                Arrays.asList(DailyMissionProgress.MISSION_SEND_CHAT),
+                onSuccess,
+                onError
+        );
+    }
+
+    private void recordDailyMissions(
+            @NonNull List<String> missionKeys,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError
+    ) {
+        if (missionKeys.isEmpty() || !isRegisteredPlayer()) {
+            onSuccess.run();
+            return;
+        }
+        String uid = remote.getCurrentUid();
+        if (uid == null) {
+            onSuccess.run();
+            return;
+        }
+
+        db.runTransaction(transaction -> {
+                    com.google.firebase.firestore.DocumentReference userRef = db.collection("users").document(uid);
+                    com.google.firebase.firestore.DocumentSnapshot userDoc = transaction.get(userRef);
+                    if (!userDoc.exists()) {
+                        return null;
+                    }
+                    UserProfile before = UserProfileMapper.fromDocument(userDoc);
+                    UserProfile rewarded = DailyMissionRewardHelper.applyCompletedMissions(before, missionKeys);
+                    UserProfile synced = leagueRepository.syncProfile(rewarded, before, true).getProfile();
+                    transaction.set(userRef, UserProfileMapper.toMap(synced), SetOptions.merge());
+                    return synced;
+                })
+                .addOnSuccessListener(updated -> {
+                    if (updated != null) {
+                        preferences.saveProfile(updated);
+                    }
+                    onSuccess.run();
+                })
+                .addOnFailureListener(e -> onError.accept(
+                        e.getMessage() != null ? e.getMessage() : "Dnevna misija nije sacuvana."
+                ));
+    }
+
+    @NonNull
+    private static List<String> dailyMissionsForFinishedRoom(
+            @NonNull RoomSession room,
+            @NonNull String uid,
+            @NonNull String winnerUid
+    ) {
+        List<String> missions = new ArrayList<>();
+        if (MATCH_TYPE_RANDOM.equals(room.getMatchType()) && uid.equals(winnerUid)) {
+            missions.add(DailyMissionProgress.MISSION_WIN_MATCH);
+        }
+        if (MATCH_TYPE_FRIENDLY.equals(room.getMatchType())) {
+            missions.add(DailyMissionProgress.MISSION_PLAY_FRIENDLY);
+        }
+        return missions;
+    }
+
+    private static long earnedTokensFromStarMilestones(long previousTotalStars, long newTotalStars) {
+        if (newTotalStars <= previousTotalStars) {
+            return 0L;
+        }
+        long previousMilestones = previousTotalStars / 50L;
+        long newMilestones = newTotalStars / 50L;
+        return Math.max(0L, newMilestones - previousMilestones);
+    }
+
+    @NonNull
+    private UserProfile syncProfileState(@NonNull UserProfile profile) {
+        UserProfile regionSynced = new RegionRepository(appContext).ensureRegionState(profile);
+        LeagueRepository.SyncResult syncResult = leagueRepository.syncProfile(
+                regionSynced,
+                regionSynced,
+                false
+        );
+        UserProfile synced = syncResult.getProfile();
+        if (leagueStateChanged(regionSynced, synced)) {
+            saveRemoteProfile(synced);
+        }
+        return synced;
+    }
+
+    private static boolean leagueStateChanged(@NonNull UserProfile before, @NonNull UserProfile after) {
+        return before.getTokens() != after.getTokens()
+                || before.getTotalStars() != after.getTotalStars()
+                || !before.getLeagueTierKey().equals(after.getLeagueTierKey())
+                || !before.getLeagueName().equals(after.getLeagueName());
+    }
+
+    @NonNull
+    private static String winnerUid(@NonNull RoomSession room) {
+        if (!room.getAbandonedByUid().isEmpty()) {
+            if (room.getAbandonedByUid().equals(room.getHostUid())) {
+                return room.getGuestUid();
+            }
+            if (room.getAbandonedByUid().equals(room.getGuestUid())) {
+                return room.getHostUid();
+            }
+        }
+        if (room.getHostTotalScore() > room.getGuestTotalScore()) {
+            return room.getHostUid();
+        }
+        if (room.getGuestTotalScore() > room.getHostTotalScore()) {
+            return room.getGuestUid();
+        }
+        return "";
+    }
+
+    @NonNull
+    private static String loserUid(@NonNull RoomSession room) {
+        if (!room.getAbandonedByUid().isEmpty()) {
+            return room.getAbandonedByUid();
+        }
+        if (room.getHostTotalScore() > room.getGuestTotalScore()) {
+            return room.getGuestUid();
+        }
+        if (room.getGuestTotalScore() > room.getHostTotalScore()) {
+            return room.getHostUid();
+        }
+        return "";
+    }
+
+    private static int roomPlayerStarsDelta(
+            @NonNull RoomSession room,
+            @NonNull String playerUid,
+            int score,
+            boolean won
+    ) {
+        if (playerUid.equals(room.getAbandonedByUid())) {
+            return -10;
+        }
+        return starsDelta(score, won);
+    }
+
+    private static int starsDelta(int score, boolean won) {
+        int scoreBonus = Math.max(0, score) / 40;
+        return (won ? 10 : -10) + scoreBonus;
     }
 
     public void recordSkockoGame(int gameScore, float comboPercent) {
@@ -741,18 +1076,7 @@ public final class UserProfileRepository {
             @NonNull UserProfile profile,
             @NonNull PlayerStatistics statistics
     ) {
-        return new UserProfile(
-                profile.getUsername(),
-                profile.getEmail(),
-                profile.getAvatarUri(),
-                profile.getTokens(),
-                profile.getTotalStars(),
-                profile.getLeagueName(),
-                profile.getLeagueTierKey(),
-                profile.getRegion(),
-                profile.getInvitePayload(),
-                statistics
-        );
+        return profile.toBuilder().statistics(statistics).build();
     }
 
     private void saveRemoteProfile(@NonNull UserProfile profile) {
@@ -765,50 +1089,11 @@ public final class UserProfileRepository {
     }
 
     @NonNull
-    private UserProfile createDefaultProfile(
-            @NonNull String username,
-            @NonNull String email,
-            @NonNull String region
-    ) {
-        String inviteCode = UUID.randomUUID().toString();
-        String invitePayload = String.format(
-                Locale.US,
-                "slagalica://invite?user=%s&code=%s",
-                username,
-                inviteCode
-        );
-
-        return new UserProfile(
-                username,
-                email,
-                "",
-                0L,
-                0L,
-                "Liga bronza",
-                "bronze",
-                region,
-                invitePayload,
-                UserProfileMapper.emptyStatistics()
-        );
-    }
-
-    @NonNull
     private static UserProfile mergeWithAuthEmail(@NonNull UserProfile profile, @NonNull String email) {
         if (email.equals(profile.getEmail())) {
             return profile;
         }
-        return new UserProfile(
-                profile.getUsername(),
-                email,
-                profile.getAvatarUri(),
-                profile.getTokens(),
-                profile.getTotalStars(),
-                profile.getLeagueName(),
-                profile.getLeagueTierKey(),
-                profile.getRegion(),
-                profile.getInvitePayload(),
-                profile.getStatistics()
-        );
+        return profile.toBuilder().email(email).build();
     }
 
     @NonNull

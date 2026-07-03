@@ -16,6 +16,7 @@ import com.example.slagalica.model.GameHeaderPlayerState;
 import com.example.slagalica.model.GameHeaderState;
 import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.utils.AvatarImageLoader;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.Locale;
 
@@ -24,6 +25,9 @@ public class GameHeaderFragment extends Fragment {
     private GameHeaderState state;
     private GameHeaderPlayerState defaultPlayerOne;
     private GameHeaderPlayerState defaultPlayerTwo;
+    private UserProfileRepository profileRepository;
+    private UserProfile currentProfile;
+    private ListenerRegistration profileListener;
 
     public GameHeaderFragment() {
         super(R.layout.fragment_game_header);
@@ -32,8 +36,33 @@ public class GameHeaderFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        profileRepository = new UserProfileRepository(requireContext());
+        currentProfile = profileRepository.loadProfile();
+
         loadDefaultPlayers();
+        profileListener = profileRepository.listenCurrentProfile(
+                profile -> {
+                    currentProfile = profile;
+                    defaultPlayerOne = null;
+                    View currentView = getView();
+                    if (currentView != null) {
+                        render(currentView);
+                    }
+                },
+                error -> { }
+        );
+
         render(view);
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (profileListener != null) {
+            profileListener.remove();
+            profileListener = null;
+        }
+        super.onDestroyView();
     }
 
     public void setHeaderState(@NonNull GameHeaderState state) {
@@ -57,11 +86,16 @@ public class GameHeaderFragment extends Fragment {
     }
 
     private void loadDefaultPlayers() {
-        UserProfile profile = new UserProfileRepository(requireContext()).loadProfile();
+        if (profileRepository == null) {
+            profileRepository = new UserProfileRepository(requireContext());
+        }
+
+        UserProfile profile = currentProfile != null ? currentProfile : profileRepository.loadProfile();
         String playerOneName = profile.getUsername();
-        if (playerOneName.trim().isEmpty()) {
+        if (playerOneName == null || playerOneName.trim().isEmpty()) {
             playerOneName = getString(R.string.guest_player);
         }
+
         defaultPlayerOne = new GameHeaderPlayerState(playerOneName, 0, profile.getAvatarUri());
         defaultPlayerTwo = new GameHeaderPlayerState(getString(R.string.opponent_player), 0, null);
     }
@@ -86,6 +120,36 @@ public class GameHeaderFragment extends Fragment {
         bindAvatar(playerOneAvatar, currentState.getPlayerOne().getAvatarUri());
         bindAvatar(playerTwoAvatar, currentState.getPlayerTwo().getAvatarUri());
         bindActivePlayer(playerOneContainer, playerTwoContainer, currentState.getActivePlayerNumber());
+
+        renderProfileSummary(view);
+    }
+
+    private void renderProfileSummary(@NonNull View view) {
+        if (profileRepository == null) {
+            profileRepository = new UserProfileRepository(requireContext());
+        }
+
+        View profileSummary = view.findViewById(R.id.gameHeaderProfileSummary);
+        if (!profileRepository.isRegisteredPlayer()) {
+            profileSummary.setVisibility(View.GONE);
+            return;
+        }
+        profileSummary.setVisibility(View.VISIBLE);
+
+        UserProfile profile = currentProfile != null ? currentProfile : profileRepository.loadProfile();
+
+        TextView tokens = view.findViewById(R.id.gameHeaderTokens);
+        TextView stars = view.findViewById(R.id.gameHeaderStars);
+        TextView league = view.findViewById(R.id.gameHeaderLeague);
+
+        String leagueName = profile.getLeagueName();
+        if (leagueName == null || leagueName.trim().isEmpty()) {
+            leagueName = getString(R.string.league_name_starter);
+        }
+
+        tokens.setText(getString(R.string.game_header_tokens, profile.getTokens()));
+        stars.setText(getString(R.string.game_header_stars, profile.getTotalStars()));
+        league.setText(getString(R.string.game_header_league, leagueName));
     }
 
     private void bindActivePlayer(

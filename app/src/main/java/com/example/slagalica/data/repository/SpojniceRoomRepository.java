@@ -242,11 +242,12 @@ public final class SpojniceRoomRepository {
                     updates.put("phaseEndsAtMillis", 0L);
                 } else {
                     int nextRoundNumber = currentRound + 1;
+                    String nextActiveUid = startingPlayerUid(snapshot, nextRoundNumber);
                     updates.putAll(nextRoundState(
                             snapshot,
                             nextRoundNumber,
-                            startingPlayerUid(snapshot, nextRoundNumber),
-                            startingPlayerNumber(nextRoundNumber),
+                            nextActiveUid,
+                            playerNumberForUid(snapshot, nextActiveUid),
                             nextRound,
                             nextCriterion
                     ));
@@ -283,11 +284,15 @@ public final class SpojniceRoomRepository {
                 break;
             }
         }
-        if (!hasUnconnected) {
+
+        String followupUid = followupPlayerUid(snapshot);
+        String abandonedByUid = stringOrEmpty(snapshot.getString("abandonedByUid"));
+
+        if (!hasUnconnected || followupUid.equals(abandonedByUid)) {
             applyRoundOver(updates);
         } else {
             updates.put("phase", PHASE_FOLLOWUP);
-            updates.put("followupPlayerUid", followupPlayerUid(snapshot));
+            updates.put("followupPlayerUid", followupUid);
             updates.put("followupLockedLeft", new ArrayList<Integer>());
             updates.put("phaseEndsAtMillis", System.currentTimeMillis() + ROUND_DURATION_MS);
         }
@@ -301,9 +306,53 @@ public final class SpojniceRoomRepository {
     @NonNull
     private static String followupPlayerUid(@NonNull DocumentSnapshot snapshot) {
         int round = intOrZero(snapshot.get("currentRound"));
-        return startingPlayerNumber(round) == 1
-                ? stringOrEmpty(snapshot.getString("playerTwoUid"))
-                : stringOrEmpty(snapshot.getString("playerOneUid"));
+        String playerOneUid = stringOrEmpty(snapshot.getString("playerOneUid"));
+        String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
+        String abandonedByUid = stringOrEmpty(snapshot.getString("abandonedByUid"));
+
+        String preferred = startingPlayerNumber(round) == 1 ? playerTwoUid : playerOneUid;
+        if (!preferred.equals(abandonedByUid)) {
+            return preferred;
+        }
+
+        return preferred.equals(playerOneUid) ? playerTwoUid : playerOneUid;
+    }
+
+    @NonNull
+    private static String currentFollowupUid(@NonNull DocumentSnapshot snapshot) {
+        String followupUid = stringOrEmpty(snapshot.getString("followupPlayerUid"));
+        return followupUid.isEmpty() ? followupPlayerUid(snapshot) : followupUid;
+    }
+
+    private static int playerNumberForUid(@NonNull DocumentSnapshot snapshot, @NonNull String uid) {
+        if (uid.equals(snapshot.getString("playerOneUid"))) {
+            return 1;
+        }
+        if (uid.equals(snapshot.getString("playerTwoUid"))) {
+            return 2;
+        }
+        return 1;
+    }
+
+    @NonNull
+    private static String survivingUid(@NonNull RoomSession room) {
+        if (room.getAbandonedByUid().equals(room.getHostUid())) {
+            return room.getGuestUid();
+        }
+        if (room.getAbandonedByUid().equals(room.getGuestUid())) {
+            return room.getHostUid();
+        }
+        return "";
+    }
+
+    private static int playerNumberForRoomUid(@NonNull RoomSession room, @NonNull String uid) {
+        if (uid.equals(room.getHostUid())) {
+            return 1;
+        }
+        if (uid.equals(room.getGuestUid())) {
+            return 2;
+        }
+        return 1;
     }
 
     private static boolean allRemainingConnected(@NonNull List<Integer> connected) {
@@ -328,7 +377,8 @@ public final class SpojniceRoomRepository {
     ) {
         int round = intOrZero(snapshot.get("currentRound"));
         String expectedUid = startingPlayerUid(snapshot, round);
-        int expectedNumber = startingPlayerNumber(round);
+        int expectedNumber = playerNumberForUid(snapshot, expectedUid);
+
         if (!expectedUid.equals(stringOrEmpty(snapshot.getString("activePlayerUid")))) {
             updates.put("activePlayerUid", expectedUid);
         }
@@ -339,9 +389,16 @@ public final class SpojniceRoomRepository {
 
     @NonNull
     private static String startingPlayerUid(@NonNull DocumentSnapshot snapshot, int round) {
-        return startingPlayerNumber(round) == 1
-                ? stringOrEmpty(snapshot.getString("playerOneUid"))
-                : stringOrEmpty(snapshot.getString("playerTwoUid"));
+        String playerOneUid = stringOrEmpty(snapshot.getString("playerOneUid"));
+        String playerTwoUid = stringOrEmpty(snapshot.getString("playerTwoUid"));
+        String abandonedByUid = stringOrEmpty(snapshot.getString("abandonedByUid"));
+
+        String preferred = startingPlayerNumber(round) == 1 ? playerOneUid : playerTwoUid;
+        if (!preferred.equals(abandonedByUid)) {
+            return preferred;
+        }
+
+        return preferred.equals(playerOneUid) ? playerTwoUid : playerOneUid;
     }
 
     private static int startingPlayerNumber(int round) {
@@ -409,6 +466,7 @@ public final class SpojniceRoomRepository {
         fields.put("usedRightIndices", new ArrayList<Integer>());
         fields.put("followupLockedLeft", new ArrayList<Integer>());
         fields.put("currentLeftIndex", 0);
+        fields.put("abandonedByUid", "");
         return fields;
     }
 
@@ -423,6 +481,77 @@ public final class SpojniceRoomRepository {
             }
         }
         return values;
+    }
+
+    public void handleAbandonedPlayer(
+            @NonNull RoomSession room,
+            @NonNull SpojnicePuzzle.ShuffledRound nextRound,
+            @NonNull String nextCriterion,
+            @NonNull Consumer<String> onError
+    ) {
+        String abandonedUid = room.getAbandonedByUid();
+        if (abandonedUid.isEmpty()) {
+            return;
+        }
+
+        DocumentReference ref = stateRef(room.getRoomId());
+
+        db.runTransaction(transaction -> {
+            DocumentSnapshot snapshot = transaction.get(ref);
+            if (!snapshot.exists()) {
+                return null;
+            }
+
+            String phase = stringOrDefault(snapshot.getString("phase"), PHASE_ACTIVE);
+            if (PHASE_GAME_OVER.equals(phase)) {
+                return null;
+            }
+
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("abandonedByUid", abandonedUid);
+
+            String survivorUid = survivingUid(room);
+
+            if (PHASE_ACTIVE.equals(phase)
+                    && abandonedUid.equals(snapshot.getString("activePlayerUid"))) {
+                updates.put("activePlayerUid", survivorUid);
+                updates.put("activePlayerNumber", playerNumberForRoomUid(room, survivorUid));
+                updates.put("phaseEndsAtMillis", System.currentTimeMillis() + ROUND_DURATION_MS);
+            } else if (PHASE_FOLLOWUP.equals(phase)
+                    && abandonedUid.equals(currentFollowupUid(snapshot))) {
+                applyRoundOver(updates);
+            } else if (PHASE_ROUND_OVER.equals(phase)) {
+                long endsAt = longOrZero(snapshot.get("phaseEndsAtMillis"));
+                if (endsAt > 0L && endsAt <= System.currentTimeMillis()) {
+                    int currentRound = intOrZero(snapshot.get("currentRound"));
+
+                    if (currentRound >= TOTAL_ROUNDS) {
+                        updates.put("phase", PHASE_GAME_OVER);
+                        updates.put("phaseEndsAtMillis", 0L);
+                    } else {
+                        int nextRoundNumber = currentRound + 1;
+                        updates.putAll(nextRoundState(
+                                snapshot,
+                                nextRoundNumber,
+                                survivorUid,
+                                playerNumberForRoomUid(room, survivorUid),
+                                nextRound,
+                                nextCriterion
+                        ));
+                    }
+                }
+            }
+
+            if (!updates.isEmpty()) {
+                transaction.update(ref, updates);
+            }
+
+            return null;
+        }).addOnFailureListener(error ->
+                onError.accept(error.getMessage() != null
+                        ? error.getMessage()
+                        : "Napušteni igrač nije obrađen.")
+        );
     }
 
     @NonNull

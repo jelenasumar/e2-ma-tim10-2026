@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.slagalica.R;
 import com.example.slagalica.data.repository.GameInviteRepository;
 import com.example.slagalica.data.repository.NotificationsRepository;
 import com.example.slagalica.model.NotificationAction;
@@ -16,8 +17,13 @@ import com.example.slagalica.model.SystemNotification;
 import com.example.slagalica.utils.SingleLiveEvent;
 import com.google.firebase.firestore.ListenerRegistration;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class NotificationsViewModel extends AndroidViewModel {
 
@@ -33,6 +39,8 @@ public class NotificationsViewModel extends AndroidViewModel {
     private NotificationCategory selectedCategory = NotificationCategory.ALL;
     private NotificationStatus selectedStatus = NotificationStatus.ALL;
     private ListenerRegistration notificationsListener;
+    private final Handler inviteExpireHandler = new Handler(Looper.getMainLooper());
+    private final Set<String> scheduledInviteExpirations = new HashSet<>();
 
     public NotificationsViewModel(@NonNull Application application) {
         super(application);
@@ -118,9 +126,11 @@ public class NotificationsViewModel extends AndroidViewModel {
                 && !notification.getRoomId().isEmpty()) {
             handleOpenRoomNotification(notification);
         } else if (notification.getAction() == NotificationAction.OPEN_CHAT) {
-            notificationPageTitle.setValue("Čet");
+            notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_chat));
         } else if (notification.getAction() == NotificationAction.OPEN_LEAGUE) {
-            notificationPageTitle.setValue("Liga");
+            notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_ranking));
+        } else if (notification.getAction() == NotificationAction.OPEN_RANKING) {
+            notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_ranking));
         } else if (notification.getAction() == NotificationAction.NONE) {
             notificationPageTitle.setValue(destinationTitle(notification));
         } else if (!notification.isRead()) {
@@ -161,10 +171,13 @@ public class NotificationsViewModel extends AndroidViewModel {
                 }
                 break;
             case OPEN_CHAT:
-                notificationPageTitle.setValue("Čet");
+                notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_chat));
                 break;
             case OPEN_LEAGUE:
-                notificationPageTitle.setValue("Liga");
+                notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_ranking));
+                break;
+            case OPEN_RANKING:
+                notificationPageTitle.setValue(getApplication().getString(R.string.notification_destination_ranking));
                 break;
             case NONE:
             case ACCEPT_INVITE:
@@ -238,15 +251,33 @@ public class NotificationsViewModel extends AndroidViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
+        inviteExpireHandler.removeCallbacksAndMessages(null);
         if (notificationsListener != null) {
             notificationsListener.remove();
             notificationsListener = null;
         }
     }
 
+    private void dismissHandledNotifications(@NonNull List<SystemNotification> notifications) {
+        for (SystemNotification notification : notifications) {
+            for (SystemNotification previous : allNotifications) {
+                if (!previous.getId().equals(notification.getId())) {
+                    continue;
+                }
+                if (!previous.isActionHandled()
+                        && notification.isActionHandled()
+                        && notification.getAction() == NotificationAction.ACCEPT_INVITE) {
+                    repository.cancelSystemNotification(notification.getId());
+                }
+                break;
+            }
+        }
+    }
+
     private void listenNotifications() {
         notificationsListener = inviteRepository.listenNotifications(
                 notifications -> {
+                    dismissHandledNotifications(notifications);
                     allNotifications = notifications;
                     applyFilters();
                 },
@@ -300,6 +331,36 @@ public class NotificationsViewModel extends AndroidViewModel {
             }
         }
         visibleNotifications.setValue(filtered);
+        scheduleInviteExpirations(filtered);
+    }
+
+    private void scheduleInviteExpirations(@NonNull List<SystemNotification> notifications) {
+        for (SystemNotification notification : notifications) {
+            if (notification.getAction() != NotificationAction.ACCEPT_INVITE) {
+                continue;
+            }
+            if (notification.isActionHandled()) {
+                continue;
+            }
+            String inviteId = notification.getInviteId();
+            if (inviteId == null || inviteId.isEmpty()) {
+                continue;
+            }
+            if (!scheduledInviteExpirations.add(inviteId)) {
+                continue;
+            }
+            inviteExpireHandler.postDelayed(() -> {
+                inviteRepository.expireInviteIfPending(
+                        inviteId,
+                        notification.getId(),
+                        () -> {
+                            scheduledInviteExpirations.remove(inviteId);
+                            updateLocalActionHandled(notification.getId(), "Poziv je istekao");
+                            message.postValue("Poziv za partiju je automatski odbijen.");
+                        }
+                );
+            }, GameInviteRepository.INVITE_EXPIRE_MS);
+        }
     }
 
     private boolean matchesCategory(@NonNull SystemNotification notification) {

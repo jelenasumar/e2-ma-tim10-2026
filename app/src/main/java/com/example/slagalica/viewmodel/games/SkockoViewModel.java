@@ -74,6 +74,7 @@ public class SkockoViewModel extends GameViewModel {
     private int statsExactMatches = 0;
     private int statsTotalSlots = 0;
     private int statsLastRecordedRound = 0;
+    private boolean challengeMode = false;
 
     public SkockoViewModel(@NonNull Application application) {
         super(application);
@@ -89,6 +90,10 @@ public class SkockoViewModel extends GameViewModel {
         return errorMessage;
     }
 
+    public boolean shouldRecordGameStats() {
+        return roomSession == null || !"FRIENDLY".equals(roomSession.getMatchType());
+    }
+
     public void startGame(
             @NonNull GameHeaderPlayerState playerOne,
             @NonNull GameHeaderPlayerState playerTwo
@@ -100,6 +105,13 @@ public class SkockoViewModel extends GameViewModel {
         this.playerOne = playerOne;
         this.playerTwo = playerTwo;
         startRound(1);
+    }
+    public void startChallengeGame(
+            @NonNull GameHeaderPlayerState playerOne,
+            @NonNull GameHeaderPlayerState playerTwo
+    ) {
+        challengeMode = true;
+        startGame(playerOne, playerTwo);
     }
 
     public void startRoomGame(@NonNull String roomId) {
@@ -277,6 +289,15 @@ public class SkockoViewModel extends GameViewModel {
                 generateSecretCombination(),
                 errorMessage::setValue
         );
+        if (!room.getAbandonedByUid().isEmpty()
+                && !myUid.isEmpty()
+                && !myUid.equals(room.getAbandonedByUid())) {
+            skockoRoomRepository.handleAbandonedPlayer(
+                    room,
+                    generateSecretCombination(),
+                    errorMessage::setValue
+            );
+        }
     }
 
     private void onRemoteStateChanged(@NonNull DocumentSnapshot snapshot) {
@@ -482,7 +503,7 @@ public class SkockoViewModel extends GameViewModel {
         publishGameState();
 
         startResultTimer(() -> {
-            if (currentRound < TOTAL_ROUNDS) {
+            if (!challengeMode && currentRound < TOTAL_ROUNDS) {
                 startRound(currentRound + 1);
             } else {
                 gameOver = true;

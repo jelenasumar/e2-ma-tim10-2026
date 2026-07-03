@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import androidx.annotation.NonNull;
 
 import com.example.slagalica.data.repository.UserProfileMapper;
+import com.example.slagalica.model.DailyMissionProgress;
 import com.example.slagalica.model.PlayerStatistics;
 import com.example.slagalica.model.UserProfile;
 
@@ -24,6 +25,13 @@ public final class UserPreferences {
     private static final String KEY_LEAGUE_NAME = "league_name";
     private static final String KEY_LEAGUE_TIER = "league_tier";
     private static final String KEY_REGION = "region";
+    private static final String KEY_REGION_KEY = "region_key";
+    private static final String KEY_MAP_POINT_X = "map_point_x";
+    private static final String KEY_MAP_POINT_Y = "map_point_y";
+    private static final String KEY_MONTHLY_STARS = "monthly_stars";
+    private static final String KEY_STARS_CYCLE_KEY = "stars_cycle_key";
+    private static final String KEY_REGION_RANK_FRAME = "region_rank_frame";
+    private static final String KEY_LAST_ACTIVE_AT = "last_active_at";
     private static final String KEY_INVITE_CODE = "invite_code";
     private static final String KEY_INVITE_PAYLOAD = "invite_payload";
 
@@ -52,6 +60,14 @@ public final class UserPreferences {
     private static final String KEY_LOSS_PCT = "matches_loss_pct";
     private static final String KEY_MATCHES_WON = "matches_won";
     private static final String KEY_MATCHES_LOST = "matches_lost";
+    private static final String KEY_LAST_DAILY_TOKEN_DATE = "last_daily_token_date";
+    private static final String KEY_DAILY_MISSION_DATE = "daily_mission_date";
+    private static final String KEY_DAILY_MISSION_WON_MATCH = "daily_mission_won_match";
+    private static final String KEY_DAILY_MISSION_SENT_CHAT = "daily_mission_sent_chat";
+    private static final String KEY_DAILY_MISSION_PLAYED_FRIENDLY = "daily_mission_played_friendly";
+    private static final String KEY_DAILY_MISSION_WON_TOURNAMENT = "daily_mission_won_tournament";
+    private static final String KEY_DAILY_MISSION_BONUS_CLAIMED = "daily_mission_bonus_claimed";
+    private static final String KEY_MONTHLY_PENALTY_PREFIX = "monthly_penalty_";
 
     private final SharedPreferences prefs;
 
@@ -88,19 +104,35 @@ public final class UserPreferences {
         if (invitePayload == null || invitePayload.isEmpty()) {
             invitePayload = buildInvitePayload();
         }
-
-        return new UserProfile(
-                prefs.getString(KEY_USERNAME, ""),
-                prefs.getString(KEY_EMAIL, ""),
-                prefs.getString(KEY_AVATAR_URI, ""),
-                prefs.getLong(KEY_TOKENS, 0L),
-                prefs.getLong(KEY_STARS, 0L),
-                prefs.getString(KEY_LEAGUE_NAME, "Liga bronza"),
-                prefs.getString(KEY_LEAGUE_TIER, "bronze"),
-                prefs.getString(KEY_REGION, ""),
-                invitePayload,
-                stats
+        DailyMissionProgress dailyMissionProgress = new DailyMissionProgress(
+                prefs.getString(KEY_DAILY_MISSION_DATE, ""),
+                prefs.getBoolean(KEY_DAILY_MISSION_WON_MATCH, false),
+                prefs.getBoolean(KEY_DAILY_MISSION_SENT_CHAT, false),
+                prefs.getBoolean(KEY_DAILY_MISSION_PLAYED_FRIENDLY, false),
+                prefs.getBoolean(KEY_DAILY_MISSION_WON_TOURNAMENT, false),
+                prefs.getBoolean(KEY_DAILY_MISSION_BONUS_CLAIMED, false)
         );
+
+        return new UserProfile.Builder()
+                .username(prefs.getString(KEY_USERNAME, ""))
+                .email(prefs.getString(KEY_EMAIL, ""))
+                .avatarUri(prefs.getString(KEY_AVATAR_URI, ""))
+                .tokens(prefs.getLong(KEY_TOKENS, 0L))
+                .totalStars(prefs.getLong(KEY_STARS, 0L))
+                .leagueName(prefs.getString(KEY_LEAGUE_NAME, "Početnička liga"))
+                .leagueTierKey(prefs.getString(KEY_LEAGUE_TIER, "starter"))
+                .region(prefs.getString(KEY_REGION, ""))
+                .regionKey(prefs.getString(KEY_REGION_KEY, ""))
+                .mapPointX(prefs.getFloat(KEY_MAP_POINT_X, 0f))
+                .mapPointY(prefs.getFloat(KEY_MAP_POINT_Y, 0f))
+                .monthlyStars(prefs.getLong(KEY_MONTHLY_STARS, 0L))
+                .starsCycleKey(prefs.getString(KEY_STARS_CYCLE_KEY, ""))
+                .regionRankFrame(prefs.getString(KEY_REGION_RANK_FRAME, ""))
+                .lastActiveAt(prefs.getLong(KEY_LAST_ACTIVE_AT, 0L))
+                .invitePayload(invitePayload)
+                .statistics(stats)
+                .dailyMissionProgress(dailyMissionProgress)
+                .build();
     }
 
     public int getSpojniceGamesPlayed() {
@@ -148,6 +180,13 @@ public final class UserPreferences {
                 .putString(KEY_LEAGUE_NAME, profile.getLeagueName())
                 .putString(KEY_LEAGUE_TIER, profile.getLeagueTierKey())
                 .putString(KEY_REGION, profile.getRegion())
+                .putString(KEY_REGION_KEY, profile.getRegionKey())
+                .putFloat(KEY_MAP_POINT_X, profile.getMapPointX())
+                .putFloat(KEY_MAP_POINT_Y, profile.getMapPointY())
+                .putLong(KEY_MONTHLY_STARS, profile.getMonthlyStars())
+                .putString(KEY_STARS_CYCLE_KEY, profile.getStarsCycleKey())
+                .putString(KEY_REGION_RANK_FRAME, profile.getRegionRankFrame())
+                .putLong(KEY_LAST_ACTIVE_AT, profile.getLastActiveAt())
                 .putString(KEY_INVITE_PAYLOAD, profile.getInvitePayload())
                 .putFloat(KEY_AVG_KZZ, stats.getAvgScoreKoZnaZna())
                 .putFloat(KEY_AVG_SPOJNICE, stats.getAvgScoreSpojnice())
@@ -168,6 +207,12 @@ public final class UserPreferences {
                 .putFloat(KEY_LOSS_PCT, stats.getMatchesLossPercent())
                 .putInt(KEY_MATCHES_WON, stats.getMatchesWon())
                 .putInt(KEY_MATCHES_LOST, stats.getMatchesLost())
+                .putString(KEY_DAILY_MISSION_DATE, profile.getDailyMissionProgress().getDateKey())
+                .putBoolean(KEY_DAILY_MISSION_WON_MATCH, profile.getDailyMissionProgress().hasWonMatch())
+                .putBoolean(KEY_DAILY_MISSION_SENT_CHAT, profile.getDailyMissionProgress().hasSentChatMessage())
+                .putBoolean(KEY_DAILY_MISSION_PLAYED_FRIENDLY, profile.getDailyMissionProgress().hasPlayedFriendlyMatch())
+                .putBoolean(KEY_DAILY_MISSION_WON_TOURNAMENT, profile.getDailyMissionProgress().hasWonTournamentMatch())
+                .putBoolean(KEY_DAILY_MISSION_BONUS_CLAIMED, profile.getDailyMissionProgress().isCompletionBonusClaimed())
                 .apply();
 
         syncInviteCodeFromPayload(profile.getInvitePayload());
@@ -182,8 +227,21 @@ public final class UserPreferences {
                 .remove(KEY_USERNAME)
                 .remove(KEY_EMAIL)
                 .remove(KEY_REGION)
+                .remove(KEY_REGION_KEY)
+                .remove(KEY_MAP_POINT_X)
+                .remove(KEY_MAP_POINT_Y)
+                .remove(KEY_MONTHLY_STARS)
+                .remove(KEY_STARS_CYCLE_KEY)
+                .remove(KEY_REGION_RANK_FRAME)
+                .remove(KEY_LAST_ACTIVE_AT)
                 .remove(KEY_AVATAR_URI)
                 .remove(KEY_INVITE_PAYLOAD)
+                .remove(KEY_DAILY_MISSION_DATE)
+                .remove(KEY_DAILY_MISSION_WON_MATCH)
+                .remove(KEY_DAILY_MISSION_SENT_CHAT)
+                .remove(KEY_DAILY_MISSION_PLAYED_FRIENDLY)
+                .remove(KEY_DAILY_MISSION_WON_TOURNAMENT)
+                .remove(KEY_DAILY_MISSION_BONUS_CLAIMED)
                 .apply();
         ensureSeedDefaults();
     }
@@ -191,10 +249,10 @@ public final class UserPreferences {
     public void ensureSeedDefaults() {
         SharedPreferences.Editor ed = prefs.edit();
         if (!prefs.contains(KEY_LEAGUE_NAME)) {
-            ed.putString(KEY_LEAGUE_NAME, "Liga bronza");
+            ed.putString(KEY_LEAGUE_NAME, "Početnička liga");
         }
         if (!prefs.contains(KEY_LEAGUE_TIER)) {
-            ed.putString(KEY_LEAGUE_TIER, "bronze");
+            ed.putString(KEY_LEAGUE_TIER, "starter");
         }
         if (!prefs.contains(KEY_INVITE_CODE)) {
             ed.putString(KEY_INVITE_CODE, UUID.randomUUID().toString());
@@ -248,5 +306,26 @@ public final class UserPreferences {
 
     public void setMojBrojGamesPlayed(int count) {
         prefs.edit().putInt(KEY_MOJ_BROJ_GAMES, count).apply();
+    }
+
+    @NonNull
+    public String getLastDailyTokenGrantDate() {
+        return prefs.getString(KEY_LAST_DAILY_TOKEN_DATE, "");
+    }
+
+    public void setLastDailyTokenGrantDate(@NonNull String date) {
+        prefs.edit().putString(KEY_LAST_DAILY_TOKEN_DATE, date).apply();
+    }
+
+    public boolean wasMonthlyPenaltyProcessed(long cycleStartMillis) {
+        return prefs.getBoolean(KEY_MONTHLY_PENALTY_PREFIX + cycleStartMillis, false);
+    }
+
+    public void markMonthlyPenaltyProcessed(long cycleStartMillis) {
+        prefs.edit().putBoolean(KEY_MONTHLY_PENALTY_PREFIX + cycleStartMillis, true).apply();
+    }
+
+    public void clearMonthlyPenaltyProcessed(long cycleStartMillis) {
+        prefs.edit().remove(KEY_MONTHLY_PENALTY_PREFIX + cycleStartMillis).apply();
     }
 }

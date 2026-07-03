@@ -27,6 +27,10 @@
             app:destination="@id/notificationsFragment" />
 
         <action
+            android:id="@+id/action_home_to_dailyMissions"
+            app:destination="@id/dailyMissionsFragment" />
+
+        <action
             android:id="@+id/action_home_to_profile"
             app:destination="@id/profileFragment" />
 
@@ -37,6 +41,10 @@
         <action
             android:id="@+id/action_home_to_onlineMatchmaking"
             app:destination="@id/onlineMatchmakingFragment" />
+
+        <action
+            android:id="@+id/action_home_to_tournament"
+            app:destination="@id/tournamentFragment" />
 
         <action
             android:id="@+id/action_home_to_roomSession"
@@ -51,8 +59,20 @@
             app:destination="@id/spojniceFragment" />
 
         <action
+            android:id="@+id/action_home_to_regionMap"
+            app:destination="@id/regionMapFragment" />
+
+        <action
+            android:id="@+id/action_home_to_ranking"
+            app:destination="@id/rankingFragment" />
+
+        <action
             android:id="@+id/action_profile_to_changePassword"
             app:destination="@id/changePassword" />
+
+        <action
+            android:id="@+id/action_home_to_regionChat"
+            app:destination="@id/regionChatFragment" />
 
 
     </fragment>
@@ -83,6 +103,28 @@
         android:label="Notifikacije" />
 
     <fragment
+        android:id="@+id/dailyMissionsFragment"
+        android:name="com.example.slagalica.ui.missions.DailyMissionsFragment"
+        android:label="@string/daily_missions_title">
+
+        <action
+            android:id="@+id/action_dailyMissions_to_onlineMatchmaking"
+            app:destination="@id/onlineMatchmakingFragment" />
+
+        <action
+            android:id="@+id/action_dailyMissions_to_regionChat"
+            app:destination="@id/regionChatFragment" />
+
+        <action
+            android:id="@+id/action_dailyMissions_to_inviteFriends"
+            app:destination="@id/inviteFriendsFragment" />
+
+        <action
+            android:id="@+id/action_dailyMissions_to_tournament"
+            app:destination="@id/tournamentFragment" />
+    </fragment>
+
+    <fragment
         android:id="@+id/notificationDestinationFragment"
         android:name="com.example.slagalica.ui.notifications.NotificationDestinationFragment"
         android:label="@string/notification_destination_default_title" />
@@ -94,13 +136,18 @@
 
     <fragment
         android:id="@+id/inviteFriendsFragment"
-        android:name="com.example.slagalica.ui.invites.InviteFriendsFragment"
-        android:label="@string/invite_friends_title" />
+        android:name="com.example.slagalica.ui.friends.FriendsFragment"
+        android:label="@string/friends_title" />
 
     <fragment
         android:id="@+id/onlineMatchmakingFragment"
         android:name="com.example.slagalica.ui.matchmaking.OnlineMatchmakingFragment"
         android:label="@string/online_matchmaking_title" />
+
+    <fragment
+        android:id="@+id/tournamentFragment"
+        android:name="com.example.slagalica.ui.tournament.TournamentFragment"
+        android:label="@string/tournament_title" />
 
     <fragment
         android:id="@+id/roomSessionFragment"
@@ -131,5 +178,38 @@
         android:id="@+id/changePassword"
         android:name="com.example.slagalica.ui.profile.ChangePasswordFragment"
         android:label="@string/change_password" />
+
+    <fragment
+        android:id="@+id/regionMapFragment"
+        android:name="com.example.slagalica.ui.region.RegionMapFragment"
+        android:label="@string/region_map_title">
+
+        <action
+            android:id="@+id/action_regionMap_to_leaderboard"
+            app:destination="@id/regionLeaderboardFragment" />
+        <action
+            android:id="@+id/action_regionMap_to_challengeSession"
+            app:destination="@id/challengeSessionFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/regionLeaderboardFragment"
+        android:name="com.example.slagalica.ui.region.RegionLeaderboardFragment"
+        android:label="@string/region_leaderboard_title" />
+
+    <fragment
+        android:id="@+id/rankingFragment"
+        android:name="com.example.slagalica.ui.ranking.RankingFragment"
+        android:label="@string/ranking_title" />
+
+    <fragment
+        android:id="@+id/regionChatFragment"
+        android:name="com.example.slagalica.ui.chat.RegionChatFragment"
+        android:label="@string/region_chat_title" />
+
+    <fragment
+        android:id="@+id/challengeSessionFragment"
+        android:name="com.example.slagalica.ui.challenge.ChallengeSessionFragment"
+        android:label="@string/challenge_session_title" />
 
 </navigation>

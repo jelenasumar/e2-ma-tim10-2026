@@ -17,7 +17,6 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.navigation.fragment.NavHostFragment;
 
 import com.example.slagalica.R;
 import com.example.slagalica.data.repository.SpojniceRoomRepository;
@@ -28,6 +27,7 @@ import com.example.slagalica.model.UserProfile;
 import com.example.slagalica.model.spojnice.SpojniceUiState;
 import com.example.slagalica.ui.room.RoomGameFlow;
 import com.example.slagalica.viewmodel.games.SpojniceViewModel;
+import com.example.slagalica.ui.challenge.ChallengeGameFlow;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +51,8 @@ public class SpojniceFragment extends Fragment {
     private String lastRenderedBoardKey = "";
     private int lastRenderedRound = 0;
     private boolean gameOverHandled;
+    private Bundle challengeArgs;
+    private boolean challengeMode;
 
     public SpojniceFragment() {
         for (int i = 0; i < ROW_COUNT; i++) {
@@ -72,7 +74,7 @@ public class SpojniceFragment extends Fragment {
         viewModel = new ViewModelProvider(this).get(SpojniceViewModel.class);
 
         submitBtn.setOnClickListener(v -> viewModel.submitPair());
-        backBtn.setOnClickListener(v -> NavHostFragment.findNavController(this).navigateUp());
+        backBtn.setOnClickListener(v -> RoomGameFlow.confirmAbandonOrNavigateUp(this, roomId));
 
         for (int i = 0; i < ROW_COUNT; i++) {
             int rowIndex = i;
@@ -102,9 +104,16 @@ public class SpojniceFragment extends Fragment {
         Bundle args = getArguments();
         if (args != null) {
             roomId = args.getString("roomId", "");
+            if (ChallengeGameFlow.isChallengeGame(args)) {
+                challengeArgs = new Bundle(args);
+                challengeMode = true;
+            }
         }
         if (!roomId.isEmpty()) {
             viewModel.startRoomGame(roomId);
+            RoomGameFlow.registerRoomBackHandler(this, roomId);
+        } else if (challengeMode) {
+            viewModel.startChallengeGame();
         } else {
             statusView.setVisibility(View.VISIBLE);
             statusView.setText(getString(R.string.spojnice_waiting_room));
@@ -156,19 +165,27 @@ public class SpojniceFragment extends Fragment {
         submitBtn.setEnabled(state.isCanSubmit());
         submitBtn.setVisibility(state.isGameOver() ? View.GONE : View.VISIBLE);
         if (state.isGameOver()) {
-            if (!roomId.isEmpty()) {
-                backBtn.setVisibility(View.GONE);
-                if (!gameOverHandled) {
-                    gameOverHandled = true;
+            backBtn.setVisibility(View.GONE);
+
+            if (!gameOverHandled) {
+                gameOverHandled = true;
+
+                if (challengeMode && challengeArgs != null) {
+                    ChallengeGameFlow.onGameFinished(
+                            this,
+                            challengeArgs,
+                            viewModel.getCurrentUserGameScore()
+                    );
+                } else if (!roomId.isEmpty()) {
                     RoomGameFlow.onGameFinished(
                             this,
                             roomId,
                             state.getPlayerOneScore(),
                             state.getPlayerTwoScore()
                     );
+                } else {
+                    backBtn.setVisibility(View.VISIBLE);
                 }
-            } else {
-                backBtn.setVisibility(View.VISIBLE);
             }
         } else {
             backBtn.setVisibility(View.GONE);

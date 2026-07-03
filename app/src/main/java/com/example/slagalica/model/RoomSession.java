@@ -23,6 +23,10 @@ public final class RoomSession {
     private final String status;
     private final String matchType;
     private final String koZnaZnaMatchId;
+    private final String tournamentId;
+    private final String tournamentRound;
+    private final String finishReason;
+    private final String abandonedByUid;
     private final long breakEndsAtMillis;
 
     public RoomSession(
@@ -39,6 +43,10 @@ public final class RoomSession {
             @NonNull String status,
             @NonNull String matchType,
             @NonNull String koZnaZnaMatchId,
+            @NonNull String tournamentId,
+            @NonNull String tournamentRound,
+            @NonNull String finishReason,
+            @NonNull String abandonedByUid,
             long breakEndsAtMillis
     ) {
         this.roomId = roomId;
@@ -54,7 +62,11 @@ public final class RoomSession {
         this.status = status;
         this.matchType = matchType;
         this.koZnaZnaMatchId = koZnaZnaMatchId;
+        this.tournamentId = tournamentId;
+        this.tournamentRound = tournamentRound;
         this.breakEndsAtMillis = breakEndsAtMillis;
+        this.finishReason = finishReason;
+        this.abandonedByUid = abandonedByUid;
     }
 
     @NonNull
@@ -73,6 +85,10 @@ public final class RoomSession {
                 stringOrDefault(document.getString("status"), "READY"),
                 stringOrDefault(document.getString("matchType"), "FRIENDLY"),
                 stringOrEmpty(document.getString("koZnaZnaMatchId")),
+                stringOrEmpty(document.getString("tournamentId")),
+                stringOrEmpty(document.getString("tournamentRound")),
+                stringOrEmpty(document.getString("finishReason")),
+                stringOrEmpty(document.getString("abandonedByUid")),
                 longOrZero(document.get("breakEndsAtMillis"))
         );
     }
@@ -139,12 +155,36 @@ public final class RoomSession {
         return koZnaZnaMatchId;
     }
 
+    @NonNull
+    public String getTournamentId() {
+        return tournamentId;
+    }
+
+    @NonNull
+    public String getTournamentRound() {
+        return tournamentRound;
+    }
+
     public long getBreakEndsAtMillis() {
         return breakEndsAtMillis;
     }
 
     public boolean hasBothPlayers() {
         return !hostUid.isEmpty() && !guestUid.isEmpty();
+    }
+
+    @NonNull
+    public String getFinishReason() {
+        return finishReason;
+    }
+
+    @NonNull
+    public String getAbandonedByUid() {
+        return abandonedByUid;
+    }
+
+    public boolean wasAbandoned() {
+        return !abandonedByUid.isEmpty();
     }
 
     @NonNull

@@ -64,6 +64,14 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     private String displayedQuestionKey = "";
     private long displayedQuestionStartedAtMs = 0L;
     private long displayedQuestionEndsAtMs = 0L;
+    private boolean friendlyRoom;
+    private String roomAbandonedByUid = "";
+    private String abandonHandledMatchKey = "";
+    private boolean abandonHandleInFlight;
+    private boolean challengeMode;
+    private List<Integer> challengeQuestionOrder = Collections.emptyList();
+    private int challengeQuestionIndex;
+    private int challengeScore;
     @Nullable
     private KoZnaZnaMatch latestMatch;
 
@@ -89,8 +97,16 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         this.isHost = false;
         this.iHaveAnswered = false;
         this.statsRecorded = false;
+        if (activeRoomId.isEmpty()) {
+            this.friendlyRoom = false;
+        }
         this.resolveInFlight = false;
         this.presenceMarkInFlight = false;
+        if (activeRoomId.isEmpty()) {
+            this.roomAbandonedByUid = "";
+            this.abandonHandledMatchKey = "";
+            this.abandonHandleInFlight = false;
+        }
         this.selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
         this.myHits = 0;
         this.myMisses = 0;
@@ -121,12 +137,38 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         mainHandler.post(timerTickRunnable);
     }
 
+    public void startChallengeGame() {
+        challengeMode = true;
+        activeRoomId = "";
+        matchId = "";
+        myUid = matchRepository.getCurrentUid() != null ? matchRepository.getCurrentUid() : "challenge_player";
+        isHost = true;
+        iHaveAnswered = false;
+        statsRecorded = false;
+        selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
+        myHits = 0;
+        myMisses = 0;
+        challengeScore = 0;
+        challengeQuestionIndex = 0;
+        localStatusMessage = "";
+
+        challengeQuestionOrder = KoZnaZnaMatchDataSource.shuffledQuestionOrderStatic(
+                KoZnaZnaMatchDataSource.QUESTIONS_PER_MATCH
+        );
+
+        publishChallengeState();
+    }
+
     public void startRoomGame(@NonNull String roomId) {
         if (roomId.isEmpty() || roomId.equals(activeRoomId)) {
             return;
         }
         activeRoomId = roomId;
         localStatusMessage = getApplication().getString(R.string.kzz_waiting_sync);
+
+        roomAbandonedByUid = "";
+        abandonHandledMatchKey = "";
+        abandonHandleInFlight = false;
 
         profileRepository.ensureAuthenticated(
                 () -> {
@@ -150,17 +192,16 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     private void onRoomSessionUpdated(@NonNull RoomSession room) {
+        friendlyRoom = "FRIENDLY".equals(room.getMatchType());
         roomBaseHostScore = room.getHostTotalScore();
         roomBaseGuestScore = room.getGuestTotalScore();
+        roomAbandonedByUid = room.getAbandonedByUid();
         String existingMatchId = room.getKoZnaZnaMatchId();
         if (!existingMatchId.isEmpty()) {
-            if (roomListener != null) {
-                roomListener.remove();
-                roomListener = null;
-            }
             if (matchListener == null || !existingMatchId.equals(matchId)) {
                 startOnlineMatch(existingMatchId, myUid);
             }
+            handleRoomAbandonIfNeeded(room, existingMatchId);
             return;
         }
 
@@ -192,6 +233,56 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         );
     }
 
+    private void handleRoomAbandonIfNeeded(
+            @NonNull RoomSession room,
+            @NonNull String existingMatchId
+    ) {
+        String abandonedUid = room.getAbandonedByUid();
+        if (existingMatchId.isEmpty()
+                || abandonedUid.isEmpty()
+                || myUid.isEmpty()
+                || myUid.equals(abandonedUid)) {
+            return;
+        }
+
+        boolean iAmRoomPlayer = myUid.equals(room.getHostUid()) || myUid.equals(room.getGuestUid());
+        if (!iAmRoomPlayer) {
+            return;
+        }
+
+        String handleKey = existingMatchId + "|" + abandonedUid;
+        if (abandonHandleInFlight || handleKey.equals(abandonHandledMatchKey)) {
+            return;
+        }
+
+        abandonHandleInFlight = true;
+        matchRepository.handleAbandonedPlayer(
+                existingMatchId,
+                abandonedUid,
+                () -> {
+                    abandonHandleInFlight = false;
+                    abandonHandledMatchKey = handleKey;
+                },
+                error -> {
+                    abandonHandleInFlight = false;
+                    errorMessage.setValue(error);
+                }
+        );
+    }
+
+    private boolean canControlKzzProgress() {
+        if (latestMatch == null || myUid.isEmpty()) {
+            return false;
+        }
+        if (isHost) {
+            return true;
+        }
+        boolean iAmSurvivor = !roomAbandonedByUid.isEmpty()
+                && !myUid.equals(roomAbandonedByUid)
+                && (myUid.equals(latestMatch.getHostUid()) || myUid.equals(latestMatch.getGuestUid()));
+        return iAmSurvivor;
+    }
+
     private void publishWaitingState(@NonNull RoomSession room) {
         uiState.setValue(new KoZnaZnaUiState(
                 1,
@@ -216,6 +307,14 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     public void selectAnswer(int answerIndex) {
+        if (challengeMode) {
+            if (answerIndex < 0 || answerIndex > 3 || isChallengeFinished()) {
+                return;
+            }
+            selectedAnswerIndex = answerIndex;
+            publishChallengeState();
+            return;
+        }
         if (!canAnswerLocally()) {
             return;
         }
@@ -224,6 +323,10 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     public void submitAnswer() {
+        if (challengeMode) {
+            submitChallengeAnswer();
+            return;
+        }
         if (!canAnswerLocally() || latestMatch == null) {
             return;
         }
@@ -251,7 +354,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 () -> {
                     if (latestMatch != null) {
                         publishFromMatch(latestMatch);
-                        if (isHost) {
+                        if (canControlKzzProgress()) {
                             maybeResolveQuestion(latestMatch);
                         }
                     }
@@ -261,6 +364,11 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     public void skipQuestion() {
+        if (challengeMode) {
+            selectedAnswerIndex = KoZnaZnaScoring.ANSWER_SKIP;
+            advanceChallengeQuestion(false);
+            return;
+        }
         if (!canAnswerLocally() || latestMatch == null) {
             return;
         }
@@ -276,7 +384,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
                 () -> {
                     if (latestMatch != null) {
                         publishFromMatch(latestMatch);
-                        if (isHost) {
+                        if (canControlKzzProgress()) {
                             maybeResolveQuestion(latestMatch);
                         }
                     }
@@ -343,13 +451,15 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
             return;
         }
 
-        if (isHost) {
+        if (canControlKzzProgress()) {
             maybeResolveQuestion(match);
         }
     }
 
     private void maybeResolveQuestion(@NonNull KoZnaZnaMatch match) {
-        if (!isHost || resolveInFlight || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
+        if (!canControlKzzProgress()
+                || resolveInFlight
+                || KoZnaZnaMatch.STATUS_FINISHED.equals(match.getStatus())) {
             return;
         }
 
@@ -402,7 +512,7 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
         if (latestMatch != null) {
             markPlayerPresentIfNeeded(latestMatch);
             publishFromMatch(latestMatch);
-            if (isHost && KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())) {
+            if (canControlKzzProgress() && KoZnaZnaMatch.STATUS_PLAYING.equals(latestMatch.getStatus())) {
                 maybeResolveQuestion(latestMatch);
             }
         }
@@ -745,11 +855,119 @@ public class KoZnaZnaViewModel extends AndroidViewModel {
     }
 
     private void recordStatsIfNeeded(@NonNull KoZnaZnaMatch match) {
-        if (statsRecorded || !profileRepository.isRegisteredPlayer()) {
+        if (statsRecorded || friendlyRoom || !profileRepository.isRegisteredPlayer()) {
             return;
         }
         statsRecorded = true;
         int myScore = isHost ? match.getHostScore() : match.getGuestScore();
         profileRepository.recordKoZnaZnaRound(myScore, myHits, myMisses);
+    }
+    public int getCurrentUserGameScore() {
+        if (challengeMode) {
+            return challengeScore;
+        }
+
+        if (latestMatch == null || myUid.isEmpty()) {
+            return 0;
+        }
+
+        return myUid.equals(latestMatch.getHostUid())
+                ? latestMatch.getHostScore()
+                : latestMatch.getGuestScore();
+    }
+
+    private void submitChallengeAnswer() {
+        if (isChallengeFinished()) {
+            publishChallengeState();
+            return;
+        }
+
+        if (selectedAnswerIndex < 0) {
+            errorMessage.setValue(getApplication().getString(R.string.kzz_select_answer));
+            return;
+        }
+
+        KoZnaZnaQuestion question = currentChallengeQuestion();
+        boolean correct = question != null && question.isCorrect(selectedAnswerIndex);
+        if (correct) {
+            challengeScore += 5;
+            myHits++;
+        } else {
+            myMisses++;
+        }
+
+        advanceChallengeQuestion(correct);
+    }
+
+    private void advanceChallengeQuestion(boolean correct) {
+        if (correct) {
+            localStatusMessage = "Tacno! +5 poena.";
+        } else {
+            localStatusMessage = "Nije tacno.";
+        }
+
+        challengeQuestionIndex++;
+        selectedAnswerIndex = KoZnaZnaUiState.NO_SELECTION;
+        publishChallengeState();
+    }
+
+    private void publishChallengeState() {
+        KoZnaZnaQuestion question = currentChallengeQuestion();
+        boolean finished = isChallengeFinished();
+
+        String questionText = "";
+        List<String> options = Collections.emptyList();
+        if (!finished && question != null) {
+            questionText = question.getText();
+            options = question.getOptions();
+        }
+
+        String username = profileRepository.loadProfile().getUsername();
+        if (username == null || username.trim().isEmpty()) {
+            username = getApplication().getString(R.string.guest_player);
+        }
+
+        String status = finished
+                ? "Kraj igre. Osvojeno poena: " + challengeScore + "."
+                : localStatusMessage;
+
+        uiState.setValue(new KoZnaZnaUiState(
+                Math.min(challengeQuestionIndex + 1, challengeQuestionOrder.size()),
+                challengeQuestionOrder.size(),
+                0,
+                0,
+                challengeScore,
+                0,
+                username,
+                getApplication().getString(R.string.opponent_player),
+                profileRepository.loadProfile().getAvatarUri(),
+                "",
+                questionText,
+                options,
+                selectedAnswerIndex,
+                !finished,
+                finished,
+                status,
+                false
+        ));
+    }
+
+    @Nullable
+    private KoZnaZnaQuestion currentChallengeQuestion() {
+        if (challengeQuestionIndex < 0 || challengeQuestionIndex >= challengeQuestionOrder.size()) {
+            return null;
+        }
+
+        List<KoZnaZnaQuestion> questions = KoZnaZnaQuestion.defaultQuestions();
+        int questionIndex = challengeQuestionOrder.get(challengeQuestionIndex);
+        if (questionIndex < 0 || questionIndex >= questions.size()) {
+            return null;
+        }
+
+        return questions.get(questionIndex);
+    }
+
+    private boolean isChallengeFinished() {
+        return challengeQuestionIndex >= challengeQuestionOrder.size();
     }
 }

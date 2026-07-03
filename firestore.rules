@@ -7,6 +7,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function currentUserDocument() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isCurrentUserInRegion(regionKey) {
+      return isSignedIn()
+        && currentUserDocument().data.regionKey == regionKey;
+    }
+
     function isMatchParticipant() {
       return isSignedIn()
         && resource.data.keys().hasAll(['hostUid', 'guestUid'])
@@ -14,26 +23,115 @@ service cloud.firestore {
             || resource.data.guestUid == request.auth.uid);
     }
 
+    function isMutualFriendAdd(userId) {
+      return isSignedIn()
+        && request.auth.uid != userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['friendIds'])
+        && request.auth.uid in request.resource.data.friendIds;
+    }
+
+    function isInviteSenderClosingNotification() {
+      return isSignedIn()
+        && resource.data.keys().hasAny(['fromUid'])
+        && resource.data.fromUid == request.auth.uid
+        && request.resource.data.actionHandled == true
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['read', 'actionHandled', 'actionResult', 'message']);
+    }
+
+    function challengeDocument(challengeId) {
+      return get(/databases/$(database)/documents/region_challenges/$(challengeId));
+    }
+
+    function challengeDocumentAfter(challengeId) {
+      return getAfter(/databases/$(database)/documents/region_challenges/$(challengeId));
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update, delete: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isMutualFriendAdd(userId);
+      allow update: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tokens']);
+
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalStars', 'tokens']);
 
       match /notifications/{notificationId} {
-        allow read, create, update: if isSignedIn() && request.auth.uid == userId;
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow update: if isSignedIn() && (
+          request.auth.uid == userId
+          || isInviteSenderClosingNotification()
+        );
+        allow create: if isSignedIn() && (
+          request.auth.uid == userId
+          || (
+            request.resource.data.keys().hasAny(['fromUid'])
+            && request.resource.data.fromUid == request.auth.uid
+          )
+        );
+      }
+
+      match /friends/{friendId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create, delete: if isSignedIn() && request.auth.uid == userId;
       }
     }
 
-   match /username_lookup/{usernameLower} {
-  	allow read: if true;
+    match /game_invites/{inviteId} {
+      allow create: if isSignedIn()
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid is string;
 
-  	allow create: if isSignedIn()
-   	  && request.resource.data.uid == request.auth.uid
-  	  && request.resource.data.keys().hasOnly(['uid', 'email'])
-  	  && request.resource.data.email is string
-  	  && request.resource.data.uid is string;
+      allow read: if isSignedIn()
+        && (resource.data.fromUid == request.auth.uid
+            || resource.data.toUid == request.auth.uid);
 
- 	 allow update, delete: if false;
-	}
+      allow update: if isSignedIn()
+        && (resource.data.fromUid == request.auth.uid
+            || resource.data.toUid == request.auth.uid);
+    }
+
+    match /matchmaking_queue/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && (
+        request.resource.data.uid == request.auth.uid
+        || (
+          resource.data.status == "WAITING"
+          && request.resource.data.status == "MATCHED"
+          && request.resource.data.roomId is string
+        )
+      );
+      allow delete: if isSignedIn()
+        && userId == request.auth.uid;
+    }
+
+    match /tournament_queue/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isSignedIn() && userId == request.auth.uid;
+    }
+
+    match /tournaments/{tournamentId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+    }
+
+    match /username_lookup/{usernameLower} {
+      allow read: if true;
+
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'email'])
+        && request.resource.data.email is string
+        && request.resource.data.uid is string;
+
+      allow update, delete: if false;
+    }
 
     match /kzz_lobbies/{code} {
       allow read: if isSignedIn();
@@ -80,6 +178,133 @@ service cloud.firestore {
       allow read: if isSignedIn();
     }
 
+    match /region_chats/{regionKey} {
+      allow read: if isCurrentUserInRegion(regionKey);
+      allow create, update, delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isCurrentUserInRegion(regionKey);
+
+        allow create: if isCurrentUserInRegion(regionKey)
+          && request.resource.data.keys().hasOnly([
+            'regionKey',
+            'senderUid',
+            'senderUsername',
+            'text',
+            'createdAt'
+          ])
+          && request.resource.data.regionKey == regionKey
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.senderUsername is string
+          && request.resource.data.senderUsername.size() > 0
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500
+          && request.resource.data.createdAt == request.time;
+
+        allow update, delete: if false;
+      }
+    }
+
+    match /region_challenges/{challengeId} {
+      allow read: if isSignedIn()
+        && isCurrentUserInRegion(resource.data.regionKey);
+
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'regionKey',
+          'creatorUid',
+          'creatorUsername',
+          'stakeStars',
+          'stakeTokens',
+          'participantCount',
+          'status',
+          'winnerUid',
+          'runnerUpUid',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isCurrentUserInRegion(request.resource.data.regionKey)
+        && request.resource.data.creatorUid == request.auth.uid
+        && request.resource.data.creatorUsername is string
+        && request.resource.data.creatorUsername.size() > 0
+        && request.resource.data.stakeStars is int
+        && request.resource.data.stakeStars >= 0
+        && request.resource.data.stakeStars <= 10
+        && request.resource.data.stakeTokens is int
+        && request.resource.data.stakeTokens >= 0
+        && request.resource.data.stakeTokens <= 2
+        && request.resource.data.participantCount == 1
+        && request.resource.data.status == "OPEN"
+        && request.resource.data.winnerUid == ""
+        && request.resource.data.runnerUpUid == "";
+
+      allow update: if isSignedIn()
+        && isCurrentUserInRegion(resource.data.regionKey)
+        && request.resource.data.regionKey == resource.data.regionKey
+        && request.resource.data.creatorUid == resource.data.creatorUid
+        && request.resource.data.creatorUsername == resource.data.creatorUsername
+        && request.resource.data.stakeStars == resource.data.stakeStars
+        && request.resource.data.stakeTokens == resource.data.stakeTokens
+        && request.resource.data.participantCount >= resource.data.participantCount
+        && request.resource.data.participantCount <= 4
+        && request.resource.data.status in ["OPEN", "FINISHED"];
+
+      allow delete: if false;
+
+      match /participants/{participantUid} {
+        allow read: if isSignedIn()
+          && isCurrentUserInRegion(challengeDocument(challengeId).data.regionKey);
+
+        allow create: if isSignedIn()
+          && request.auth.uid == participantUid
+          && request.resource.data.keys().hasOnly([
+            'uid',
+            'username',
+            'score',
+            'status',
+            'rewardStars',
+            'rewardTokens',
+            'joinedAt'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.username is string
+          && request.resource.data.username.size() > 0
+          && request.resource.data.score == 0
+          && request.resource.data.status == "JOINED"
+          && request.resource.data.rewardStars == 0
+          && request.resource.data.rewardTokens == 0
+          && isCurrentUserInRegion(challengeDocumentAfter(challengeId).data.regionKey);
+
+        allow update: if isSignedIn()
+          && isCurrentUserInRegion(challengeDocument(challengeId).data.regionKey)
+          && (
+            (
+              request.auth.uid == participantUid
+              && resource.data.status == "JOINED"
+              && request.resource.data.uid == resource.data.uid
+              && request.resource.data.username == resource.data.username
+              && request.resource.data.rewardStars == resource.data.rewardStars
+              && request.resource.data.rewardTokens == resource.data.rewardTokens
+              && request.resource.data.status == "FINISHED"
+              && request.resource.data.score is int
+              && request.resource.data.score >= 0
+            )
+            ||
+            (
+              request.resource.data.uid == resource.data.uid
+              && request.resource.data.username == resource.data.username
+              && request.resource.data.score == resource.data.score
+              && request.resource.data.status == resource.data.status
+              && request.resource.data.rewardStars >= 0
+              && request.resource.data.rewardTokens >= 0
+            )
+          );
+
+        allow delete: if false;
+      }
+    }
+
     match /rooms/{roomId} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn();
@@ -87,6 +312,30 @@ service cloud.firestore {
       match /games/{gameId} {
         allow read, write: if isSignedIn();
       }
+    }
+
+    match /match_results/{matchId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && (request.resource.data.hostUid == request.auth.uid
+            || request.resource.data.guestUid == request.auth.uid);
+
+      allow update: if isSignedIn()
+        && (resource.data.hostUid == request.auth.uid
+            || resource.data.guestUid == request.auth.uid)
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.guestUid == resource.data.guestUid;
+    }
+
+    match /regions/{regionId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+    }
+
+    match /config/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
     }
   }
 }

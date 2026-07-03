@@ -82,6 +82,17 @@
     <string name="notification_type_other">Ostalo</string>
     <string name="notification_league_title">Promena lige</string>
     <string name="notification_league_message">Prešla si u višu ligu nakon poslednje partije.</string>
+    <string name="league_dialog_title">Promena lige</string>
+    <string name="league_promoted_message">Čestitamo! Napredovao/la si u %1$s. Trenutno imaš %2$d zvezda.</string>
+    <string name="league_demoted_message">Pao/la si u %1$s. Trenutno imaš %2$d zvezda.</string>
+    <string name="league_monthly_penalty_message">Nisi se plasirao/la na mesečnoj rang listi. Zvezde su smanjene sa %1$d na %2$d (−30%%).</string>
+    <string name="league_name_starter">Početnička liga</string>
+    <string name="league_name_bronze">Bronzana liga</string>
+    <string name="league_name_silver">Srebrna liga</string>
+    <string name="league_name_gold">Zlatna liga</string>
+    <string name="league_name_platinum">Platinska liga</string>
+    <string name="league_name_diamond">Dijamantska liga</string>
+    <string name="league_daily_tokens_info">Dnevni tokeni: %1$d (5 osnovnih + %2$d iz lige)</string>
     <string name="notification_league_date">Pre 2 dana, 09:15 - Nepročitano</string>
     <string name="open_chat">Udji u čet</string>
     <string name="open_league">Pogledaj ligu</string>
@@ -122,13 +133,57 @@
 
     <string name="profile_title">Profil</string>
     <string name="profile_button">Profil</string>
-    <string name="invite_friends_button">Pozovi</string>
-    <string name="play_section_title">Pokreni partiju:</string>
+    <string name="invite_friends_button">Prijatelji</string>
+    <string name="daily_missions_button">Dnevne misije</string>
+    <string name="daily_missions_title">Dnevne misije</string>
+    <string name="daily_missions_summary">%1$d/4 reseno danas</string>
+    <string name="daily_missions_summary_empty">0/4 reseno danas</string>
+    <string name="daily_mission_done">✅ %1$s (+3 zvezde)</string>
+    <string name="daily_mission_pending">○ %1$s (+3 zvezde)</string>
+    <string name="daily_mission_win_match">Pobedi partiju</string>
+    <string name="daily_mission_send_chat">Posalji poruku u cet</string>
+    <string name="daily_mission_play_friendly">Odigraj prijateljsku partiju</string>
+    <string name="daily_mission_win_tournament">Pobedi partiju u turniru</string>
+    <string name="daily_mission_action_go">Idi</string>
+    <string name="daily_mission_bonus_done">Bonus osvojen: +2 tokena i +3 zvezde</string>
+    <string name="daily_mission_bonus_pending">Bonus za sve misije: +2 tokena i +3 zvezde</string>
+    <string name="play_section_title">Meni:</string>
     <string name="start_online_match">Započni partiju</string>
+    <string name="start_tournament">Turnir</string>
+    <string name="tournament_title">Turnir</string>
+    <string name="tournament_status_ready">Ulaz kosta 3 tokena. Potrebna su 4 aktivna igraca.</string>
+    <string name="tournament_join">Zapocni turnir</string>
+    <string name="tournament_cancel">Odustani</string>
+    <string name="tournament_semifinals">Polufinale</string>
+    <string name="tournament_final">Finale</string>
+    <string name="tournament_vs">protiv</string>
+    <string name="tournament_final_waiting">Finale se pojavljuje kada se zavrse obe prve partije.</string>
+    <string name="tournament_final_pair">%1$s protiv %2$s</string>
+    <string name="tournament_champion">Pobednik turnira: %1$s</string>
+    <string name="tournament_enter_match">Udji u partiju</string>
+    <string name="tournament_waiting_player">Ceka se igrac</string>
+    <string name="tournament_win_label">POBEDA</string>
+    <string name="tournament_loss_label">PORAZ</string>
     <string name="invite_friends_title">Pozovi prijatelja</string>
     <string name="invite_send">Pozovi</string>
     <string name="invite_pending">Čeka se odgovor</string>
     <string name="invite_no_users">Nema drugih korisnika za pozivanje.</string>
+    <string name="friends_title">Prijatelji</string>
+    <string name="friends_search_hint">Pretraga po korisnickom imenu</string>
+    <string name="friends_add_button">Dodaj prijatelja</string>
+    <string name="friends_scan_qr_button">Skeniraj QR</string>
+    <string name="friends_scan_prompt">Usmerite kameru na QR kod sa profila</string>
+    <string name="friends_camera_denied">Potrebna je dozvola za kameru.</string>
+    <string name="friends_list_title">Lista prijatelja</string>
+    <string name="friends_empty">Jos nemate prijatelja. Pretragom ili QR kodom dodajte igrace.</string>
+    <string name="friends_monthly_rank_value">Mesecni rang: #%1$d</string>
+    <string name="friends_total_stars_value">Ukupno zvezda: %1$d</string>
+    <string name="friends_status_available">Nije u partiji</string>
+    <string name="friends_status_in_game">Trenutno u partiji</string>
+    <string name="friends_status_invite_pending">Poziv je poslat</string>
+    <string name="friends_invite_button">Pozovi na partiju</string>
+    <string name="friends_cancel_invite">Otkazi poziv</string>
+    <string name="friends_invite_unavailable">Nije dostupan</string>
     <string name="online_matchmaking_title">Online partija</string>
     <string name="online_matchmaking_searching">Traži se protivnik...</string>
     <string name="online_matchmaking_cancel">Prekini traženje</string>
@@ -152,7 +207,7 @@
     <string name="profile_stars">Ukupno zvezda</string>
     <string name="profile_league">Liga</string>
     <string name="profile_region_label">Region</string>
-    <string name="profile_qr_hint">QR za poziv prijatelja</string>
+    <string name="profile_qr_hint">QR za dodavanje prijatelja</string>
     <string name="profile_change_avatar">Promeni avatar</string>
     <string name="profile_statistics_heading">Statistika igrača</string>
     <string name="profile_stat_avg_points">Prosek bodova (%1$s): %2$.1f</string>
@@ -288,4 +343,85 @@
         <item>Odgovor E</item>
     </string-array>
     <string name="next">Dalje</string>
+
+    <string name="region_map_title">Mapa regiona Srbije</string>
+    <string name="region_map_subtitle">Svaki registrovani igrač je prikazan kao tačka u svom regionu. Dodirni region za statistiku.</string>
+    <string name="region_map_button">Mapa regiona</string>
+    <string name="region_leaderboard_button">Mesečna rang lista po regionima</string>
+    <string name="region_leaderboard_title">Mesečna rang lista</string>
+    <string name="region_leaderboard_cycle">Ciklus: %1$s</string>
+    <string name="region_leaderboard_regions_heading">Rang lista regiona</string>
+    <string name="region_leaderboard_players_heading">Igrači po zvezdama u ciklusu</string>
+    <string name="region_leaderboard_empty">Još nema igrača sa zvezdama u ovom ciklusu.</string>
+    <string name="region_stats_title">Statistika regiona</string>
+    <string name="region_stats_podium_heading">Ukupno osvojenih mesta (svi ciklusi)</string>
+    <string name="region_stats_previous_cycle_rank">Prethodni ciklus (%1$s): %2$d. mesto</string>
+    <string name="region_stats_previous_cycle_none">Prethodni ciklus (%1$s): nije u top 3</string>
+    <string name="region_stats_first_value">Prva mesta: %1$d</string>
+    <string name="region_stats_second_value">Druga mesta: %1$d</string>
+    <string name="region_stats_third_value">Treća mesta: %1$d</string>
+    <string name="region_stats_active">Trenutno aktivnih igrača: %1$d</string>
+    <string name="region_stats_registered">Ukupno registrovanih igrača: %1$d</string>
+    <string name="region_rank_frame">Okvir regiona</string>
+    <string name="region_pick_title">Izaberi region</string>
+    <string name="region_pick_hint">Region</string>
+    <string name="error_pick_region">Izaberi region sa liste.</string>
+    <string name="profile_monthly_stars">Zvezde u ciklusu</string>
+    <string name="profile_frame_gold">Zlatni okvir regiona</string>
+    <string name="profile_frame_silver">Srebrni okvir regiona</string>
+    <string name="profile_frame_bronze">Bronzani okvir regiona</string>
+
+    <string name="ranking_title">Rang lista</string>
+    <string name="ranking_button">Rang lista</string>
+    <string name="ranking_weekly">Nedeljna</string>
+    <string name="ranking_monthly">Mesecna</string>
+    <string name="ranking_cycle">Ciklus: %1$s</string>
+    <string name="ranking_cycle_placeholder">Ciklus:</string>
+    <string name="ranking_refresh">Osvezi</string>
+    <string name="ranking_empty">Jos nema igraca sa odigranom partijom u ovom ciklusu.</string>
+    <string name="ranking_matches">Partija u ciklusu: %1$d</string>
+    <string name="ranking_stars">%1$d zvezda</string>
+    <string name="ranking_league_icon">Ikona lige</string>
+    <string name="ranking_reward_dialog_title">Osvojena nagrada</string>
+
+    <string name="region_beograd">Beograd</string>
+    <string name="region_vojvodina">Vojvodina</string>
+    <string name="region_sumadija">Šumadija</string>
+    <string name="region_zapad">Zapadna Srbija</string>
+    <string name="region_jug">Južna Srbija</string>
+    <string name="region_istok">Istočna Srbija</string>
+
+    <string name="room_abandon_title">Napusti partiju?</string>
+    <string name="room_abandon_message">Ako napustiš partiju, protivnik će biti upisan kao pobednik.</string>
+    <string name="room_abandon_positive">Napusti</string>
+    <string name="room_abandon_negative">Ostani</string>
+    <string name="room_abandon_error">Napuštanje partije nije uspelo.</string>
+
+    <string name="game_header_tokens">Tokeni: %1$d</string>
+    <string name="game_header_stars">Zvezde: %1$d</string>
+    <string name="game_header_league">Liga: %1$s</string>
+
+    <string name="region_chat_title">Čet</string>
+    <string name="region_chat_title_with_region">Čet - %1$s</string>
+    <string name="region_chat_hint">Unesi poruku</string>
+    <string name="region_chat_send">Pošalji</string>
+
+    <string name="region_chat_button">Čet</string>
+
+    <string name="challenge_create">Postavi izazov</string>
+    <string name="challenge_title">Izazovi regiona</string>
+    <string name="challenge_empty">Nema aktivnih izazova za ovaj region.</string>
+    <string name="challenge_stake_stars">Zvezde za ulaganje</string>
+    <string name="challenge_stake_tokens">Tokeni za ulaganje</string>
+    <string name="challenge_create_dialog_title">Novi izazov</string>
+    <string name="challenge_accept">Prihvati</string>
+    <string name="challenge_results">Rezultat izazova</string>
+    <string name="challenge_play">Igraj</string>
+
+    <string name="challenge_session_title">Izazov</string>
+    <string name="challenge_session_status">Igra %1$d/%2$d: %3$s</string>
+    <string name="challenge_session_score">Ukupno poena: %1$d</string>
+    <string name="challenge_session_start">Nastavi izazov</string>
+    <string name="challenge_session_finish">Završi izazov</string>
+
 </resources>
